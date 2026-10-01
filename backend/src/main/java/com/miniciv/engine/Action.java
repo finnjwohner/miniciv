@@ -12,4 +12,11 @@ public sealed interface Action {
 	record StartBuilding(String building) implements Action {
 	}
 
+	/**
+	 * Pays the Gold and Population for a number of Units of one type now and
+	 * starts training them.
+	 */
+	record TrainUnits(String unit, int count) implements Action {
+	}
+
 }
