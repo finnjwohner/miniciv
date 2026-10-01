@@ -59,12 +59,24 @@ public class Game {
 			for (String completed : nation.progressConstruction()) {
 				report.add("Your " + completed + " has been built.");
 			}
+			Map<String, Integer> trained = nation.progressTraining(turn + 1);
+			if (!trained.isEmpty()) {
+				report.add(listed(trained) + " finished training and joined your Army.");
+			}
 			int buildingPopulation = nation.populationFromBuildings(ruleset);
 			int buildingGold = nation.goldFromBuildings(ruleset);
 			nation.gain(GOLD_PER_TURN + buildingGold, POPULATION_PER_TURN + buildingPopulation, RESEARCH_PER_TURN);
 			report.add("Your Nation gained " + GOLD_PER_TURN + " Gold, " + POPULATION_PER_TURN + " Population and "
 					+ RESEARCH_PER_TURN + " Research.");
 			buildingsAddedLine(buildingPopulation, buildingGold).ifPresent(report::add);
+			Map<String, Integer> deserted = nation.desertUntilUpkeepIsAffordable(ruleset);
+			if (!deserted.isEmpty()) {
+				report.add("You could not pay your Army's upkeep, so " + listed(deserted) + " deserted.");
+			}
+			int upkeep = nation.payUpkeep(ruleset);
+			if (upkeep > 0) {
+				report.add("Your Army's upkeep cost " + upkeep + " Gold.");
+			}
 			nation.turnReport(new TurnReport(turn, report));
 		}
 		turn++;
@@ -80,6 +92,15 @@ public class Game {
 			case Action.StartBuilding start -> ruleset.building(start.building())
 				.map(actor::startBuilding)
 				.orElseGet(() -> ActionResult.rejected("There is no Building called " + start.building() + "."));
+			case Action.TrainUnits train -> {
+				if (train.count() < 1) {
+					yield ActionResult.rejected("Train at least one Unit.");
+				}
+				yield ruleset.trainableUnit(train.unit())
+					.map(unit -> actor.trainUnits(unit, train.count(), turn))
+					.orElseGet(() -> ActionResult
+						.rejected("There is no Unit called " + train.unit() + " that you can train."));
+			}
 		};
 	}
 
@@ -95,10 +116,21 @@ public class Game {
 				: Optional.of("Your Buildings added " + String.join(" and ", added) + ".");
 	}
 
+	/**
+	 * Units counted by type, such as "Warrior ×2 and Archer ×1".
+	 */
+	private static String listed(Map<String, Integer> units) {
+		List<String> counted = units.entrySet().stream().map(e -> e.getKey() + " ×" + e.getValue()).toList();
+		if (counted.size() == 1) {
+			return counted.getFirst();
+		}
+		return String.join(", ", counted.subList(0, counted.size() - 1)) + " and " + counted.getLast();
+	}
+
 	public NationView viewOf(String nation) {
 		Nation own = nation(nation);
 		List<String> others = nations.keySet().stream().filter(name -> !name.equals(nation)).toList();
-		return own.view(turn, others, ruleset.buildings());
+		return own.view(turn, others, ruleset);
 	}
 
 	private Nation nation(String name) {

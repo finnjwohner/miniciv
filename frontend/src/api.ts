@@ -18,6 +18,19 @@ export type BuildingType = {
 }
 /** A Building under construction. */
 export type Construction = { building: string; turnsLeft: number }
+/** A kind of Unit, trained by paying Gold and Population upfront and then Gold upkeep every Turn. */
+export type UnitType = {
+  name: string
+  gold: number
+  population: number
+  turns: number
+  upkeep: number
+  strength: number
+  /** The Unit types this one multiplies its Strength against. */
+  counters: string[]
+}
+/** Units of one type in training; they join the Army at the start of `readyOnTurn`. */
+export type Training = { unit: string; count: number; readyOnTurn: number }
 /**
  * What only this Player sees: their own Nation, and just the names of the others.
  * `version` rises with every change to the Nation.
@@ -34,6 +47,12 @@ export type NationView = {
   /** How many of each Building the Nation has completed. */
   buildings: Record<string, number>
   construction: Construction[]
+  availableUnits: UnitType[]
+  /** How many of each Unit type the Nation has at home. */
+  army: Record<string, number>
+  training: Training[]
+  /** The Gold the Army costs each Turn. */
+  upkeep: number
   turnReport: TurnReport | null
 }
 
