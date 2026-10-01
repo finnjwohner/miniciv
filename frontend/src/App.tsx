@@ -1,23 +1,52 @@
 import { useEffect, useState } from 'react'
+import { storedMembership, type Membership } from './api'
+import GameScreen from './GameScreen'
+import Home from './Home'
+import JoinRoom from './JoinRoom'
+import RoomScreen from './RoomScreen'
+import { useRoom } from './useRoom'
 
-type ServerStatus = 'checking' | 'up' | 'down' | 'unreachable'
+function usePath() {
+  const [path, setPath] = useState(window.location.pathname)
+  useEffect(() => {
+    const onPopState = () => setPath(window.location.pathname)
+    window.addEventListener('popstate', onPopState)
+    return () => window.removeEventListener('popstate', onPopState)
+  }, [])
+  const navigate = (to: string) => {
+    window.history.pushState(null, '', to)
+    setPath(to)
+  }
+  return { path, navigate }
+}
 
 function App() {
-  const [status, setStatus] = useState<ServerStatus>('checking')
-
-  useEffect(() => {
-    fetch('/api/health')
-      .then((res) => (res.ok ? res.json() : Promise.reject(res.status)))
-      .then((body: { status: string }) => setStatus(body.status === 'UP' ? 'up' : 'down'))
-      .catch(() => setStatus('unreachable'))
-  }, [])
+  const { path, navigate } = usePath()
+  const roomCode = path.match(/^\/rooms\/([^/]+)\/?$/)?.[1]
 
   return (
     <main>
       <h1>miniciv</h1>
-      <p>Server: {status}</p>
+      {roomCode ? (
+        <Room key={roomCode} code={decodeURIComponent(roomCode).toUpperCase()} />
+      ) : (
+        <Home onJoined={(code) => navigate(`/rooms/${code}`)} />
+      )}
     </main>
   )
+}
+
+function Room({ code }: { code: string }) {
+  const [membership, setMembership] = useState(() => storedMembership(code))
+  if (!membership) return <JoinRoom code={code} onJoined={setMembership} />
+  return <JoinedRoom code={code} membership={membership} />
+}
+
+function JoinedRoom({ code, membership }: { code: string; membership: Membership }) {
+  const { room, setReady } = useRoom(code, membership.token)
+  if (!room) return <p>Connecting to Room {code}…</p>
+  if (room.game) return <GameScreen game={room.game} />
+  return <RoomScreen room={room} playerId={membership.playerId} onReady={setReady} />
 }
 
 export default App
