@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import type { BuildingType, NationView } from './api'
+import type { BuildingType, NationView, UnitType } from './api'
 import type { ReceivedRoom } from './useRoom'
 
 /** The time now, updated a few times a second. */
@@ -29,15 +29,7 @@ function plural(count: number, word: string) {
 }
 
 /** The Buildings a Nation has and is constructing, and the ones it can start. */
-function Buildings({
-  nation,
-  rejection,
-  onStart,
-}: {
-  nation: NationView
-  rejection: string | null
-  onStart: (building: string) => void
-}) {
+function Buildings({ nation, onStart }: { nation: NationView; onStart: (building: string) => void }) {
   const owned = Object.entries(nation.buildings)
   return (
     <>
@@ -60,7 +52,6 @@ function Buildings({
         </ul>
       )}
       <h4>Build</h4>
-      {rejection && <p role="alert">{rejection}</p>}
       <ul>
         {nation.availableBuildings.map((b) => (
           <li key={b.name}>
@@ -75,6 +66,78 @@ function Buildings({
   )
 }
 
+/** A Unit type's costs, training time, Strength, upkeep and counters, in one line. */
+function describeUnit(unit: UnitType) {
+  const counters = unit.counters.length > 0 ? `, counters ${unit.counters.join(', ')}` : ''
+  return (
+    `${unit.gold} Gold and ${unit.population} Population, ${plural(unit.turns, 'Turn')} — ` +
+    `Strength ${unit.strength}, upkeep ${unit.upkeep} Gold per Turn${counters}`
+  )
+}
+
+/** One Unit type the Player can train, as many at once as they choose. */
+function TrainUnit({
+  unit,
+  nation,
+  onTrain,
+}: {
+  unit: UnitType
+  nation: NationView
+  onTrain: (unit: string, count: number) => void
+}) {
+  const [count, setCount] = useState(1)
+  const affordable = count >= 1 && unit.gold * count <= nation.gold && unit.population * count <= nation.population
+  return (
+    <li>
+      <input
+        type="number"
+        min={1}
+        value={count}
+        onChange={(e) => setCount(Math.floor(Number(e.target.value)))}
+        aria-label={`How many ${unit.name} to train`}
+        style={{ width: '4em' }}
+      />{' '}
+      <button onClick={() => onTrain(unit.name, count)} disabled={!affordable}>
+        Train {unit.name}
+      </button>{' '}
+      {describeUnit(unit)}
+    </li>
+  )
+}
+
+/** The Nation's Army, the Units in training, and the Unit types it can train. */
+function Army({ nation, onTrain }: { nation: NationView; onTrain: (unit: string, count: number) => void }) {
+  const army = Object.entries(nation.army)
+  return (
+    <>
+      <h3>Army</h3>
+      {army.length === 0 && nation.training.length === 0 ? (
+        <p>No Units yet.</p>
+      ) : (
+        <ul>
+          {army.map(([name, count]) => (
+            <li key={name}>
+              {name} ×{count}
+            </li>
+          ))}
+          {nation.training.map((t, i) => (
+            <li key={i}>
+              {t.unit} ×{t.count} — in training, ready on Turn {t.readyOnTurn}
+            </li>
+          ))}
+        </ul>
+      )}
+      <p>Upkeep: {nation.upkeep} Gold per Turn</p>
+      <h4>Train</h4>
+      <ul>
+        {nation.availableUnits.map((u) => (
+          <TrainUnit key={u.name} unit={u} nation={nation} onTrain={onTrain} />
+        ))}
+      </ul>
+    </>
+  )
+}
+
 /** One Turn of the Game as this Player sees it; they mark themselves done once they have decided. */
 function GameScreen({
   room,
@@ -82,6 +145,7 @@ function GameScreen({
   playerId,
   rejection,
   onStartBuilding,
+  onTrainUnits,
   onDone,
 }: {
   room: ReceivedRoom
@@ -89,6 +153,7 @@ function GameScreen({
   playerId: string
   rejection: string | null
   onStartBuilding: (building: string) => void
+  onTrainUnits: (unit: string, count: number) => void
   onDone: (turn: number) => void
 }) {
   const now = useNow()
@@ -108,7 +173,9 @@ function GameScreen({
             <li>Population: {nation.population}</li>
             <li>Research: {nation.research}</li>
           </ul>
-          <Buildings nation={nation} rejection={rejection} onStart={onStartBuilding} />
+          {rejection && <p role="alert">{rejection}</p>}
+          <Buildings nation={nation} onStart={onStartBuilding} />
+          <Army nation={nation} onTrain={onTrainUnits} />
         </>
       )}
       <button onClick={() => onDone(game.turn)} disabled={!me || me.done}>

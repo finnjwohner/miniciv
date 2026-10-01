@@ -28,6 +28,22 @@ public record Ruleset(List<UnitType> units, List<BuildingType> buildings, List<T
 		return buildings.stream().filter(b -> b.name().equals(name)).findFirst();
 	}
 
+	public Optional<UnitType> trainableUnit(String name) {
+		return trainableUnits().stream().filter(u -> u.name().equals(name)).findFirst();
+	}
+
+	public Optional<UnitType> unit(String name) {
+		return units.stream().filter(u -> u.name().equals(name)).findFirst();
+	}
+
+	/**
+	 * The Unit types a Nation may train: those that fight. Scouts and Spies
+	 * have no Strength and wait for the rules that give them a use.
+	 */
+	public List<UnitType> trainableUnits() {
+		return units.stream().filter(u -> u.strength() > 0).toList();
+	}
+
 	private static List<String> problems(List<UnitType> units, List<BuildingType> buildings,
 			List<Technology> technologies) {
 		List<String> problems = new ArrayList<>();

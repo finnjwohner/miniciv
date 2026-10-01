@@ -57,6 +57,15 @@ export function useRoom(code: string, token: string) {
     })
   }
 
+  /** Starts training Units of one type; a rejection's reason arrives in `rejection`. */
+  const trainUnits = (unit: string, count: number) => {
+    setRejection(null)
+    client.current?.publish({
+      destination: `/app/rooms/${code}/units`,
+      body: JSON.stringify({ token, unit, count }),
+    })
+  }
+
   /** Marks the Player done with the given Turn; ignored if that Turn has already ended. */
   const markDone = (turn: number) =>
     client.current?.publish({
@@ -64,5 +73,5 @@ export function useRoom(code: string, token: string) {
       body: JSON.stringify({ token, turn }),
     })
 
-  return { room, nation, rejection, setReady, startBuilding, markDone }
+  return { room, nation, rejection, setReady, startBuilding, trainUnits, markDone }
 }

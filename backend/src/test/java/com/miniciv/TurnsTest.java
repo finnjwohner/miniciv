@@ -17,6 +17,7 @@ import org.springframework.web.client.RestClient;
 
 import com.miniciv.engine.BuildingType;
 import com.miniciv.engine.Ruleset;
+import com.miniciv.engine.UnitType;
 import com.miniciv.room.Rooms;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -42,7 +43,8 @@ class TurnsTest {
 		@Bean
 		@Primary
 		Ruleset testRuleset() {
-			return new Ruleset(List.of(), List.of(new BuildingType("Farm", 30, 2, 1, 0)), List.of());
+			return new Ruleset(List.of(new UnitType("Warrior", 20, 2, 1, 1, 3, List.of())),
+					List.of(new BuildingType("Farm", 30, 2, 1, 0)), List.of());
 		}
 
 	}
@@ -116,6 +118,10 @@ class TurnsTest {
 		player.stomp().send("/app/rooms/" + code + "/buildings", Map.of("token", player.token(), "building", building));
 	}
 
+	void trainUnits(Connected player, String unit, int count) {
+		player.stomp().send("/app/rooms/" + code + "/units", Map.of("token", player.token(), "unit", unit, "count", count));
+	}
+
 	void done(Connected player, int turn) {
 		player.stomp().send("/app/rooms/" + code + "/done", Map.of("token", player.token(), "turn", turn));
 	}
@@ -131,6 +137,12 @@ class TurnsTest {
 	 */
 	static Map<String, Object> view(int version, int turn, String nation, int gold, int population, int research,
 			List<String> otherNations, List<Map<String, Object>> construction, Map<String, Object> turnReport) {
+		return view(version, turn, nation, gold, population, research, otherNations, construction, List.of(), turnReport);
+	}
+
+	static Map<String, Object> view(int version, int turn, String nation, int gold, int population, int research,
+			List<String> otherNations, List<Map<String, Object>> construction, List<Map<String, Object>> training,
+			Map<String, Object> turnReport) {
 		Map<String, Object> view = new HashMap<>();
 		view.put("version", version);
 		view.put("turn", turn);
@@ -143,6 +155,11 @@ class TurnsTest {
 				"goldPerPopulation", 0.0)));
 		view.put("buildings", Map.of());
 		view.put("construction", construction);
+		view.put("availableUnits", List.of(Map.of("name", "Warrior", "gold", 20, "population", 2, "turns", 1, "upkeep", 1,
+				"strength", 3, "counters", List.of())));
+		view.put("army", Map.of());
+		view.put("training", training);
+		view.put("upkeep", 0);
 		view.put("turnReport", turnReport);
 		return view;
 	}
@@ -285,6 +302,31 @@ class TurnsTest {
 		assertThat(romeRejections.next()).isEqualTo(Map.of("reason", "Farm costs 30 Gold, but you have only 20."));
 		rome.privately().expectNone();
 		carthageRejections.expectNone();
+	}
+
+	@Test
+	void aPlayerWhoTrainsUnitsReceivesTheirUpdatedViewAtOnce() throws Exception {
+		startGame();
+		rome.privately().next();
+		carthage.privately().next();
+
+		trainUnits(rome, "Warrior", 2);
+
+		assertThat(rome.privately().next()).isEqualTo(view(2, 1, "Rome", 10, 6, 0, List.of("Carthage"), List.of(),
+				List.of(Map.of("unit", "Warrior", "count", 2, "readyOnTurn", 2)), null));
+		carthage.privately().expectNone();
+	}
+
+	@Test
+	void aPlayerWhoseTrainingIsRejectedIsToldWhyPrivately() throws Exception {
+		startGame();
+		rome.privately().next();
+		StompConnection.Messages romeRejections = rome.stomp().subscribe("/user/queue/rejections");
+
+		trainUnits(rome, "Warrior", 3);
+
+		assertThat(romeRejections.next()).isEqualTo(Map.of("reason", "Warrior ×3 costs 60 Gold, but you have only 50."));
+		rome.privately().expectNone();
 	}
 
 }
