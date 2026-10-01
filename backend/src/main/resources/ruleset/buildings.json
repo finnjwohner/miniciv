@@ -1,0 +1,5 @@
+[
+  { "name": "Farm", "gold": 30, "turns": 2, "populationPerTurn": 1 },
+  { "name": "Granary", "gold": 60, "turns": 3, "populationPerTurn": 2 },
+  { "name": "Bank", "gold": 100, "turns": 4, "goldPerPopulation": 0.2 }
+]
