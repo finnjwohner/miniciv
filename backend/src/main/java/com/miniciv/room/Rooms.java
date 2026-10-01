@@ -1,17 +1,21 @@
 package com.miniciv.room;
 
 import java.security.SecureRandom;
+import java.time.Clock;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
 import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 /**
  * Every open Room on this server, held in memory. Every change to a Room is
- * broadcast to {@code /topic/rooms/{code}}.
+ * broadcast to {@code /topic/rooms/{code}}, and whenever its Game moves to a
+ * new Turn each Player is sent their own Nation's view on
+ * {@code /user/queue/game}.
  */
 @Service
 public class Rooms {
@@ -26,13 +30,16 @@ public class Rooms {
 
 	private final SimpMessagingTemplate messaging;
 
-	Rooms(SimpMessagingTemplate messaging) {
+	private final Clock clock;
+
+	Rooms(SimpMessagingTemplate messaging, Clock clock) {
 		this.messaging = messaging;
+		this.clock = clock;
 	}
 
 	public Room create() {
 		while (true) {
-			Room room = new Room(newCode());
+			Room room = new Room(newCode(), clock);
 			if (rooms.putIfAbsent(room.code(), room) == null) {
 				return room;
 			}
@@ -41,6 +48,13 @@ public class Rooms {
 
 	public Optional<Room> find(String code) {
 		return Optional.ofNullable(rooms.get(code));
+	}
+
+	/**
+	 * The public id of the Player holding a token, in whichever Room.
+	 */
+	public Optional<String> playerIdFor(String token) {
+		return rooms.values().stream().flatMap(room -> room.playerIdFor(token).stream()).findFirst();
 	}
 
 	public Room.Joined join(String code, String nationName) {
@@ -56,14 +70,40 @@ public class Rooms {
 		});
 	}
 
+	public void done(String code, String token, int turn) {
+		change(find(code).orElseThrow(), room -> {
+			room.done(token, turn);
+			return null;
+		});
+	}
+
+	/**
+	 * Ends every Turn whose time has run out.
+	 */
+	@Scheduled(fixedRate = 1000)
+	public void endDueTurns() {
+		for (Room room : rooms.values()) {
+			if (room.turnIsDue()) {
+				change(room, r -> {
+					r.endTurnIfDue();
+					return null;
+				});
+			}
+		}
+	}
+
 	/**
 	 * Applies a change and broadcasts the result while still holding the Room,
 	 * so that broadcasts go out in the order the changes happened.
 	 */
 	private <T> T change(Room room, Function<Room, T> change) {
 		synchronized (room) {
+			int turn = room.turn();
 			T result = change.apply(room);
 			messaging.convertAndSend("/topic/rooms/" + room.code(), room.view());
+			if (room.turn() != turn) {
+				room.nationViews().forEach((playerId, view) -> messaging.convertAndSendToUser(playerId, "/queue/game", view));
+			}
 			return result;
 		}
 	}

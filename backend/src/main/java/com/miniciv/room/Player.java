@@ -16,6 +16,8 @@ class Player {
 
 	private boolean ready;
 
+	private boolean done;
+
 	Player(String nationName) {
 		this.nationName = nationName;
 	}
@@ -38,6 +40,17 @@ class Player {
 
 	void ready(boolean ready) {
 		this.ready = ready;
+	}
+
+	/**
+	 * Whether the Player has finished their decisions for the current Turn.
+	 */
+	boolean done() {
+		return done;
+	}
+
+	void done(boolean done) {
+		this.done = done;
 	}
 
 }

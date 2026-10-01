@@ -1,9 +1,23 @@
 // Talks to the server's REST API and remembers which Rooms this browser has joined.
 
-export type PlayerView = { id: string; nationName: string; ready: boolean }
-export type GameView = { turn: number; nations: string[] }
+export type PlayerView = { id: string; nationName: string; ready: boolean; done: boolean }
+/** `millisLeft` is how long was left in the Turn when the server sent it. */
+export type GameView = { turn: number; nations: string[]; millisLeft: number }
 /** Room-wide state; `version` rises with every change. */
 export type RoomView = { code: string; version: number; players: PlayerView[]; game: GameView | null }
+
+/** What happened to a Nation as a Turn resolved. */
+export type TurnReport = { turn: number; lines: string[] }
+/** What only this Player sees: their own Nation, and just the names of the others. */
+export type NationView = {
+  turn: number
+  nation: string
+  gold: number
+  population: number
+  research: number
+  otherNations: string[]
+  turnReport: TurnReport | null
+}
 
 /** What this browser keeps after joining a Room; the token is secret. */
 export type Membership = { playerId: string; token: string }
