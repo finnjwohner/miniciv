@@ -41,6 +41,9 @@ class RoomController {
 	record StartBuildingRequest(String token, String building) {
 	}
 
+	record TrainUnitsRequest(String token, String unit, int count) {
+	}
+
 	/**
 	 * Why an Action was not accepted, for the Player who sent it.
 	 */
@@ -115,6 +118,18 @@ class RoomController {
 	@SendToUser(destinations = "/queue/rejections", broadcast = false)
 	Rejection startBuilding(@DestinationVariable String code, StartBuildingRequest request) {
 		ActionResult result = rooms.act(code, request.token(), new Action.StartBuilding(request.building()));
+		return result.accepted() ? null : new Rejection(result.reason());
+	}
+
+	/**
+	 * Starts training a number of Units of one type; the Player's changed view
+	 * arrives on {@code /user/queue/game}, or the reason it was rejected on
+	 * {@code /user/queue/rejections}.
+	 */
+	@MessageMapping("/rooms/{code}/units")
+	@SendToUser(destinations = "/queue/rejections", broadcast = false)
+	Rejection trainUnits(@DestinationVariable String code, TrainUnitsRequest request) {
+		ActionResult result = rooms.act(code, request.token(), new Action.TrainUnits(request.unit(), request.count()));
 		return result.accepted() ? null : new Rejection(result.reason());
 	}
 
