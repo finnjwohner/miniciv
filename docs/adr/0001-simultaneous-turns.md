@@ -1,0 +1,5 @@
+# Simultaneous Turns
+
+All Players play each Turn at the same time, and the Turn ends when every Player is done or the turn timer (at most two minutes) runs out. We chose this over alternating Turns because miniciv is live PvP for up to 4 Players where Games should move quickly: alternating Turns would multiply each Player's waiting time by the number of opponents.
+
+A Turn has two phases. During the Turn, a Player's own actions apply immediately (spending, starting training or building, sending or Recalling Warparties and Spies, answering Dilemmas and Encounters), and Player-to-Player interactions such as Tribute offers are relayed live and can be answered until the Turn ends; an unanswered offer lapses. At the end of the Turn, everything else resolves together for all Nations at once: income, upkeep, training and building progress, travel, Battles, Encounters, Spy and Scout reports, and new Events. That end-of-Turn resolution must be deterministic given the Game state and a seeded random source, and must not depend on which Player finished first.
