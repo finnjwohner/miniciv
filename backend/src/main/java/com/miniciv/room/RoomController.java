@@ -1,5 +1,7 @@
 package com.miniciv.room;
 
+import java.security.Principal;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.messaging.handler.annotation.DestinationVariable;
@@ -12,6 +14,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
+
+import com.miniciv.engine.NationView;
 
 /**
  * Rooms are created and joined over REST; Players then follow the Room over STOMP.
@@ -26,6 +30,9 @@ class RoomController {
 	}
 
 	record ReadyRequest(String token, boolean ready) {
+	}
+
+	record DoneRequest(String token, int turn) {
 	}
 
 	private final Rooms rooms;
@@ -70,9 +77,26 @@ class RoomController {
 		return rooms.find(code).orElseThrow().view();
 	}
 
+	/**
+	 * Sends a Player their own Nation's view as it is now, once the Game has
+	 * started; later views arrive on {@code /user/queue/game}.
+	 */
+	@SubscribeMapping("/rooms/{code}/nation")
+	NationView nation(@DestinationVariable String code, Principal player) {
+		if (player == null) {
+			throw new IllegalArgumentException("Connect with a Player token to see a Nation");
+		}
+		return rooms.find(code).orElseThrow().nationViewOf(player.getName());
+	}
+
 	@MessageMapping("/rooms/{code}/ready")
 	void ready(@DestinationVariable String code, ReadyRequest request) {
 		rooms.ready(code, request.token(), request.ready());
+	}
+
+	@MessageMapping("/rooms/{code}/done")
+	void done(@DestinationVariable String code, DoneRequest request) {
+		rooms.done(code, request.token(), request.turn());
 	}
 
 }
