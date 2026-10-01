@@ -66,7 +66,7 @@ class RoomsTest {
 		try (StompConnection stomp = new StompConnection(port)) {
 			Map<?, ?> room = stomp.subscribe("/app/rooms/" + code).next();
 			assertThat(room.get("players"))
-				.isEqualTo(List.of(Map.of("id", player.get("playerId"), "nationName", "Rome", "ready", false)));
+				.isEqualTo(List.of(Map.of("id", player.get("playerId"), "nationName", "Rome", "ready", false, "done", false)));
 		}
 	}
 
@@ -80,18 +80,18 @@ class RoomsTest {
 
 			Map<?, ?> carthage = join(code, "Carthage");
 			assertThat(updates.next().get("players")).isEqualTo(List.of(
-					Map.of("id", rome.get("playerId"), "nationName", "Rome", "ready", false),
-					Map.of("id", carthage.get("playerId"), "nationName", "Carthage", "ready", false)));
+					Map.of("id", rome.get("playerId"), "nationName", "Rome", "ready", false, "done", false),
+					Map.of("id", carthage.get("playerId"), "nationName", "Carthage", "ready", false, "done", false)));
 
 			stomp.send("/app/rooms/" + code + "/ready", Map.of("token", carthage.get("token"), "ready", true));
 			assertThat(updates.next().get("players")).isEqualTo(List.of(
-					Map.of("id", rome.get("playerId"), "nationName", "Rome", "ready", false),
-					Map.of("id", carthage.get("playerId"), "nationName", "Carthage", "ready", true)));
+					Map.of("id", rome.get("playerId"), "nationName", "Rome", "ready", false, "done", false),
+					Map.of("id", carthage.get("playerId"), "nationName", "Carthage", "ready", true, "done", false)));
 
 			stomp.send("/app/rooms/" + code + "/ready", Map.of("token", carthage.get("token"), "ready", false));
 			assertThat(updates.next().get("players")).isEqualTo(List.of(
-					Map.of("id", rome.get("playerId"), "nationName", "Rome", "ready", false),
-					Map.of("id", carthage.get("playerId"), "nationName", "Carthage", "ready", false)));
+					Map.of("id", rome.get("playerId"), "nationName", "Rome", "ready", false, "done", false),
+					Map.of("id", carthage.get("playerId"), "nationName", "Carthage", "ready", false, "done", false)));
 		}
 	}
 
@@ -126,7 +126,9 @@ class RoomsTest {
 			assertThat(updates.next().get("game")).isNull();
 
 			stomp.send("/app/rooms/" + code + "/ready", Map.of("token", carthage.get("token"), "ready", true));
-			assertThat(updates.next().get("game")).isEqualTo(Map.of("turn", 1, "nations", List.of("Rome", "Carthage")));
+			Map<?, ?> game = (Map<?, ?>) updates.next().get("game");
+			assertThat(game.get("turn")).isEqualTo(1);
+			assertThat(game.get("nations")).isEqualTo(List.of("Rome", "Carthage"));
 		}
 	}
 
@@ -141,7 +143,7 @@ class RoomsTest {
 			stomp.send("/app/rooms/" + code + "/ready", Map.of("token", rome.get("token"), "ready", true));
 
 			Map<?, ?> room = updates.next();
-			assertThat(room.get("players")).isEqualTo(List.of(Map.of("id", rome.get("playerId"), "nationName", "Rome", "ready", true)));
+			assertThat(room.get("players")).isEqualTo(List.of(Map.of("id", rome.get("playerId"), "nationName", "Rome", "ready", true, "done", false)));
 			assertThat(room.get("game")).isNull();
 		}
 	}

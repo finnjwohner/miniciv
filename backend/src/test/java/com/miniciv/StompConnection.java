@@ -11,6 +11,7 @@ import org.springframework.messaging.simp.stomp.StompFrameHandler;
 import org.springframework.messaging.simp.stomp.StompHeaders;
 import org.springframework.messaging.simp.stomp.StompSession;
 import org.springframework.messaging.simp.stomp.StompSessionHandlerAdapter;
+import org.springframework.web.socket.WebSocketHttpHeaders;
 import org.springframework.web.socket.client.standard.StandardWebSocketClient;
 import org.springframework.web.socket.messaging.WebSocketStompClient;
 
@@ -22,10 +23,30 @@ class StompConnection implements AutoCloseable {
 	private final StompSession session;
 
 	StompConnection(int port) throws Exception {
+		this(port, new StompHeaders());
+	}
+
+	/**
+	 * Connects as the Player holding the token, as a browser in a Room does.
+	 */
+	StompConnection(int port, String token) throws Exception {
+		this(port, playerHeaders(token));
+	}
+
+	private StompConnection(int port, StompHeaders connectHeaders) throws Exception {
 		WebSocketStompClient client = new WebSocketStompClient(new StandardWebSocketClient());
 		client.setMessageConverter(new JacksonJsonMessageConverter());
-		this.session = client.connectAsync("ws://localhost:" + port + "/ws", new StompSessionHandlerAdapter() {
-		}).get(5, TimeUnit.SECONDS);
+		this.session = client
+			.connectAsync("ws://localhost:" + port + "/ws", new WebSocketHttpHeaders(), connectHeaders,
+					new StompSessionHandlerAdapter() {
+					})
+			.get(5, TimeUnit.SECONDS);
+	}
+
+	private static StompHeaders playerHeaders(String token) {
+		StompHeaders headers = new StompHeaders();
+		headers.add("token", token);
+		return headers;
 	}
 
 	/**
@@ -71,6 +92,16 @@ class StompConnection implements AutoCloseable {
 				throw new AssertionError("No message received");
 			}
 			return message;
+		}
+
+		/**
+		 * Fails if a message arrives within a short while.
+		 */
+		void expectNone() throws InterruptedException {
+			Map<?, ?> message = queue.poll(500, TimeUnit.MILLISECONDS);
+			if (message != null) {
+				throw new AssertionError("Unexpected message received: " + message);
+			}
 		}
 
 	}
