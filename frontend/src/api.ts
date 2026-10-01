@@ -8,14 +8,32 @@ export type RoomView = { code: string; version: number; players: PlayerView[]; g
 
 /** What happened to a Nation as a Turn resolved. */
 export type TurnReport = { turn: number; lines: string[] }
-/** What only this Player sees: their own Nation, and just the names of the others. */
+/** A kind of Building; once complete it adds its Population and Gold every Turn. */
+export type BuildingType = {
+  name: string
+  gold: number
+  turns: number
+  populationPerTurn: number
+  goldPerPopulation: number
+}
+/** A Building under construction. */
+export type Construction = { building: string; turnsLeft: number }
+/**
+ * What only this Player sees: their own Nation, and just the names of the others.
+ * `version` rises with every change to the Nation.
+ */
 export type NationView = {
+  version: number
   turn: number
   nation: string
   gold: number
   population: number
   research: number
   otherNations: string[]
+  availableBuildings: BuildingType[]
+  /** How many of each Building the Nation has completed. */
+  buildings: Record<string, number>
+  construction: Construction[]
   turnReport: TurnReport | null
 }
 

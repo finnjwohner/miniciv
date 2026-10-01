@@ -15,15 +15,17 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
 import org.springframework.web.client.RestClient;
 
+import com.miniciv.engine.BuildingType;
+import com.miniciv.engine.Ruleset;
 import com.miniciv.room.Rooms;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
 
 /**
- * Turns as Players experience them over STOMP. Time only moves when a test
- * advances the clock, and the test then asks the server to end any Turn that
- * is due, as its scheduler would.
+ * Turns, and the actions Players take in them, as Players experience them over
+ * STOMP. Time only moves when a test advances the clock, and the test then asks
+ * the server to end any Turn that is due, as its scheduler would.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class TurnsTest {
@@ -35,6 +37,12 @@ class TurnsTest {
 		@Primary
 		TestClock testClock() {
 			return new TestClock();
+		}
+
+		@Bean
+		@Primary
+		Ruleset testRuleset() {
+			return new Ruleset(List.of(), List.of(new BuildingType("Farm", 30, 2, 1, 0)), List.of());
 		}
 
 	}
@@ -104,6 +112,10 @@ class TurnsTest {
 		return new Connected(stomp, stomp.subscribe("/user/queue/game"), (String) joined.get("playerId"), token);
 	}
 
+	void startBuilding(Connected player, String building) {
+		player.stomp().send("/app/rooms/" + code + "/buildings", Map.of("token", player.token(), "building", building));
+	}
+
 	void done(Connected player, int turn) {
 		player.stomp().send("/app/rooms/" + code + "/done", Map.of("token", player.token(), "turn", turn));
 	}
@@ -117,15 +129,20 @@ class TurnsTest {
 	/**
 	 * A Nation's view as its Player receives it.
 	 */
-	static Map<String, Object> view(int turn, String nation, int gold, int population, int research,
-			List<String> otherNations, Map<String, Object> turnReport) {
+	static Map<String, Object> view(int version, int turn, String nation, int gold, int population, int research,
+			List<String> otherNations, List<Map<String, Object>> construction, Map<String, Object> turnReport) {
 		Map<String, Object> view = new HashMap<>();
+		view.put("version", version);
 		view.put("turn", turn);
 		view.put("nation", nation);
 		view.put("gold", gold);
 		view.put("population", population);
 		view.put("research", research);
 		view.put("otherNations", otherNations);
+		view.put("availableBuildings", List.of(Map.of("name", "Farm", "gold", 30, "turns", 2, "populationPerTurn", 1,
+				"goldPerPopulation", 0.0)));
+		view.put("buildings", Map.of());
+		view.put("construction", construction);
 		view.put("turnReport", turnReport);
 		return view;
 	}
@@ -140,8 +157,8 @@ class TurnsTest {
 	void eachPlayerReceivesTheirOwnViewPrivatelyWhenTheGameStarts() throws Exception {
 		startGame();
 
-		assertThat(rome.privately().next()).isEqualTo(view(1, "Rome", 50, 10, 0, List.of("Carthage"), null));
-		assertThat(carthage.privately().next()).isEqualTo(view(1, "Carthage", 50, 10, 0, List.of("Rome"), null));
+		assertThat(rome.privately().next()).isEqualTo(view(1, 1, "Rome", 50, 10, 0, List.of("Carthage"), List.of(), null));
+		assertThat(carthage.privately().next()).isEqualTo(view(1, 1, "Carthage", 50, 10, 0, List.of("Rome"), List.of(), null));
 	}
 
 	@Test
@@ -154,8 +171,8 @@ class TurnsTest {
 		done(carthage, 1);
 
 		Map<String, Object> report = Map.of("turn", 1, "lines", List.of(BASE_INCOME_REPORT));
-		assertThat(rome.privately().next()).isEqualTo(view(2, "Rome", 60, 12, 3, List.of("Carthage"), report));
-		assertThat(carthage.privately().next()).isEqualTo(view(2, "Carthage", 60, 12, 3, List.of("Rome"), report));
+		assertThat(rome.privately().next()).isEqualTo(view(2, 2, "Rome", 60, 12, 3, List.of("Carthage"), List.of(), report));
+		assertThat(carthage.privately().next()).isEqualTo(view(2, 2, "Carthage", 60, 12, 3, List.of("Rome"), List.of(), report));
 		rome.privately().expectNone();
 		carthage.privately().expectNone();
 	}
@@ -199,7 +216,7 @@ class TurnsTest {
 
 		try (StompConnection reconnected = new StompConnection(port, rome.token())) {
 			assertThat(reconnected.subscribe("/app/rooms/" + code + "/nation").next())
-				.isEqualTo(view(1, "Rome", 50, 10, 0, List.of("Carthage"), null));
+				.isEqualTo(view(1, 1, "Rome", 50, 10, 0, List.of("Carthage"), List.of(), null));
 		}
 	}
 
@@ -238,6 +255,36 @@ class TurnsTest {
 
 		assertThat((List<?>) rome.stomp().subscribe("/app/rooms/" + code).next().get("players")).extracting("done")
 			.containsExactly(false, false);
+	}
+
+	@Test
+	void aPlayerWhoStartsABuildingReceivesTheirUpdatedViewAtOnce() throws Exception {
+		startGame();
+		rome.privately().next();
+		carthage.privately().next();
+
+		startBuilding(rome, "Farm");
+
+		assertThat(rome.privately().next()).isEqualTo(view(2, 1, "Rome", 20, 10, 0, List.of("Carthage"),
+				List.of(Map.of("building", "Farm", "turnsLeft", 2)), null));
+		carthage.privately().expectNone();
+	}
+
+	@Test
+	void aPlayerWhoseBuildingIsRejectedIsToldWhyPrivately() throws Exception {
+		startGame();
+		rome.privately().next();
+		carthage.privately().next();
+		StompConnection.Messages romeRejections = rome.stomp().subscribe("/user/queue/rejections");
+		StompConnection.Messages carthageRejections = carthage.stomp().subscribe("/user/queue/rejections");
+		startBuilding(rome, "Farm");
+		rome.privately().next();
+
+		startBuilding(rome, "Farm");
+
+		assertThat(romeRejections.next()).isEqualTo(Map.of("reason", "Farm costs 30 Gold, but you have only 20."));
+		rome.privately().expectNone();
+		carthageRejections.expectNone();
 	}
 
 }
