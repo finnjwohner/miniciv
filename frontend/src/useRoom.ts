@@ -1,23 +1,36 @@
 import { Client } from '@stomp/stompjs'
 import { useEffect, useRef, useState } from 'react'
-import type { RoomView } from './api'
+import type { NationView, RoomView } from './api'
 
-/** Follows a Room live over STOMP and lets the Player mark themselves ready or unready. */
+/** A Room view and when this browser received it, to count down the Turn from. */
+export type ReceivedRoom = RoomView & { receivedAt: number }
+
+/**
+ * Follows a Room live over STOMP as the Player holding the token: the Room's public state,
+ * and once the Game starts, this Player's own Nation, which only they receive.
+ */
 export function useRoom(code: string, token: string) {
-  const [room, setRoom] = useState<RoomView | null>(null)
+  const [room, setRoom] = useState<ReceivedRoom | null>(null)
+  const [nation, setNation] = useState<NationView | null>(null)
   const client = useRef<Client | null>(null)
 
   useEffect(() => {
     const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws'
-    const stomp = new Client({ brokerURL: `${protocol}://${window.location.host}/ws` })
+    const stomp = new Client({ brokerURL: `${protocol}://${window.location.host}/ws`, connectHeaders: { token } })
     stomp.onConnect = () => {
-      // The current-state reply and topic updates can arrive in either order; keep the newest.
-      const update = (message: { body: string }) => {
+      // Current-state replies and later updates can arrive in either order; keep the newest.
+      const updateRoom = (message: { body: string }) => {
         const next: RoomView = JSON.parse(message.body)
-        setRoom((current) => (current && current.version >= next.version ? current : next))
+        setRoom((current) => (current && current.version >= next.version ? current : { ...next, receivedAt: Date.now() }))
       }
-      stomp.subscribe(`/topic/rooms/${code}`, update)
-      stomp.subscribe(`/app/rooms/${code}`, update)
+      stomp.subscribe(`/topic/rooms/${code}`, updateRoom)
+      stomp.subscribe(`/app/rooms/${code}`, updateRoom)
+      const updateNation = (message: { body: string }) => {
+        const next: NationView = JSON.parse(message.body)
+        setNation((current) => (current && current.turn >= next.turn ? current : next))
+      }
+      stomp.subscribe('/user/queue/game', updateNation)
+      stomp.subscribe(`/app/rooms/${code}/nation`, updateNation)
     }
     stomp.activate()
     client.current = stomp
@@ -25,7 +38,7 @@ export function useRoom(code: string, token: string) {
       client.current = null
       void stomp.deactivate()
     }
-  }, [code])
+  }, [code, token])
 
   const setReady = (ready: boolean) =>
     client.current?.publish({
@@ -33,5 +46,12 @@ export function useRoom(code: string, token: string) {
       body: JSON.stringify({ token, ready }),
     })
 
-  return { room, setReady }
+  /** Marks the Player done with the given Turn; ignored if that Turn has already ended. */
+  const markDone = (turn: number) =>
+    client.current?.publish({
+      destination: `/app/rooms/${code}/done`,
+      body: JSON.stringify({ token, turn }),
+    })
+
+  return { room, nation, setReady, markDone }
 }
