@@ -1,0 +1,119 @@
+# miniciv
+
+A turn-based, player-vs-player strategy game in the browser where each player leads a nation, spending resources and research to outbuild and conquer their opponents.
+
+## Game structure
+
+**Game**:
+One match of miniciv for 2–4 Players, from start until one Nation is left standing.
+_Avoid_: Match, session, round
+
+**Room**:
+The place Players gather before a Game starts, joined by a room code or invite link; the Game starts once 2–4 Players are all ready, and no one can join after that.
+_Avoid_: Lobby, server
+
+**Player**:
+A person taking part in a Game. A Player who stays disconnected for more than five minutes in total over a Game has their Nation removed.
+_Avoid_: User, account
+
+**Turn**:
+One step of the Game, at most two minutes long, in which all Players make their decisions at the same time, after which everything resolves together.
+_Avoid_: Round, tick
+
+**Turn Report**:
+The short text description each Player receives at the start of a Turn of what happened as the previous Turn resolved.
+_Avoid_: Log, summary, news
+
+**Map**:
+A read-only graphic of every Nation's state; Players do not act through it.
+_Avoid_: Board
+
+## Nations
+
+**Nation**:
+The country a Player leads in a Game; what owns Gold, Population, Research, Buildings and Units. Every Nation starts the same; other Players initially know only its name.
+_Avoid_: Country, civ, empire, faction
+
+**Gold**:
+A resource a Nation gains each Turn and spends on Buildings and Units.
+_Avoid_: Money, coins
+
+**Population**:
+A resource representing a Nation's people; it grows each Turn by a flat base amount plus what Buildings such as farms add, and is spent to train Units.
+_Avoid_: Citizens, pop, manpower
+
+**Research**:
+A resource a Nation accumulates each Turn and spends to unlock Technologies.
+_Avoid_: Science, tech points
+
+**Technology**:
+An unlockable entry in the Tech Tree that gives access to new Buildings or Units.
+_Avoid_: Tech, upgrade, discovery
+
+**Tech Tree**:
+The small branching set of Technologies, where some Technologies must be unlocked before others become available.
+_Avoid_: Research tree, skill tree
+
+**Building**:
+Something a Nation constructs over one or more Turns by paying Gold upfront.
+_Avoid_: Structure, improvement
+
+**Defense**:
+A Nation's protection against attack, raised by defensive Buildings, which must be worn down to 0 before an attack can reduce Population.
+_Avoid_: Walls, fortification, armour
+
+## Warfare
+
+**Unit**:
+A single soldier of a given type (e.g. archer, horseman, warrior, scout) that a Nation trains over one or more Turns by paying Gold and Population upfront, and then pays a small Gold upkeep for each Turn.
+_Avoid_: Troop
+
+**Strength**:
+How much a Unit contributes in a Battle, multiplied when it fights a Unit type it counters.
+_Avoid_: Power, attack, damage
+
+**Army**:
+The Units a Nation has at home in its own land; Units away in a Warparty are not part of it.
+_Avoid_: Garrison, defenders
+
+**Warparty**:
+A group of Units a Player sends from their Army toward another Nation; it travels for some Turns before arriving.
+_Avoid_: Attack, expedition, army
+
+**Scout**:
+A Unit that works unseen in the background, giving its Nation a chance each Turn to discover Warparties abroad.
+_Avoid_: Spy, lookout
+
+**Spy**:
+A Unit that travels to another Nation and stays there until caught, now and then reporting a snapshot of its hidden state (Gold, Population, Research, Army or Buildings). Spies kept at home can catch enemy Spies, and a caught Spy may reveal its sender.
+_Avoid_: Scout, agent
+
+**Recall**:
+Ordering a Warparty to turn back home; the trip home takes as long as it has travelled so far.
+_Avoid_: Retreat, withdraw
+
+**Tribute**:
+Gold or Population a defending Nation offers an attacker, mid-Turn, in return for Recalling its Warparty; if accepted, no Battle takes place.
+_Avoid_: Bribe, ransom, payment
+
+**Encounter**:
+Two Warparties from different Nations meeting by chance while abroad, each seeing the other's Units; if either Player chooses to fight, they fight each other.
+_Avoid_: Skirmish, ambush
+
+**Battle**:
+The fight that happens when Warparties arrive at a Nation; Warparties arriving on the same Turn fight as one. Its outcome is reported the following Turn, and surviving attackers head home.
+_Avoid_: Fight, combat, clash
+
+**Conquest**:
+Taking a Nation by bringing both its Population and its Army to 0; the conquering Nation seizes a large share of its Gold and Research, and the conquered Player is knocked out.
+_Avoid_: Domination, elimination
+
+## Events
+
+**Event**:
+Something that happens to a Nation or a Warparty outside the Players' direct actions, announced through the Turn Report (e.g. a plague, a good harvest, a dust storm delaying a Warparty, rumours of an approaching army).
+_Avoid_: Incident, occurrence
+
+**Dilemma**:
+An Event that offers its Player two or three choices; if the Player does not choose before the Turn ends, the worst choice applies.
+_Avoid_: Choice, decision, prompt
