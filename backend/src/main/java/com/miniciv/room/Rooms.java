@@ -11,11 +11,16 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
+import com.miniciv.engine.Action;
+import com.miniciv.engine.ActionResult;
+import com.miniciv.engine.Ruleset;
+
 /**
  * Every open Room on this server, held in memory. Every change to a Room is
  * broadcast to {@code /topic/rooms/{code}}, and whenever its Game moves to a
  * new Turn each Player is sent their own Nation's view on
- * {@code /user/queue/game}.
+ * {@code /user/queue/game}. A Player whose Action is accepted is sent their
+ * changed view there too.
  */
 @Service
 public class Rooms {
@@ -32,14 +37,17 @@ public class Rooms {
 
 	private final Clock clock;
 
-	Rooms(SimpMessagingTemplate messaging, Clock clock) {
+	private final Ruleset ruleset;
+
+	Rooms(SimpMessagingTemplate messaging, Clock clock, Ruleset ruleset) {
 		this.messaging = messaging;
 		this.clock = clock;
+		this.ruleset = ruleset;
 	}
 
 	public Room create() {
 		while (true) {
-			Room room = new Room(newCode(), clock);
+			Room room = new Room(newCode(), clock, ruleset);
 			if (rooms.putIfAbsent(room.code(), room) == null) {
 				return room;
 			}
@@ -75,6 +83,18 @@ public class Rooms {
 			room.done(token, turn);
 			return null;
 		});
+	}
+
+	public ActionResult act(String code, String token, Action action) {
+		Room room = find(code).orElseThrow();
+		synchronized (room) {
+			ActionResult result = room.act(token, action);
+			if (result.accepted()) {
+				String playerId = room.playerIdFor(token).orElseThrow();
+				messaging.convertAndSendToUser(playerId, "/queue/game", room.nationViewOf(playerId));
+			}
+			return result;
+		}
 	}
 
 	/**

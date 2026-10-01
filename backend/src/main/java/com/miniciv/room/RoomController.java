@@ -6,6 +6,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.messaging.handler.annotation.DestinationVariable;
 import org.springframework.messaging.handler.annotation.MessageMapping;
+import org.springframework.messaging.simp.annotation.SendToUser;
 import org.springframework.messaging.simp.annotation.SubscribeMapping;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -15,6 +16,8 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
+import com.miniciv.engine.Action;
+import com.miniciv.engine.ActionResult;
 import com.miniciv.engine.NationView;
 
 /**
@@ -33,6 +36,15 @@ class RoomController {
 	}
 
 	record DoneRequest(String token, int turn) {
+	}
+
+	record StartBuildingRequest(String token, String building) {
+	}
+
+	/**
+	 * Why an Action was not accepted, for the Player who sent it.
+	 */
+	record Rejection(String reason) {
 	}
 
 	private final Rooms rooms;
@@ -92,6 +104,18 @@ class RoomController {
 	@MessageMapping("/rooms/{code}/ready")
 	void ready(@DestinationVariable String code, ReadyRequest request) {
 		rooms.ready(code, request.token(), request.ready());
+	}
+
+	/**
+	 * Starts constructing a Building; the Player's changed view arrives on
+	 * {@code /user/queue/game}, or the reason it was rejected on
+	 * {@code /user/queue/rejections}.
+	 */
+	@MessageMapping("/rooms/{code}/buildings")
+	@SendToUser(destinations = "/queue/rejections", broadcast = false)
+	Rejection startBuilding(@DestinationVariable String code, StartBuildingRequest request) {
+		ActionResult result = rooms.act(code, request.token(), new Action.StartBuilding(request.building()));
+		return result.accepted() ? null : new Rejection(result.reason());
 	}
 
 	@MessageMapping("/rooms/{code}/done")

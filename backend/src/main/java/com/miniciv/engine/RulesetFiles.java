@@ -1,0 +1,52 @@
+package com.miniciv.engine;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.List;
+
+import tools.jackson.core.JacksonException;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.DeserializationFeature;
+import tools.jackson.databind.json.JsonMapper;
+
+/**
+ * Loads a Ruleset from JSON data files on the classpath: {@code units.json},
+ * {@code buildings.json} and {@code technologies.json} in one directory. A
+ * field left out of an entry counts as 0 or empty; a field the engine does not
+ * know, such as a misspelling, is an error.
+ */
+public final class RulesetFiles {
+
+	private static final JsonMapper JSON = JsonMapper.builder()
+		.enable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
+		.disable(DeserializationFeature.FAIL_ON_NULL_FOR_PRIMITIVES)
+		.build();
+
+	private RulesetFiles() {
+	}
+
+	/**
+	 * Loads and checks the Ruleset in a classpath directory.
+	 * @throws InvalidRuleset if a file is missing, cannot be read, or its
+	 *         content does not make sense
+	 */
+	public static Ruleset load(String directory) {
+		return new Ruleset(read(directory + "/units.json", new TypeReference<List<UnitType>>() {
+		}), read(directory + "/buildings.json", new TypeReference<List<BuildingType>>() {
+		}), read(directory + "/technologies.json", new TypeReference<List<Technology>>() {
+		}));
+	}
+
+	private static <T> List<T> read(String path, TypeReference<List<T>> type) {
+		try (InputStream in = RulesetFiles.class.getClassLoader().getResourceAsStream(path)) {
+			if (in == null) {
+				throw new InvalidRuleset("Ruleset file " + path + " is missing from the classpath.");
+			}
+			return JSON.readValue(in, type);
+		}
+		catch (JacksonException | IOException e) {
+			throw new InvalidRuleset("Ruleset file " + path + " could not be read: " + e.getMessage(), e);
+		}
+	}
+
+}
