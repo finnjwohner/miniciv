@@ -12,6 +12,7 @@ export type ReceivedRoom = RoomView & { receivedAt: number }
 export function useRoom(code: string, token: string) {
   const [room, setRoom] = useState<ReceivedRoom | null>(null)
   const [nation, setNation] = useState<NationView | null>(null)
+  const [rejection, setRejection] = useState<string | null>(null)
   const client = useRef<Client | null>(null)
 
   useEffect(() => {
@@ -27,10 +28,11 @@ export function useRoom(code: string, token: string) {
       stomp.subscribe(`/app/rooms/${code}`, updateRoom)
       const updateNation = (message: { body: string }) => {
         const next: NationView = JSON.parse(message.body)
-        setNation((current) => (current && current.turn >= next.turn ? current : next))
+        setNation((current) => (current && current.version >= next.version ? current : next))
       }
       stomp.subscribe('/user/queue/game', updateNation)
       stomp.subscribe(`/app/rooms/${code}/nation`, updateNation)
+      stomp.subscribe('/user/queue/rejections', (message) => setRejection(JSON.parse(message.body).reason))
     }
     stomp.activate()
     client.current = stomp
@@ -46,6 +48,15 @@ export function useRoom(code: string, token: string) {
       body: JSON.stringify({ token, ready }),
     })
 
+  /** Starts constructing a Building; a rejection's reason arrives in `rejection`. */
+  const startBuilding = (building: string) => {
+    setRejection(null)
+    client.current?.publish({
+      destination: `/app/rooms/${code}/buildings`,
+      body: JSON.stringify({ token, building }),
+    })
+  }
+
   /** Marks the Player done with the given Turn; ignored if that Turn has already ended. */
   const markDone = (turn: number) =>
     client.current?.publish({
@@ -53,5 +64,5 @@ export function useRoom(code: string, token: string) {
       body: JSON.stringify({ token, turn }),
     })
 
-  return { room, nation, setReady, markDone }
+  return { room, nation, rejection, setReady, startBuilding, markDone }
 }

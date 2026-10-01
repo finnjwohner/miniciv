@@ -1,0 +1,6 @@
+[
+  { "name": "Bronze Working", "research": 10 },
+  { "name": "Masonry", "research": 10 },
+  { "name": "Iron Working", "research": 25, "prerequisites": ["Bronze Working"] },
+  { "name": "Mathematics", "research": 25, "prerequisites": ["Masonry"] }
+]

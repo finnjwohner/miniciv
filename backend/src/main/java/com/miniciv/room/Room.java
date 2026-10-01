@@ -12,8 +12,11 @@ import java.util.Optional;
 import java.util.Random;
 import java.util.function.Predicate;
 
+import com.miniciv.engine.Action;
+import com.miniciv.engine.ActionResult;
 import com.miniciv.engine.Game;
 import com.miniciv.engine.NationView;
+import com.miniciv.engine.Ruleset;
 
 /**
  * The place Players gather before a Game starts.
@@ -60,13 +63,16 @@ public class Room {
 
 	private final Clock clock;
 
+	private final Ruleset ruleset;
+
 	private Game game;
 
 	private Instant turnEndsAt;
 
-	Room(String code, Clock clock) {
+	Room(String code, Clock clock, Ruleset ruleset) {
 		this.code = code;
 		this.clock = clock;
+		this.ruleset = ruleset;
 	}
 
 	public String code() {
@@ -105,7 +111,7 @@ public class Room {
 		player(token).ready(ready);
 		version++;
 		if (players.size() >= MIN_PLAYERS && players.stream().allMatch(Player::ready)) {
-			game = new Game(players.stream().map(Player::nationName).toList(), new Random(SEEDS.nextLong()));
+			game = new Game(ruleset, players.stream().map(Player::nationName).toList(), new Random(SEEDS.nextLong()));
 			turnEndsAt = clock.instant().plus(TURN_LENGTH);
 		}
 	}
@@ -125,6 +131,17 @@ public class Room {
 		if (players.stream().allMatch(Player::done)) {
 			endTurn();
 		}
+	}
+
+	/**
+	 * Applies a Player's Action to their Nation at once.
+	 */
+	public synchronized ActionResult act(String token, Action action) {
+		Player player = player(token);
+		if (game == null) {
+			return ActionResult.rejected("The Game has not started yet.");
+		}
+		return game.act(player.nationName(), action);
 	}
 
 	/**

@@ -43,9 +43,19 @@ function Room({ code }: { code: string }) {
 }
 
 function JoinedRoom({ code, membership }: { code: string; membership: Membership }) {
-  const { room, nation, setReady, markDone } = useRoom(code, membership.token)
+  const { room, nation, rejection, setReady, startBuilding, markDone } = useRoom(code, membership.token)
   if (!room) return <p>Connecting to Room {code}…</p>
-  if (room.game) return <GameScreen room={room} nation={nation} playerId={membership.playerId} onDone={markDone} />
+  if (room.game)
+    return (
+      <GameScreen
+        room={room}
+        nation={nation}
+        playerId={membership.playerId}
+        rejection={rejection}
+        onStartBuilding={startBuilding}
+        onDone={markDone}
+      />
+    )
   return <RoomScreen room={room} playerId={membership.playerId} onReady={setReady} />
 }
 
