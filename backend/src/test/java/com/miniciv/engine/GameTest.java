@@ -363,7 +363,7 @@ class GameTest {
 
 		game.endTurn();
 
-		assertThat(game.viewOf("Carthage").damage()).containsExactly(new BuildingDamage("Fort", 1, 2, 14, 1));
+		assertThat(game.viewOf("Carthage").damage()).containsExactly(new BuildingDamage("Fort", 1, 2, 7, 1, 10, 1));
 		assertThat(game.viewOf("Carthage").turnReport().lines()).contains("Your Buildings added 3 Gold and 2 Research.");
 	}
 
@@ -803,7 +803,7 @@ class GameTest {
 
 		NationView carthage = game.viewOf("Carthage");
 		assertThat(carthage.defense()).isEqualTo(4);
-		assertThat(carthage.damage()).containsExactly(new BuildingDamage("Walls", 0, 6, 18, 2));
+		assertThat(carthage.damage()).containsExactly(new BuildingDamage("Walls", 0, 6, 9, 1, 15, 1));
 		assertThat(carthage.population()).isEqualTo(carthagePopulation + 2);
 		assertThat(carthage.turnReport().lines()).containsExactly(
 				"Rome's Warparty of Warrior ×2 met no Army at your Nation.",
@@ -826,8 +826,8 @@ class GameTest {
 
 		NationView carthage = game.viewOf("Carthage");
 		assertThat(carthage.defense()).isEqualTo(2);
-		assertThat(carthage.damage()).containsExactly(new BuildingDamage("Walls", 1, 0, 0, 0),
-				new BuildingDamage("Moat", 0, 2, 10, 1));
+		assertThat(carthage.damage()).containsExactly(new BuildingDamage("Walls", 1, 0, 0, 0, 15, 1),
+				new BuildingDamage("Moat", 0, 2, 5, 1, 10, 1));
 		assertThat(carthage.turnReport().lines())
 			.contains("Rome's Warparty wore your Defense down from 14 to 2, destroying Walls ×1 and damaging Moat.");
 	}
@@ -844,7 +844,7 @@ class GameTest {
 
 		NationView carthage = game.viewOf("Carthage");
 		assertThat(carthage.defense()).isZero();
-		assertThat(carthage.damage()).containsExactly(new BuildingDamage("Moat", 1, 0, 0, 0));
+		assertThat(carthage.damage()).containsExactly(new BuildingDamage("Moat", 1, 0, 0, 0, 10, 1));
 		assertThat(carthage.population()).isEqualTo(carthagePopulation - 8 + 2);
 		assertThat(carthage.turnReport().lines()).containsSequence(
 				"Rome's Warparty wore your Defense down from 4 to 0, destroying Moat ×1.",
@@ -919,7 +919,7 @@ class GameTest {
 
 		game.endTurn();
 
-		assertThat(game.viewOf("Carthage").damage()).containsExactly(new BuildingDamage("Fort", 1, 2, 14, 1));
+		assertThat(game.viewOf("Carthage").damage()).containsExactly(new BuildingDamage("Fort", 1, 2, 7, 1, 10, 1));
 		assertThat(game.viewOf("Carthage").population()).isEqualTo(carthagePopulation + 2 + 1);
 		assertThat(game.viewOf("Carthage").turnReport().lines()).contains("Your Buildings added 1 Population.");
 	}
@@ -936,23 +936,19 @@ class GameTest {
 	}
 
 	@Test
-	void repairingADamagedBuildingPaysGoldInProportionToTheDefenseItLostAndTakesTurnsInProportionToo() {
+	void repairingADamagedBuildingPaysHalfItsGoldAndTurnsInProportionToTheDefenseItLost() {
 		wallsDamaged();
-		assertThat(game.viewOf("Carthage").damage()).containsExactly(new BuildingDamage("Walls", 0, 6, 18, 2));
+		assertThat(game.viewOf("Carthage").damage()).containsExactly(new BuildingDamage("Walls", 0, 6, 9, 1, 15, 1));
 		int carthageGold = game.viewOf("Carthage").gold();
 
 		ActionResult result = game.act("Carthage", new Action.RepairBuilding("Walls"));
 
 		assertThat(result).isEqualTo(ActionResult.ACCEPTED);
 		NationView carthage = game.viewOf("Carthage");
-		assertThat(carthage.gold()).isEqualTo(carthageGold - 18);
-		assertThat(carthage.repairs()).containsExactly(new Repair("Walls", false, 6, 2));
+		assertThat(carthage.gold()).isEqualTo(carthageGold - 9);
+		assertThat(carthage.repairs()).containsExactly(new Repair("Walls", false, 6, 1));
 		assertThat(carthage.damage()).isEmpty();
 		assertThat(carthage.defense()).isEqualTo(4);
-
-		game.endTurn();
-		assertThat(game.viewOf("Carthage").repairs()).containsExactly(new Repair("Walls", false, 6, 1));
-		assertThat(game.viewOf("Carthage").defense()).isEqualTo(4);
 
 		game.endTurn();
 		assertThat(game.viewOf("Carthage").repairs()).isEmpty();
@@ -961,25 +957,25 @@ class GameTest {
 	}
 
 	@Test
-	void rebuildingADestroyedBuildingCostsWhatConstructingItDoesAndEachIsRebuiltSeparately() {
+	void rebuildingADestroyedBuildingCostsHalfWhatConstructingItDoesAndEachIsRebuiltSeparately() {
 		game.act("Carthage", new Action.StartBuilding("Moat"));
 		game.endTurn();
 		game.act("Carthage", new Action.StartBuilding("Moat"));
 		armyOf("Rome", "Warrior", 4);
 		arrived("Rome", "Carthage", Map.of("Warrior", 4));
 		game.endTurn();
-		assertThat(game.viewOf("Carthage").damage()).containsExactly(new BuildingDamage("Moat", 2, 0, 0, 0));
+		assertThat(game.viewOf("Carthage").damage()).containsExactly(new BuildingDamage("Moat", 2, 0, 0, 0, 10, 1));
 		game.endTurn();
 		game.endTurn();
 		game.endTurn();
 		int carthageGold = game.viewOf("Carthage").gold();
 
 		assertThat(game.act("Carthage", new Action.RebuildBuilding("Moat"))).isEqualTo(ActionResult.ACCEPTED);
-		assertThat(game.viewOf("Carthage").damage()).containsExactly(new BuildingDamage("Moat", 1, 0, 0, 0));
+		assertThat(game.viewOf("Carthage").damage()).containsExactly(new BuildingDamage("Moat", 1, 0, 0, 0, 10, 1));
 		assertThat(game.act("Carthage", new Action.RebuildBuilding("Moat"))).isEqualTo(ActionResult.ACCEPTED);
 
 		NationView carthage = game.viewOf("Carthage");
-		assertThat(carthage.gold()).isEqualTo(carthageGold - 40);
+		assertThat(carthage.gold()).isEqualTo(carthageGold - 20);
 		assertThat(carthage.repairs()).containsExactly(new Repair("Moat", true, 4, 1), new Repair("Moat", true, 4, 1));
 		assertThat(carthage.damage()).isEmpty();
 
@@ -987,6 +983,31 @@ class GameTest {
 		assertThat(game.viewOf("Carthage").defense()).isEqualTo(8);
 		assertThat(game.viewOf("Carthage").turnReport().lines()).contains("Your Moat has been rebuilt.",
 				"Your Moat has been rebuilt.");
+	}
+
+	@Test
+	void rebuildingAndRepairingRoundHalfTheGoldAndTurnsUp() {
+		BuildingType keep = new BuildingType("Keep", 25, 5, 0, 0, 0, 0, 4);
+		UnitType warrior = new UnitType("Warrior", 10, 3, 1, 1, 3, List.of());
+		game = new Game(new Ruleset(List.of(warrior), List.of(keep), List.of()), List.of("Rome", "Carthage"),
+				EVEN_LUCK);
+		game.act("Carthage", new Action.StartBuilding("Keep"));
+		game.act("Carthage", new Action.StartBuilding("Keep"));
+		for (int turn = 1; turn <= 5; turn++) {
+			game.endTurn();
+		}
+		armyOf("Rome", "Warrior", 2);
+		arrived("Rome", "Carthage", Map.of("Warrior", 2));
+		game.endTurn();
+		assertThat(game.viewOf("Carthage").damage()).containsExactly(new BuildingDamage("Keep", 1, 2, 7, 2, 13, 3));
+		int carthageGold = game.viewOf("Carthage").gold();
+
+		assertThat(game.act("Carthage", new Action.RebuildBuilding("Keep"))).isEqualTo(ActionResult.ACCEPTED);
+		assertThat(game.act("Carthage", new Action.RepairBuilding("Keep"))).isEqualTo(ActionResult.ACCEPTED);
+
+		NationView carthage = game.viewOf("Carthage");
+		assertThat(carthage.gold()).isEqualTo(carthageGold - 13 - 7);
+		assertThat(carthage.repairs()).containsExactly(new Repair("Keep", true, 4, 3), new Repair("Keep", false, 2, 2));
 	}
 
 	@Test
@@ -1003,11 +1024,8 @@ class GameTest {
 		game.act("Carthage", new Action.RepairBuilding("Walls"));
 
 		game.endTurn();
-		assertThat(game.viewOf("Carthage").defense()).isEqualTo(1);
-
-		game.endTurn();
 		assertThat(game.viewOf("Carthage").defense()).isEqualTo(7);
-		assertThat(game.viewOf("Carthage").damage()).containsExactly(new BuildingDamage("Walls", 0, 3, 9, 1));
+		assertThat(game.viewOf("Carthage").damage()).containsExactly(new BuildingDamage("Walls", 0, 3, 5, 1, 15, 1));
 	}
 
 	@Test
@@ -1016,8 +1034,8 @@ class GameTest {
 		while (game.viewOf("Carthage").gold() >= 20) {
 			game.act("Carthage", new Action.StartBuilding("Moat"));
 		}
-		if (game.viewOf("Carthage").gold() >= 18) {
-			game.act("Carthage", new Action.TrainUnits("Scout", 1));
+		while (game.viewOf("Carthage").gold() >= 9) {
+			assertThat(game.act("Carthage", new Action.TrainUnits("Scout", 1))).isEqualTo(ActionResult.ACCEPTED);
 		}
 		int carthageGold = game.viewOf("Carthage").gold();
 
@@ -1030,7 +1048,7 @@ class GameTest {
 		assertThat(game.act("Carthage", new Action.RebuildBuilding("Walls")))
 			.isEqualTo(ActionResult.rejected("You have no destroyed Walls to rebuild."));
 		assertThat(game.act("Carthage", new Action.RepairBuilding("Walls")))
-			.isEqualTo(ActionResult.rejected("Repairing Walls costs 18 Gold, but you have only " + carthageGold + "."));
+			.isEqualTo(ActionResult.rejected("Repairing Walls costs 9 Gold, but you have only " + carthageGold + "."));
 		assertThat(game.viewOf("Carthage").gold()).isEqualTo(carthageGold);
 		assertThat(game.viewOf("Carthage").repairs()).isEmpty();
 	}

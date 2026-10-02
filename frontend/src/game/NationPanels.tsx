@@ -43,13 +43,11 @@ function describeEffect(building: BuildingType) {
 /** A defensive Building type's Damaged and Destroyed Buildings, with buttons to Repair and Rebuild them. */
 function Damage({
   damage,
-  building,
   nation,
   onRepair,
   onRebuild,
 }: {
   damage: BuildingDamage
-  building: BuildingType
   nation: NationView
   onRepair: (building: string) => void
   onRebuild: (building: string) => void
@@ -75,12 +73,12 @@ function Damage({
         <li className="row row--nested">
           <span className="tag tag--bad">Destroyed</span>
           <span className="row__meta">
-            {plural(damage.destroyed, 'Building')} · Rebuild {building.gold} Gold, {plural(building.turns, 'Turn')}
+            {plural(damage.destroyed, 'Building')} · Rebuild {damage.rebuildGold} Gold, {plural(damage.rebuildTurns, 'Turn')}
           </span>
           <button
             aria-label={`Rebuild ${damage.building}`}
             onClick={() => onRebuild(damage.building)}
-            disabled={building.gold > nation.gold}
+            disabled={damage.rebuildGold > nation.gold}
           >
             Rebuild
           </button>
@@ -115,17 +113,15 @@ export function BuildPanel({
         <ul className="list">
           {owned.map(([name, count]) => {
             const damage = nation.damage.find((d) => d.building === name)
-            const building = nation.availableBuildings.find((b) => b.name === name)
             return [
               <li key={name} className="row">
                 <span className="row__name">{name}</span>
                 <span className="row__meta">×{count}</span>
               </li>,
-              damage && building && (
+              damage && (
                 <Damage
                   key={`${name}-damage`}
                   damage={damage}
-                  building={building}
                   nation={nation}
                   onRepair={onRepair}
                   onRebuild={onRebuild}
