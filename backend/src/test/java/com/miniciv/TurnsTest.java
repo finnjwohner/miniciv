@@ -44,7 +44,7 @@ class TurnsTest {
 		@Primary
 		Ruleset testRuleset() {
 			return new Ruleset(List.of(new UnitType("Warrior", 20, 2, 1, 1, 3, List.of())),
-					List.of(new BuildingType("Farm", 30, 2, 1, 0)), List.of());
+					List.of(new BuildingType("Farm", 30, 2, 1, 0, 0)), List.of());
 		}
 
 	}
@@ -118,6 +118,10 @@ class TurnsTest {
 		player.stomp().send("/app/rooms/" + code + "/buildings", Map.of("token", player.token(), "building", building));
 	}
 
+	void repairBuilding(Connected player, String building) {
+		player.stomp().send("/app/rooms/" + code + "/repairs", Map.of("token", player.token(), "building", building));
+	}
+
 	void trainUnits(Connected player, String unit, int count) {
 		player.stomp().send("/app/rooms/" + code + "/units", Map.of("token", player.token(), "unit", unit, "count", count));
 	}
@@ -157,9 +161,11 @@ class TurnsTest {
 		view.put("research", research);
 		view.put("otherNations", otherNations);
 		view.put("availableBuildings", List.of(Map.of("name", "Farm", "gold", 30, "turns", 2, "populationPerTurn", 1,
-				"goldPerPopulation", 0.0)));
+				"goldPerPopulation", 0.0, "defense", 0)));
 		view.put("buildings", Map.of());
 		view.put("construction", construction);
+		view.put("defense", 0);
+		view.put("damage", List.of());
 		view.put("availableUnits", List.of(Map.of("name", "Warrior", "gold", 20, "population", 2, "turns", 1, "upkeep", 1,
 				"strength", 3.0, "counters", List.of())));
 		view.put("army", Map.of());
@@ -367,6 +373,18 @@ class TurnsTest {
 		sendWarparty(rome, "Carthage", Map.of("Warrior", 1));
 
 		assertThat(romeRejections.next()).isEqualTo(Map.of("reason", "Your Army has no Warrior."));
+		rome.privately().expectNone();
+	}
+
+	@Test
+	void aPlayerWhoseRepairIsRejectedIsToldWhyPrivately() throws Exception {
+		startGame();
+		rome.privately().next();
+		StompConnection.Messages romeRejections = rome.stomp().subscribe("/user/queue/rejections");
+
+		repairBuilding(rome, "Farm");
+
+		assertThat(romeRejections.next()).isEqualTo(Map.of("reason", "You have no damaged or destroyed Farm."));
 		rome.privately().expectNone();
 	}
 

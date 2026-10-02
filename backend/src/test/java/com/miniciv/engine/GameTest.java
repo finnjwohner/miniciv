@@ -14,11 +14,15 @@ import static org.assertj.core.api.Assertions.entry;
 
 class GameTest {
 
-	static final BuildingType FARM = new BuildingType("Farm", 30, 2, 1, 0);
+	static final BuildingType FARM = new BuildingType("Farm", 30, 2, 1, 0, 0);
 
-	static final BuildingType GRANARY = new BuildingType("Granary", 40, 1, 2, 0);
+	static final BuildingType GRANARY = new BuildingType("Granary", 40, 1, 2, 0, 0);
 
-	static final BuildingType BANK = new BuildingType("Bank", 45, 1, 0, 0.5);
+	static final BuildingType BANK = new BuildingType("Bank", 45, 1, 0, 0.5, 0);
+
+	static final BuildingType WALLS = new BuildingType("Walls", 30, 1, 0, 0, 10);
+
+	static final BuildingType MOAT = new BuildingType("Moat", 20, 1, 0, 0, 4);
 
 	static final UnitType WARRIOR = new UnitType("Warrior", 10, 3, 1, 1, 3, List.of("Horseman"));
 
@@ -28,8 +32,8 @@ class GameTest {
 
 	static final UnitType SCOUT = new UnitType("Scout", 5, 1, 1, 1, 0.1, List.of());
 
-	static final Ruleset RULESET = new Ruleset(List.of(WARRIOR, ARCHER, HORSEMAN, SCOUT), List.of(FARM, GRANARY, BANK),
-			List.of());
+	static final Ruleset RULESET = new Ruleset(List.of(WARRIOR, ARCHER, HORSEMAN, SCOUT),
+			List.of(FARM, GRANARY, BANK, WALLS, MOAT), List.of());
 
 	static final String BASE_INCOME_REPORT = "Your Nation gained 10 Gold, 2 Population and 3 Research.";
 
@@ -93,8 +97,8 @@ class GameTest {
 		game.endTurn();
 
 		assertThat(game.viewOf("Carthage")).isEqualTo(new NationView(2, 2, "Carthage", 60, 12, 3, List.of("Rome", "Egypt"),
-				List.of(FARM, GRANARY, BANK), Map.of(), List.of(), List.of(WARRIOR, ARCHER, HORSEMAN, SCOUT), Map.of(), List.of(),
-				List.of(), 3, 0,
+				List.of(FARM, GRANARY, BANK, WALLS, MOAT), Map.of(), List.of(), 0, List.of(),
+				List.of(WARRIOR, ARCHER, HORSEMAN, SCOUT), Map.of(), List.of(), List.of(), 3, 0,
 				new TurnReport(1, List.of("Your Nation gained 10 Gold, 2 Population and 3 Research."))));
 	}
 
@@ -210,7 +214,7 @@ class GameTest {
 
 	@Test
 	void aNationsViewListsTheBuildingsItCanStart() {
-		assertThat(game.viewOf("Rome").availableBuildings()).containsExactly(FARM, GRANARY, BANK);
+		assertThat(game.viewOf("Rome").availableBuildings()).containsExactly(FARM, GRANARY, BANK, WALLS, MOAT);
 	}
 
 	@Test
@@ -480,6 +484,7 @@ class GameTest {
 		assertThat(carthage.research()).isEqualTo(carthageResearch - 6 + 3);
 		assertThat(carthage.turnReport().lines()).containsExactly(
 				"Rome's Warparty of Warrior ×2 met no Army at your Nation.",
+				"Rome's Warparty reduced your Population by 12, doubled as you had no Army left.",
 				"Rome's Warparty took 18 Gold and 6 Research from you and is heading home.", BASE_INCOME_REPORT);
 	}
 
@@ -512,6 +517,8 @@ class GameTest {
 		arrived("Rome", "Carthage", Map.of("Warrior", 4));
 		int carthageGold = game.viewOf("Carthage").gold();
 		int carthageResearch = game.viewOf("Carthage").research();
+		int carthagePopulation = game.viewOf("Carthage").population();
+		assertThat(carthagePopulation).isLessThan(24);
 
 		game.endTurn();
 
@@ -526,6 +533,7 @@ class GameTest {
 		assertThat(carthage.research()).isEqualTo(carthageResearch - 12 + 3);
 		assertThat(carthage.turnReport().lines()).containsExactly(
 				"Your Army of Warrior ×1 fought Rome's Warparty of Warrior ×4. You lost Warrior ×1 and Rome lost no Units.",
+				"Rome's Warparty reduced your Population by " + carthagePopulation + ", doubled as you had no Army left.",
 				"Rome's Warparty took 36 Gold and 12 Research from you and is heading home.", BASE_INCOME_REPORT);
 	}
 
@@ -638,6 +646,188 @@ class GameTest {
 
 		assertThat(reports.get(0)).anyMatch(line -> line.startsWith("Your Warparty of Warrior ×4 fought"));
 		assertThat(reports.get(1)).isEqualTo(reports.get(0));
+	}
+
+	@Test
+	void completedDefensiveBuildingsRaiseTheNationsDefense() {
+		assertThat(game.viewOf("Rome").defense()).isZero();
+		game.act("Rome", new Action.StartBuilding("Walls"));
+		game.act("Rome", new Action.StartBuilding("Moat"));
+		assertThat(game.viewOf("Rome").defense()).isZero();
+
+		game.endTurn();
+
+		assertThat(game.viewOf("Rome").defense()).isEqualTo(14);
+		assertThat(game.viewOf("Rome").damage()).isEmpty();
+	}
+
+	@Test
+	void survivingStrengthWearsDefenseDownDamagingADefensiveBuildingAndSparingThePopulation() {
+		game.act("Carthage", new Action.StartBuilding("Walls"));
+		armyOf("Rome", "Warrior", 2);
+		arrived("Rome", "Carthage", Map.of("Warrior", 2));
+		int carthagePopulation = game.viewOf("Carthage").population();
+
+		game.endTurn();
+
+		NationView carthage = game.viewOf("Carthage");
+		assertThat(carthage.defense()).isEqualTo(4);
+		assertThat(carthage.damage()).containsExactly(new BuildingDamage("Walls", 0, true, 6, 18));
+		assertThat(carthage.population()).isEqualTo(carthagePopulation + 2);
+		assertThat(carthage.turnReport().lines()).containsExactly(
+				"Rome's Warparty of Warrior ×2 met no Army at your Nation.",
+				"Rome's Warparty wore your Defense down from 10 to 4, damaging Walls.",
+				"Rome's Warparty took 18 Gold and 6 Research from you and is heading home.", BASE_INCOME_REPORT);
+		assertThat(game.viewOf("Rome").turnReport().lines())
+			.contains("Your Warparty wore Carthage's Defense down by 6, damaging Walls.");
+	}
+
+	@Test
+	void defenseIsWornDownOneDefensiveBuildingAtATimeInTheOrderTheyWereCompleted() {
+		game.act("Carthage", new Action.StartBuilding("Walls"));
+		game.act("Carthage", new Action.StartBuilding("Moat"));
+		game.endTurn();
+		armyOf("Rome", "Warrior", 4);
+		arrived("Rome", "Carthage", Map.of("Warrior", 4));
+
+		game.endTurn();
+
+		NationView carthage = game.viewOf("Carthage");
+		assertThat(carthage.defense()).isEqualTo(2);
+		assertThat(carthage.damage()).containsExactly(new BuildingDamage("Walls", 1, false, 10, 30),
+				new BuildingDamage("Moat", 0, true, 2, 10));
+		assertThat(carthage.turnReport().lines())
+			.contains("Rome's Warparty wore your Defense down from 14 to 2, destroying Walls ×1 and damaging Moat.");
+	}
+
+	@Test
+	void onlyStrengthLeftOnceDefenseIsDownReducesPopulationTwiceAsMuchWithNoArmyLeft() {
+		game.act("Carthage", new Action.StartBuilding("Moat"));
+		game.endTurn();
+		armyOf("Rome", "Warrior", 4);
+		arrived("Rome", "Carthage", Map.of("Warrior", 4));
+		int carthagePopulation = game.viewOf("Carthage").population();
+
+		game.endTurn();
+
+		NationView carthage = game.viewOf("Carthage");
+		assertThat(carthage.defense()).isZero();
+		assertThat(carthage.damage()).containsExactly(new BuildingDamage("Moat", 1, false, 4, 20));
+		assertThat(carthage.population()).isEqualTo(carthagePopulation - 16 + 2);
+		assertThat(carthage.turnReport().lines()).containsSequence(
+				"Rome's Warparty wore your Defense down from 4 to 0, destroying Moat ×1.",
+				"Rome's Warparty reduced your Population by 16, doubled as you had no Army left.");
+		assertThat(game.viewOf("Rome").turnReport().lines()).containsSequence(
+				"Your Warparty wore Carthage's Defense down by 4, destroying Moat ×1.",
+				"Your Warparty reduced Carthage's Population by 16, doubled as Carthage had no Army left.");
+	}
+
+	@Test
+	void anArmyThatSurvivesTheBattleKeepsThePopulationLossDown() {
+		game.endTurn();
+		armyOf("Rome", "Warrior", 2);
+		armyOf("Carthage", "Warrior", 2);
+		arrived("Rome", "Carthage", Map.of("Warrior", 2));
+		int carthagePopulation = game.viewOf("Carthage").population();
+
+		game.endTurn();
+
+		assertThat(game.viewOf("Carthage").population()).isEqualTo(carthagePopulation - 3 + 2);
+		assertThat(game.viewOf("Carthage").turnReport().lines())
+			.contains("Rome's Warparty reduced your Population by 3.");
+		assertThat(game.viewOf("Rome").turnReport().lines()).contains("Your Warparty reduced Carthage's Population by 3.");
+	}
+
+	@Test
+	void populationIsNotReducedBelowZero() {
+		UnitType giant = new UnitType("Giant", 10, 1, 1, 1, 100, List.of());
+		game = new Game(new Ruleset(List.of(giant), List.of(), List.of()), List.of("Rome", "Carthage"), EVEN_LUCK);
+		armyOf("Rome", "Giant", 1);
+		arrived("Rome", "Carthage", Map.of("Giant", 1));
+		int carthagePopulation = game.viewOf("Carthage").population();
+
+		game.endTurn();
+
+		assertThat(game.viewOf("Carthage").population()).isEqualTo(2);
+		assertThat(game.viewOf("Carthage").turnReport().lines()).contains(
+				"Rome's Warparty reduced your Population by " + carthagePopulation + ", doubled as you had no Army left.");
+	}
+
+	@Test
+	void aDestroyedBuildingAddsNothingUntilRebuiltButADamagedOneStillDoes() {
+		BuildingType fort = new BuildingType("Fort", 20, 1, 1, 0, 3);
+		UnitType spearman = new UnitType("Spearman", 10, 1, 1, 1, 2.5, List.of());
+		game = new Game(new Ruleset(List.of(spearman), List.of(fort), List.of()), List.of("Rome", "Carthage"),
+				EVEN_LUCK);
+		game.act("Carthage", new Action.StartBuilding("Fort"));
+		game.act("Carthage", new Action.StartBuilding("Fort"));
+		armyOf("Rome", "Spearman", 2);
+		arrived("Rome", "Carthage", Map.of("Spearman", 2));
+		int carthagePopulation = game.viewOf("Carthage").population();
+
+		game.endTurn();
+
+		assertThat(game.viewOf("Carthage").damage()).containsExactly(new BuildingDamage("Fort", 1, true, 5, 34));
+		assertThat(game.viewOf("Carthage").population()).isEqualTo(carthagePopulation + 2 + 1);
+		assertThat(game.viewOf("Carthage").turnReport().lines()).contains("Your Buildings added 1 Population.");
+	}
+
+	@Test
+	void aDamagedDefensiveBuildingIsRepairedForGoldInProportionToTheDefenseItLost() {
+		game.act("Carthage", new Action.StartBuilding("Walls"));
+		armyOf("Rome", "Warrior", 2);
+		arrived("Rome", "Carthage", Map.of("Warrior", 2));
+		game.endTurn();
+		int carthageGold = game.viewOf("Carthage").gold();
+
+		ActionResult result = game.act("Carthage", new Action.RepairBuilding("Walls"));
+
+		assertThat(result).isEqualTo(ActionResult.ACCEPTED);
+		NationView carthage = game.viewOf("Carthage");
+		assertThat(carthage.gold()).isEqualTo(carthageGold - 18);
+		assertThat(carthage.defense()).isEqualTo(10);
+		assertThat(carthage.damage()).isEmpty();
+	}
+
+	@Test
+	void aDestroyedDefensiveBuildingIsRebuiltForItsFullGold() {
+		game.act("Carthage", new Action.StartBuilding("Moat"));
+		game.endTurn();
+		armyOf("Rome", "Warrior", 4);
+		arrived("Rome", "Carthage", Map.of("Warrior", 4));
+		game.endTurn();
+		int carthageGold = game.viewOf("Carthage").gold();
+
+		ActionResult result = game.act("Carthage", new Action.RepairBuilding("Moat"));
+
+		assertThat(result).isEqualTo(ActionResult.ACCEPTED);
+		assertThat(game.viewOf("Carthage").gold()).isEqualTo(carthageGold - 20);
+		assertThat(game.viewOf("Carthage").defense()).isEqualTo(4);
+		assertThat(game.viewOf("Carthage").damage()).isEmpty();
+	}
+
+	@Test
+	void onlyDamagedOrDestroyedBuildingsTheNationCanAffordCanBeRepaired() {
+		game.act("Carthage", new Action.StartBuilding("Walls"));
+		armyOf("Rome", "Warrior", 2);
+		arrived("Rome", "Carthage", Map.of("Warrior", 2));
+		game.endTurn();
+		while (game.viewOf("Carthage").gold() >= 20) {
+			game.act("Carthage", new Action.StartBuilding("Moat"));
+		}
+		if (game.viewOf("Carthage").gold() >= 18) {
+			game.act("Carthage", new Action.TrainUnits("Scout", 1));
+		}
+		int carthageGold = game.viewOf("Carthage").gold();
+
+		assertThat(game.act("Carthage", new Action.RepairBuilding("Pyramid")))
+			.isEqualTo(ActionResult.rejected("There is no Building called Pyramid."));
+		assertThat(game.act("Carthage", new Action.RepairBuilding("Moat")))
+			.isEqualTo(ActionResult.rejected("You have no damaged or destroyed Moat."));
+		assertThat(game.act("Carthage", new Action.RepairBuilding("Walls")))
+			.isEqualTo(ActionResult.rejected("Repairing Walls costs 18 Gold, but you have only " + carthageGold + "."));
+		assertThat(game.viewOf("Carthage").gold()).isEqualTo(carthageGold);
+		assertThat(game.viewOf("Carthage").defense()).isEqualTo(4);
 	}
 
 	@Test

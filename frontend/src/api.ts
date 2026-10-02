@@ -8,13 +8,25 @@ export type RoomView = { code: string; version: number; players: PlayerView[]; g
 
 /** What happened to a Nation as a Turn resolved. */
 export type TurnReport = { turn: number; lines: string[] }
-/** A kind of Building; once complete it adds its Population and Gold every Turn. */
+/** A kind of Building; once complete it adds its Population and Gold every Turn, and raises Defense while standing. */
 export type BuildingType = {
   name: string
   gold: number
   turns: number
   populationPerTurn: number
   goldPerPopulation: number
+  defense: number
+}
+/**
+ * The Defense a Nation's defensive Buildings of one type have lost: `destroyed` of them are
+ * destroyed, and one more is `damaged`. Repairing and rebuilding them all costs `repairGold`.
+ */
+export type BuildingDamage = {
+  building: string
+  destroyed: number
+  damaged: boolean
+  defenseLost: number
+  repairGold: number
 }
 /** A Building under construction. */
 export type Construction = { building: string; turnsLeft: number }
@@ -60,6 +72,10 @@ export type NationView = {
   /** How many of each Building the Nation has completed. */
   buildings: Record<string, number>
   construction: Construction[]
+  /** The Nation's Defense, raised by its defensive Buildings. */
+  defense: number
+  /** The defensive Buildings that have lost Defense, by type. */
+  damage: BuildingDamage[]
   availableUnits: UnitType[]
   /** How many of each Unit type the Nation has at home. */
   army: Record<string, number>

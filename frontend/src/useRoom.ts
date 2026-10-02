@@ -57,6 +57,15 @@ export function useRoom(code: string, token: string) {
     })
   }
 
+  /** Repairs a defensive Building type's damaged and destroyed Buildings; a rejection's reason arrives in `rejection`. */
+  const repairBuilding = (building: string) => {
+    setRejection(null)
+    client.current?.publish({
+      destination: `/app/rooms/${code}/repairs`,
+      body: JSON.stringify({ token, building }),
+    })
+  }
+
   /** Starts training Units of one type; a rejection's reason arrives in `rejection`. */
   const trainUnits = (unit: string, count: number) => {
     setRejection(null)
@@ -82,5 +91,5 @@ export function useRoom(code: string, token: string) {
       body: JSON.stringify({ token, turn }),
     })
 
-  return { room, nation, rejection, setReady, startBuilding, trainUnits, sendWarparty, markDone }
+  return { room, nation, rejection, setReady, startBuilding, repairBuilding, trainUnits, sendWarparty, markDone }
 }

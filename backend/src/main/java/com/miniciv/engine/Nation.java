@@ -31,6 +31,12 @@ class Nation {
 	private final Map<String, Integer> buildings = new LinkedHashMap<>();
 
 	/**
+	 * How much Defense each defensive Building type has lost; see
+	 * {@link BuildingDamage}.
+	 */
+	private final Map<String, Integer> defenseLost = new LinkedHashMap<>();
+
+	/**
 	 * The Units in training, in the order started.
 	 */
 	private final List<Training> training = new ArrayList<>();
@@ -71,7 +77,8 @@ class Nation {
 
 	NationView view(int turn, List<String> otherNations, int travelTurns, Ruleset ruleset) {
 		return new NationView(version, turn, name, gold, population, research, otherNations, ruleset.buildings(),
-				Collections.unmodifiableMap(new LinkedHashMap<>(buildings)), construction, ruleset.units(),
+				Collections.unmodifiableMap(new LinkedHashMap<>(buildings)), construction, defense(ruleset), damage(ruleset),
+				ruleset.units(),
 				Collections.unmodifiableMap(new LinkedHashMap<>(army)), training, warparties, travelTurns, upkeep(ruleset),
 				turnReport);
 	}
@@ -91,6 +98,34 @@ class Nation {
 		construction.add(new Construction(building.name(), building.turns()));
 		version++;
 		return ActionResult.ACCEPTED;
+	}
+
+	/**
+	 * Repairs a defensive Building type's damaged Building and rebuilds its
+	 * destroyed ones, for Gold in proportion to the Defense they lost.
+	 */
+	ActionResult repair(BuildingType building) {
+		int lost = defenseLost.getOrDefault(building.name(), 0);
+		if (lost == 0) {
+			return ActionResult.rejected("You have no damaged or destroyed " + building.name() + ".");
+		}
+		int cost = repairGold(building, lost);
+		if (cost > gold) {
+			return ActionResult
+				.rejected("Repairing " + building.name() + " costs " + cost + " Gold, but you have only " + gold + ".");
+		}
+		gold -= cost;
+		defenseLost.remove(building.name());
+		version++;
+		return ActionResult.ACCEPTED;
+	}
+
+	/**
+	 * The Gold to restore Defense a Building type lost: its Gold for each whole
+	 * Building's worth, rounded up.
+	 */
+	private static int repairGold(BuildingType building, int defenseLost) {
+		return (int) Math.ceilDiv((long) defenseLost * building.gold(), building.defense());
 	}
 
 	ActionResult trainUnits(UnitType unit, int count, int turn) {
@@ -188,11 +223,13 @@ class Nation {
 	}
 
 	/**
-	 * A Battle a Warparty fought, and the plunder it took.
+	 * A Battle a Warparty fought, the plunder it took, and the Defense and
+	 * Population its target lost.
 	 *
 	 * @param warparty the Warparty as it was before the Battle
 	 */
-	record BattleFought(Warparty warparty, Battle battle, Plunder plunder) {
+	record BattleFought(Warparty warparty, Battle battle, Plunder plunder, DefenseWorn defenseWorn,
+			int populationLost) {
 	}
 
 	/**
@@ -231,6 +268,89 @@ class Nation {
 	 */
 	void lose(Map<String, Integer> units) {
 		units.forEach((unit, count) -> army.computeIfPresent(unit, (u, owned) -> owned <= count ? null : owned - count));
+	}
+
+	/**
+	 * The Nation's Defense: what its defensive Buildings raise it by, less the
+	 * Defense they have lost.
+	 */
+	int defense(Ruleset ruleset) {
+		int raised = buildings.entrySet()
+			.stream()
+			.mapToInt(owned -> ruleset.building(owned.getKey()).orElseThrow().defense() * owned.getValue())
+			.sum();
+		return raised - defenseLost.values().stream().mapToInt(Integer::intValue).sum();
+	}
+
+	private List<BuildingDamage> damage(Ruleset ruleset) {
+		List<BuildingDamage> damage = new ArrayList<>();
+		for (String building : buildings.keySet()) {
+			int lost = defenseLost.getOrDefault(building, 0);
+			if (lost > 0) {
+				BuildingType type = ruleset.building(building).orElseThrow();
+				damage.add(new BuildingDamage(building, lost / type.defense(), lost % type.defense() != 0, lost,
+						repairGold(type, lost)));
+			}
+		}
+		return damage;
+	}
+
+	/**
+	 * How far a Warparty wore a Nation's Defense down.
+	 *
+	 * @param before the Nation's Defense before
+	 * @param after the Nation's Defense after
+	 * @param destroyed how many of each defensive Building type it destroyed
+	 * @param damaged the defensive Building types it left with a damaged
+	 * Building
+	 */
+	record DefenseWorn(int before, int after, Map<String, Integer> destroyed, List<String> damaged) {
+
+		int worn() {
+			return before - after;
+		}
+
+	}
+
+	/**
+	 * Wears the Nation's Defense down by up to the given amount, from its
+	 * defensive Buildings by type in the order first completed.
+	 */
+	DefenseWorn wearDefense(int amount, Ruleset ruleset) {
+		int before = defense(ruleset);
+		int left = amount;
+		Map<String, Integer> destroyed = new LinkedHashMap<>();
+		List<String> damaged = new ArrayList<>();
+		for (Map.Entry<String, Integer> owned : buildings.entrySet()) {
+			String building = owned.getKey();
+			int defense = ruleset.building(building).orElseThrow().defense();
+			int lost = defenseLost.getOrDefault(building, 0);
+			int worn = Math.min(left, defense * owned.getValue() - lost);
+			if (worn == 0) {
+				continue;
+			}
+			left -= worn;
+			defenseLost.put(building, lost + worn);
+			int newlyDestroyed = (lost + worn) / defense - lost / defense;
+			if (newlyDestroyed > 0) {
+				destroyed.put(building, newlyDestroyed);
+			}
+			if ((lost + worn) % defense != 0) {
+				damaged.add(building);
+			}
+		}
+		return new DefenseWorn(before, before - (amount - left), destroyed, damaged);
+	}
+
+	/**
+	 * Loses Population to a Warparty, as much as the Nation has.
+	 *
+	 * @return the Population lost
+	 */
+	int losePopulation(int amount) {
+		int lost = Math.min(amount, population);
+		population -= lost;
+		return lost;
 	}
 
 	/**
@@ -354,21 +474,31 @@ class Nation {
 	}
 
 	/**
-	 * Population the Nation's completed Buildings add this Turn.
+	 * How many of each completed Building are standing: not destroyed.
+	 */
+	private Map<String, Integer> standing(Ruleset ruleset) {
+		Map<String, Integer> standing = new LinkedHashMap<>(buildings);
+		defenseLost.forEach((building, lost) -> standing.computeIfPresent(building,
+				(b, count) -> count - lost / ruleset.building(b).orElseThrow().defense()));
+		return standing;
+	}
+
+	/**
+	 * Population the Nation's standing Buildings add this Turn.
 	 */
 	int populationFromBuildings(Ruleset ruleset) {
-		return buildings.entrySet()
+		return standing(ruleset).entrySet()
 			.stream()
 			.mapToInt(owned -> ruleset.building(owned.getKey()).orElseThrow().populationPerTurn() * owned.getValue())
 			.sum();
 	}
 
 	/**
-	 * Gold the Nation's completed Buildings add this Turn for its current
+	 * Gold the Nation's standing Buildings add this Turn for its current
 	 * Population, rounded down.
 	 */
 	int goldFromBuildings(Ruleset ruleset) {
-		BigDecimal goldPerPopulation = buildings.entrySet()
+		BigDecimal goldPerPopulation = standing(ruleset).entrySet()
 			.stream()
 			.map(owned -> BigDecimal.valueOf(ruleset.building(owned.getKey()).orElseThrow().goldPerPopulation())
 				.multiply(BigDecimal.valueOf(owned.getValue())))
