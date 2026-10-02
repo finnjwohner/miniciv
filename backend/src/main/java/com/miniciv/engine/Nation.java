@@ -57,6 +57,11 @@ class Nation {
 	 */
 	private final List<Warparty> warparties = new ArrayList<>();
 
+	/**
+	 * The number the next Warparty sent will be told apart by.
+	 */
+	private int nextWarpartyId = 1;
+
 	private TurnReport turnReport;
 
 	/**
@@ -183,12 +188,12 @@ class Nation {
 	 *
 	 * @return those turned back, as they were before
 	 */
-	List<Warparty> turnBackFrom(String target, int travelTurns) {
+	List<Warparty> turnBackFrom(String target) {
 		List<Warparty> turnedBack = new ArrayList<>();
 		for (var it = warparties.listIterator(); it.hasNext();) {
 			Warparty current = it.next();
 			if (!current.homeward() && current.target().equals(target)) {
-				it.set(current.turnedBack(travelTurns));
+				it.set(current.turnedBack());
 				turnedBack.add(current);
 			}
 		}
@@ -204,6 +209,24 @@ class Nation {
 	 */
 	List<Warparty> warparties() {
 		return List.copyOf(warparties);
+	}
+
+	/**
+	 * The Nation's Warparty abroad with the given number, if any.
+	 */
+	Optional<Warparty> warparty(int id) {
+		return warparties.stream().filter(warparty -> warparty.id() == id).findFirst();
+	}
+
+	/**
+	 * Turns one of the Nation's Warparties, not yet heading home, back home;
+	 * see {@link Warparty#turnedBack()}.
+	 *
+	 * @param warparty the Warparty, as {@link #warparty(int)} gave it
+	 */
+	void recall(Warparty warparty) {
+		warparties.set(warparties.indexOf(warparty), warparty.turnedBack());
+		version++;
 	}
 
 	/**
@@ -421,7 +444,7 @@ class Nation {
 			}
 		}
 		sent.forEach((unit, count) -> army.computeIfPresent(unit, (u, owned) -> owned == count ? null : owned - count));
-		warparties.add(new Warparty(target, sent, false, travelTurns));
+		warparties.add(new Warparty(nextWarpartyId++, target, sent, false, travelTurns, 0));
 		version++;
 		return ActionResult.ACCEPTED;
 	}
