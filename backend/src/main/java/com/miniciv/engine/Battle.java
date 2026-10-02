@@ -59,6 +59,10 @@ record Battle(Map<String, Integer> warparty, Map<String, Integer> army, Map<Stri
 		return survivors(warparty, warpartyLost);
 	}
 
+	Map<String, Integer> armySurvivors() {
+		return survivors(army, armyLost);
+	}
+
 	/**
 	 * The Warparty's surviving Units' Strength, without counters or luck.
 	 */

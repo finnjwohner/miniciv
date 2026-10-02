@@ -76,6 +76,7 @@ public record Ruleset(List<UnitType> units, List<BuildingType> buildings, List<T
 			notNegative(problems, subject + " cannot cost less than 0 Gold.", building.gold());
 			notNegative(problems, subject + " cannot add less than 0 Population per Turn.", building.populationPerTurn());
 			notNegative(problems, subject + " cannot add less than 0 Gold per Population.", building.goldPerPopulation());
+			notNegative(problems, subject + " cannot add less than 0 Defense.", building.defense());
 		}
 		for (Technology technology : technologies) {
 			String subject = "Technology " + technology.name();
