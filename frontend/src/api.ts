@@ -79,6 +79,11 @@ export type Warparty = {
   plunder: { gold: number; research: number }
 }
 /**
+ * A Nation on the Map, as another Nation knows it: its name, and whether it is still in the Game,
+ * was conquered, or was removed as its Player was disconnected for too long.
+ */
+export type MapNation = { name: string; standing: 'IN_GAME' | 'CONQUERED' | 'REMOVED' }
+/**
  * What only this Player sees: their own Nation, and just the names of the others still in the Game.
  * `version` rises with every change to the Nation.
  */
@@ -90,6 +95,8 @@ export type NationView = {
   population: number
   research: number
   otherNations: string[]
+  /** Every Nation that took part in the Game, this one included, in the order they joined. */
+  map: MapNation[]
   availableBuildings: BuildingType[]
   /** How many of each Building the Nation has completed. */
   buildings: Record<string, number>

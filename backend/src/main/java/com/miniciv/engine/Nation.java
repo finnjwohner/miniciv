@@ -91,8 +91,9 @@ class Nation {
 		version++;
 	}
 
-	NationView view(int turn, List<String> otherNations, int travelTurns, Ruleset ruleset, String winner) {
-		return new NationView(version, turn, name, gold, population, research, otherNations, ruleset.buildings(),
+	NationView view(int turn, List<String> otherNations, List<MapNation> map, int travelTurns, Ruleset ruleset,
+			String winner) {
+		return new NationView(version, turn, name, gold, population, research, otherNations, map, ruleset.buildings(),
 				Collections.unmodifiableMap(new LinkedHashMap<>(buildings)), construction, repairs, defense(ruleset), damage(ruleset),
 				ruleset.units(),
 				Collections.unmodifiableMap(new LinkedHashMap<>(army)), training, warparties, travelTurns, upkeep(ruleset),
@@ -129,6 +130,15 @@ class Nation {
 	 */
 	boolean inGame() {
 		return !conquered() && !removed;
+	}
+
+	/**
+	 * This Nation as every other Nation sees it on the Map.
+	 */
+	MapNation onMap() {
+		MapNation.Standing standing = conquered() ? MapNation.Standing.CONQUERED
+				: removed ? MapNation.Standing.REMOVED : MapNation.Standing.IN_GAME;
+		return new MapNation(name, standing);
 	}
 
 	/**

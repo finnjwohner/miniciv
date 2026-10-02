@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import type { BuildingDamage, BuildingType, NationView, UnitType, Warparty } from './api'
+import type { BuildingDamage, BuildingType, MapNation, NationView, UnitType, Warparty } from './api'
 import type { ReceivedRoom } from './useRoom'
 
 /** The time now, updated a few times a second. */
@@ -205,15 +205,15 @@ function Army({ nation, onTrain }: { nation: NationView; onTrain: (unit: string,
   )
 }
 
-/** Units counted by type, such as "Warrior ×2, Archer ×1". */
-function listUnits(units: Record<string, number>) {
+/** Units or Buildings counted by type, such as "Warrior ×2, Archer ×1". */
+function listCounts(units: Record<string, number>) {
   return Object.entries(units)
     .map(([name, count]) => `${name} ×${count}`)
     .join(', ')
 }
 
 function describeWarparty(warparty: Warparty) {
-  const units = listUnits(warparty.units)
+  const units = listCounts(warparty.units)
   if (!warparty.homeward && warparty.turnsLeft === 0) {
     return `${units} — at ${warparty.target}, fighting the Battle as this Turn ends`
   }
@@ -294,6 +294,71 @@ function Warparties({
           Takes {plural(nation.travelTurns, 'Turn')} to arrive, and as long to come home.
         </>
       )}
+    </>
+  )
+}
+
+/** How the Map marks a Nation no longer in the Game. */
+function describeStanding(standing: MapNation['standing']) {
+  if (standing === 'CONQUERED') return ' — knocked out'
+  if (standing === 'REMOVED') return ' — removed'
+  return ''
+}
+
+/**
+ * A read-only placeholder Map of every Nation in the Game, drawn from this Player's view alone: their
+ * own Nation in full, every other Nation by name, and which have been knocked out or removed.
+ */
+function WorldMap({ nation }: { nation: NationView }) {
+  return (
+    <>
+      <h3>Map</h3>
+      <ul>
+        {nation.map.map((other) =>
+          other.name === nation.nation ? (
+            <li key={other.name}>
+              <strong>{other.name} (you)</strong>
+              {describeStanding(other.standing)}
+              <ul>
+                <li>
+                  Gold {nation.gold}, Population {nation.population}, Research {nation.research}, Defense{' '}
+                  {nation.defense}, upkeep {nation.upkeep} Gold per Turn
+                </li>
+                <li>Buildings: {listCounts(nation.buildings) || 'none'}</li>
+                {nation.construction.map((c, i) => (
+                  <li key={`construction-${i}`}>
+                    {c.building} under construction, {plural(c.turnsLeft, 'Turn')} left
+                  </li>
+                ))}
+                {nation.damage.map((d) => (
+                  <li key={`damage-${d.building}`}>
+                    {d.building}: {d.destroyed} destroyed{d.damaged > 0 && `, 1 damaged with ${d.damaged} Defense lost`}
+                  </li>
+                ))}
+                {nation.repairs.map((r, i) => (
+                  <li key={`repair-${i}`}>
+                    {r.building} {r.rebuild ? 'being rebuilt' : 'being repaired'}, {plural(r.turnsLeft, 'Turn')} left
+                  </li>
+                ))}
+                <li>Army: {listCounts(nation.army) || 'none'}</li>
+                {nation.training.map((t, i) => (
+                  <li key={`training-${i}`}>
+                    {t.unit} ×{t.count} in training, ready on Turn {t.readyOnTurn}
+                  </li>
+                ))}
+                {nation.warparties.map((w, i) => (
+                  <li key={`warparty-${i}`}>Warparty: {describeWarparty(w)}</li>
+                ))}
+              </ul>
+            </li>
+          ) : (
+            <li key={other.name}>
+              {other.name}
+              {describeStanding(other.standing)}
+            </li>
+          ),
+        )}
+      </ul>
     </>
   )
 }
@@ -409,6 +474,7 @@ function GameScreen({
       ) : (
         <p>Nothing has happened yet.</p>
       )}
+      {nation && <WorldMap nation={nation} />}
       <h3>Nations</h3>
       <ul>
         {room.players.map((p) => (

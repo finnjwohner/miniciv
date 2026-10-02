@@ -676,7 +676,8 @@ public class Game {
 	public NationView viewOf(String nation) {
 		Nation own = nation(nation);
 		List<String> others = remaining().stream().map(Nation::name).filter(name -> !name.equals(nation)).toList();
-		return own.view(turn, others, TRAVEL_TURNS, ruleset, winner);
+		List<MapNation> map = nations.values().stream().map(Nation::onMap).toList();
+		return own.view(turn, others, map, TRAVEL_TURNS, ruleset, winner);
 	}
 
 	private Nation nation(String name) {

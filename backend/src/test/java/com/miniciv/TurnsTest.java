@@ -171,6 +171,8 @@ class TurnsTest {
 		view.put("population", population);
 		view.put("research", research);
 		view.put("otherNations", otherNations);
+		view.put("map", List.of(Map.of("name", "Rome", "standing", "IN_GAME"),
+				Map.of("name", "Carthage", "standing", "IN_GAME")));
 		view.put("availableBuildings", List.of(Map.of("name", "Farm", "gold", 30, "turns", 2, "populationPerTurn", 1,
 				"goldPerPopulation", 0.0, "defense", 0)));
 		view.put("buildings", Map.of());
