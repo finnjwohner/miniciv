@@ -52,6 +52,15 @@ public record Warparty(String target, Map<String, Integer> units, boolean homewa
 	}
 
 	/**
+	 * This Warparty, before it has fought at its target, turning back home: the
+	 * trip home takes as long as it has travelled so far, and at least one
+	 * Turn.
+	 */
+	Warparty turnedBack(int travelTurns) {
+		return new Warparty(target, units, true, Math.max(1, travelTurns - turnsLeft), plunder);
+	}
+
+	/**
 	 * This Warparty holding only the given Units.
 	 */
 	Warparty with(Map<String, Integer> units) {

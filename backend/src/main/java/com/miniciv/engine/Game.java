@@ -54,6 +54,11 @@ public class Game {
 	 */
 	private static final int EXPOSED_POPULATION_MULTIPLIER = 2;
 
+	/**
+	 * The share of a conquered Nation's Gold and Research its conqueror seizes.
+	 */
+	private static final double CONQUEST_SHARE = 0.75;
+
 	private final Ruleset ruleset;
 
 	private final Map<String, Nation> nations = new LinkedHashMap<>();
@@ -61,6 +66,16 @@ public class Game {
 	private final RandomGenerator random;
 
 	private int turn = 1;
+
+	/**
+	 * The Nations conquered so far, in the order they were conquered.
+	 */
+	private final List<String> conquered = new ArrayList<>();
+
+	/**
+	 * The last Nation standing, or null while the Game goes on.
+	 */
+	private String winner;
 
 	public Game(Ruleset ruleset, List<String> nations, RandomGenerator random) {
 		this.ruleset = ruleset;
@@ -74,17 +89,46 @@ public class Game {
 		return turn;
 	}
 
+	/**
+	 * Every Nation that took part in the Game, conquered or not.
+	 */
 	public List<String> nations() {
 		return List.copyOf(nations.keySet());
 	}
 
 	/**
-	 * Resolves the Turn for every Nation at once, then starts the next Turn.
+	 * The Nations conquered so far, in the order they were conquered.
+	 */
+	public List<String> conquered() {
+		return List.copyOf(conquered);
+	}
+
+	/**
+	 * The Nation that won the Game, once it is the only one left.
+	 */
+	public Optional<String> winner() {
+		return Optional.ofNullable(winner);
+	}
+
+	/**
+	 * The Nations still in the Game.
+	 */
+	private List<Nation> remaining() {
+		return nations.values().stream().filter(nation -> !nation.conquered()).toList();
+	}
+
+	/**
+	 * Resolves the Turn for every Nation still in the Game at once, then starts
+	 * the next Turn. Once the Game is won, nothing happens any more.
 	 */
 	public void endTurn() {
+		if (winner != null) {
+			return;
+		}
+		List<Nation> inPlay = remaining();
 		Map<String, List<String>> reports = new LinkedHashMap<>();
-		nations.keySet().forEach(name -> reports.put(name, new ArrayList<>()));
-		for (Nation nation : nations.values()) {
+		inPlay.forEach(nation -> reports.put(nation.name(), new ArrayList<>()));
+		for (Nation nation : inPlay) {
 			List<String> report = reports.get(nation.name());
 			for (String completed : nation.progressConstruction()) {
 				report.add("Your " + completed + " has been built.");
@@ -97,7 +141,7 @@ public class Game {
 				report.add(listed(trained) + " finished training and joined your Army.");
 			}
 		}
-		for (Nation nation : nations.values()) {
+		for (Nation nation : inPlay) {
 			for (Warparty returned : nation.travelHome()) {
 				String plunder = returned.plunder().isNone() ? "" : " with " + returned.plunder().described() + ",";
 				reports.get(nation.name())
@@ -105,13 +149,17 @@ public class Game {
 							+ listed(returned.units()) + " rejoined your Army.");
 			}
 		}
-		for (Nation attacker : nations.values()) {
-			for (Nation.BattleFought fought : attacker.fightBattles(this::fight, TRAVEL_TURNS)) {
-				reportBattle(attacker.name(), fought, reports.get(attacker.name()),
-						reports.get(fought.warparty().target()));
+		for (Nation attacker : inPlay) {
+			// An attacker conquered earlier in this Turn no longer fights.
+			if (attacker.conquered()) {
+				continue;
+			}
+			for (Nation.BattleFought fought : attacker.fightBattles(warparty -> fight(attacker, warparty),
+					TRAVEL_TURNS)) {
+				reportBattle(attacker.name(), fought, reports);
 			}
 		}
-		for (Nation nation : nations.values()) {
+		for (Nation nation : remaining()) {
 			for (Warparty arrived : nation.travelOut()) {
 				reports.get(nation.name())
 					.add("Your Warparty of " + listed(arrived.units()) + " arrived at " + arrived.target()
@@ -121,7 +169,7 @@ public class Game {
 							+ " arrived at your Nation; the Battle will be fought as this Turn ends.");
 			}
 		}
-		for (Nation nation : nations.values()) {
+		for (Nation nation : remaining()) {
 			List<String> report = reports.get(nation.name());
 			int buildingPopulation = nation.populationFromBuildings(ruleset);
 			int buildingGold = nation.goldFromBuildings(ruleset);
@@ -139,38 +187,70 @@ public class Game {
 			if (upkeep > 0) {
 				report.add("Your Units' upkeep cost " + upkeep + " Gold.");
 			}
-			nation.turnReport(new TurnReport(turn, report));
 		}
+		List<Nation> left = remaining();
+		if (left.size() == 1) {
+			winner = left.getFirst().name();
+			nations.values().forEach(Nation::changed);
+			reports.forEach((nation, report) -> report
+				.add(nation.equals(winner) ? "You have won the Game." : winner + " has won the Game."));
+		}
+		inPlay.forEach(nation -> nation.turnReport(new TurnReport(turn, reports.get(nation.name()))));
 		turn++;
 	}
 
 	/**
-	 * Fights a Warparty's Battle against the Army of the Nation it arrived at,
-	 * whose survivors then take plunder scaled by their remaining Strength,
-	 * rounded down. That Strength, rounded down, also wears the Nation's
+	 * Fights a Warparty's Battle against the Army of the Nation it arrived at.
+	 * The Warparty's surviving Strength, rounded down, wears the Nation's
 	 * Defense down, and what is left once Defense is 0 reduces its Population,
-	 * more so if its Army was wiped out or it had neither Army nor Defense.
+	 * more so if its Army was wiped out or it had neither Army nor Defense. A
+	 * Nation left with neither Population nor Army is conquered; otherwise the
+	 * survivors take plunder scaled by their remaining Strength, rounded down.
 	 */
-	private Nation.BattleFought fight(Warparty warparty) {
+	private Nation.BattleFought fight(Nation attacker, Warparty warparty) {
 		Nation defender = nation(warparty.target());
 		Battle battle = Battle.fight(warparty.units(), defender.army(), ruleset, random);
 		defender.lose(battle.armyLost());
 		double strength = battle.warpartySurvivingStrength(ruleset);
-		Plunder plunder = defender.plundered((int) Math.floor(strength * PLUNDER_GOLD_PER_STRENGTH),
-				(int) Math.floor(strength * PLUNDER_RESEARCH_PER_STRENGTH));
 		int wholeStrength = (int) Math.floor(strength);
 		Nation.DefenseWorn defenseWorn = defender.wearDefense(wholeStrength, ruleset);
 		int strengthLeft = wholeStrength - defenseWorn.worn();
 		Exposure exposure = Exposure.of(battle, defenseWorn);
 		int multiplier = exposure == Exposure.DEFENDED ? 1 : EXPOSED_POPULATION_MULTIPLIER;
 		int populationLost = defender.losePopulation(strengthLeft * POPULATION_PER_STRENGTH * multiplier);
-		return new Nation.BattleFought(warparty, battle, plunder, defenseWorn, populationLost, exposure);
+		if (defender.hasNeitherPopulationNorArmy()) {
+			return new Nation.BattleFought(warparty, battle, Plunder.NONE, defenseWorn, populationLost, exposure,
+					conquer(attacker, defender));
+		}
+		Plunder plunder = defender.plundered((int) Math.floor(strength * PLUNDER_GOLD_PER_STRENGTH),
+				(int) Math.floor(strength * PLUNDER_RESEARCH_PER_STRENGTH));
+		return new Nation.BattleFought(warparty, battle, plunder, defenseWorn, populationLost, exposure, null);
 	}
 
-	private static void reportBattle(String attacker, Nation.BattleFought fought, List<String> attackerReport,
-			List<String> defenderReport) {
+	/**
+	 * Takes a Nation out of the Game: its conqueror seizes a large share of its
+	 * Gold and Research, and every other Warparty heading to it turns back
+	 * home.
+	 */
+	private Nation.Conquest conquer(Nation conqueror, Nation conquered) {
+		Plunder seized = conquered.conquer(conqueror.name(), CONQUEST_SHARE);
+		conqueror.seize(seized);
+		this.conquered.add(conquered.name());
+		Map<String, List<Warparty>> turnedBack = new LinkedHashMap<>();
+		for (Nation nation : remaining()) {
+			List<Warparty> turned = nation.turnBackFrom(conquered.name(), TRAVEL_TURNS);
+			if (!turned.isEmpty()) {
+				turnedBack.put(nation.name(), turned);
+			}
+		}
+		return new Nation.Conquest(seized, turnedBack);
+	}
+
+	private void reportBattle(String attacker, Nation.BattleFought fought, Map<String, List<String>> reports) {
 		Battle battle = fought.battle();
 		String defender = fought.warparty().target();
+		List<String> attackerReport = reports.get(attacker);
+		List<String> defenderReport = reports.get(defender);
 		String warparty = listed(battle.warparty());
 		if (battle.army().isEmpty()) {
 			attackerReport.add("Your Warparty of " + warparty + " met no Army at " + defender + ".");
@@ -213,6 +293,23 @@ public class Game {
 			defenderReport.add(attacker + "'s Warparty reduced your Population by " + fought.populationLost()
 					+ defenderReason + ".");
 		}
+		Nation.Conquest conquest = fought.conquest();
+		if (conquest != null) {
+			String seized = conquest.seized().described();
+			attackerReport.add("Your Warparty conquered " + defender + ", seizing " + seized + ", and is heading home.");
+			defenderReport.add(attacker + "'s Warparty conquered your Nation, seizing " + seized
+					+ ". You are knocked out of the Game.");
+			reports.forEach((nation, report) -> {
+				if (!nation.equals(attacker) && !nation(nation).conquered()) {
+					report.add(attacker + " conquered " + defender + ".");
+				}
+			});
+			conquest.turnedBack()
+				.forEach((nation, turned) -> turned.forEach(back -> reports.get(nation)
+					.add("Your Warparty of " + listed(back.units()) + " heading to " + defender
+							+ " turned back home, as " + defender + " was conquered.")));
+			return;
+		}
 		Plunder plunder = fought.plunder();
 		if (plunder.isNone()) {
 			attackerReport.add("Your Warparty took nothing from " + defender + " and is heading home.");
@@ -248,6 +345,12 @@ public class Game {
 	 */
 	public ActionResult act(String nation, Action action) {
 		Nation actor = nation(nation);
+		if (actor.conquered()) {
+			return ActionResult.rejected("Your Nation has been conquered.");
+		}
+		if (winner != null) {
+			return ActionResult.rejected("The Game is over.");
+		}
 		return switch (action) {
 			case Action.StartBuilding start -> ruleset.building(start.building())
 				.map(actor::startBuilding)
@@ -273,6 +376,9 @@ public class Game {
 				}
 				if (!nations.containsKey(send.target())) {
 					yield ActionResult.rejected("There is no Nation called " + send.target() + ".");
+				}
+				if (nation(send.target()).conquered()) {
+					yield ActionResult.rejected(send.target() + " has been conquered.");
 				}
 				if (send.units().isEmpty()
 						|| send.units().values().stream().anyMatch(count -> count == null || count < 1)) {
@@ -318,8 +424,8 @@ public class Game {
 
 	public NationView viewOf(String nation) {
 		Nation own = nation(nation);
-		List<String> others = nations.keySet().stream().filter(name -> !name.equals(nation)).toList();
-		return own.view(turn, others, TRAVEL_TURNS, ruleset);
+		List<String> others = remaining().stream().map(Nation::name).filter(name -> !name.equals(nation)).toList();
+		return own.view(turn, others, TRAVEL_TURNS, ruleset, winner);
 	}
 
 	private Nation nation(String name) {

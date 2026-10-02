@@ -1,8 +1,17 @@
 // Talks to the server's REST API and remembers which Rooms this browser has joined.
 
 export type PlayerView = { id: string; nationName: string; ready: boolean; done: boolean }
-/** `millisLeft` is how long was left in the Turn when the server sent it. */
-export type GameView = { turn: number; nations: string[]; millisLeft: number }
+/**
+ * `millisLeft` is how long was left in the Turn when the server sent it, 0 once the Game is won.
+ * `conquered` lists the Nations knocked out so far; `winner` is null while the Game goes on.
+ */
+export type GameView = {
+  turn: number
+  nations: string[]
+  millisLeft: number
+  conquered: string[]
+  winner: string | null
+}
 /** Room-wide state; `version` rises with every change. */
 export type RoomView = { code: string; version: number; players: PlayerView[]; game: GameView | null }
 
@@ -61,7 +70,7 @@ export type Warparty = {
   plunder: { gold: number; research: number }
 }
 /**
- * What only this Player sees: their own Nation, and just the names of the others.
+ * What only this Player sees: their own Nation, and just the names of the others still in the Game.
  * `version` rises with every change to the Nation.
  */
 export type NationView = {
@@ -93,6 +102,10 @@ export type NationView = {
   /** The Gold the Nation's Units cost each Turn, at home and abroad. */
   upkeep: number
   turnReport: TurnReport | null
+  /** The Nation that conquered this one, knocking this Player out, or null. */
+  conqueredBy: string | null
+  /** The Nation that won the Game, or null while it goes on. */
+  winner: string | null
 }
 
 /** What this browser keeps after joining a Room; the token is secret. */

@@ -36,9 +36,13 @@ public class Room {
 	}
 
 	/**
-	 * @param millisLeft how long is left in the current Turn
+	 * @param millisLeft how long is left in the current Turn, 0 once the Game
+	 *        is won
+	 * @param conquered the Nations conquered so far, in the order they were
+	 *        conquered, whose Players are knocked out
+	 * @param winner the Nation that won the Game, or null while it goes on
 	 */
-	public record GameView(int turn, List<String> nations, long millisLeft) {
+	public record GameView(int turn, List<String> nations, long millisLeft, List<String> conquered, String winner) {
 	}
 
 	/**
@@ -118,19 +122,26 @@ public class Room {
 
 	/**
 	 * Marks a Player done with the current Turn; the Turn ends as soon as every
-	 * Player is done, or when its time runs out. A done sent for a Turn that has
-	 * already ended is ignored, so it cannot carry over into the next Turn.
+	 * Player still in the Game is done, or when its time runs out. A done sent
+	 * for a Turn that has already ended is ignored, so it cannot carry over
+	 * into the next Turn, and so is one from a knocked-out Player or once the
+	 * Game is won.
 	 */
 	public synchronized void done(String token, int turn) {
 		Player player = player(token);
-		if (game == null || game.turn() != turn || player.done()) {
+		if (game == null || game.winner().isPresent() || game.turn() != turn || player.done()
+				|| knockedOut(player)) {
 			return;
 		}
 		player.done(true);
 		version++;
-		if (players.stream().allMatch(Player::done)) {
+		if (players.stream().filter(p -> !knockedOut(p)).allMatch(Player::done)) {
 			endTurn();
 		}
+	}
+
+	private boolean knockedOut(Player player) {
+		return game.conquered().contains(player.nationName());
 	}
 
 	/**
@@ -145,10 +156,10 @@ public class Room {
 	}
 
 	/**
-	 * Whether the current Turn's time has run out.
+	 * Whether the current Turn's time has run out; never once the Game is won.
 	 */
 	synchronized boolean turnIsDue() {
-		return game != null && !clock.instant().isBefore(turnEndsAt);
+		return game != null && game.winner().isEmpty() && !clock.instant().isBefore(turnEndsAt);
 	}
 
 	synchronized void endTurnIfDue() {
@@ -210,9 +221,13 @@ public class Room {
 		List<PlayerView> playerViews = players.stream()
 			.map(p -> new PlayerView(p.id(), p.nationName(), p.ready(), p.done()))
 			.toList();
-		GameView gameView = game == null ? null
-				: new GameView(game.turn(), game.nations(),
-						Math.max(0, Duration.between(clock.instant(), turnEndsAt).toMillis()));
+		GameView gameView = null;
+		if (game != null) {
+			long millisLeft = game.winner().isPresent() ? 0
+					: Math.max(0, Duration.between(clock.instant(), turnEndsAt).toMillis());
+			gameView = new GameView(game.turn(), game.nations(), millisLeft, game.conquered(),
+					game.winner().orElse(null));
+		}
 		return new View(code, version, playerViews, gameView);
 	}
 
