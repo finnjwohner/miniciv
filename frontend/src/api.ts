@@ -82,8 +82,11 @@ export type Warparty = {
 export type Effects = { gold: number; population: number; research: number; damageDefense: number; travelTurns: number }
 /** One choice a Dilemma offers; `worst` is the one that applies if the Player does not choose before the Turn ends. */
 export type Choice = { name: string; effects: Effects; worst: boolean; text: string }
-/** A Dilemma awaiting this Player's choice before the Turn ends, answered by its `name`. */
-export type Dilemma = { name: string; text: string; choices: Choice[] }
+/**
+ * A Dilemma this Player may answer, by its `name`, until the Turn ends; `chosen` is the name of the
+ * choice they made, or null. The choice made, or else the worst, applies as the Turn ends.
+ */
+export type Dilemma = { name: string; text: string; choices: Choice[]; chosen: string | null }
 /**
  * A Nation on the Map, as another Nation knows it: its name, and whether it is still in the Game,
  * was conquered, or was removed as its Player was disconnected for too long.

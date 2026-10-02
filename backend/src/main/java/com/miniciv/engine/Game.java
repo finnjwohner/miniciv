@@ -81,11 +81,10 @@ public class Game {
 	private final List<String> removed = new ArrayList<>();
 
 	/**
-	 * What each Nation still in the Game is to be told in its next Turn Report
-	 * of what happened during the Turn: removals, and the Dilemmas its Player
-	 * answered.
+	 * What each Nation still in the Game is to be told of removals in its next
+	 * Turn Report.
 	 */
-	private final Map<String, List<String>> duringTurnReports = new LinkedHashMap<>();
+	private final Map<String, List<String>> removalReports = new LinkedHashMap<>();
 
 	/**
 	 * The last Nation standing, or null while the Game goes on.
@@ -149,7 +148,7 @@ public class Game {
 		removed.add(name);
 		List<Nation> left = remaining();
 		for (Nation other : left) {
-			List<String> report = duringTurnReports.computeIfAbsent(other.name(), n -> new ArrayList<>());
+			List<String> report = removalReports.computeIfAbsent(other.name(), n -> new ArrayList<>());
 			report.add(name + " was removed from the Game, as its Player was disconnected for too long.");
 			for (Warparty back : other.turnBackFrom(name, TRAVEL_TURNS)) {
 				report.add("Your Warparty of " + listed(back.units()) + " heading to " + name
@@ -159,7 +158,7 @@ public class Game {
 		}
 		if (left.size() == 1) {
 			winner = left.getFirst().name();
-			duringTurnReports.clear();
+			removalReports.clear();
 		}
 	}
 
@@ -188,15 +187,16 @@ public class Game {
 		List<Nation> inPlay = remaining();
 		Map<String, List<String>> reports = new LinkedHashMap<>();
 		inPlay.forEach(nation -> reports.put(nation.name(),
-				new ArrayList<>(duringTurnReports.getOrDefault(nation.name(), List.of()))));
-		duringTurnReports.clear();
+				new ArrayList<>(removalReports.getOrDefault(nation.name(), List.of()))));
+		removalReports.clear();
 		for (Nation nation : inPlay) {
 			List<String> report = reports.get(nation.name());
-			for (Event dilemma : nation.dilemmas()) {
-				Event.Choice worst = dilemma.worstChoice();
-				nation.settleDilemma(dilemma);
-				report.add("You did not choose in time what to do about " + dilemma.name() + ". "
-						+ announced(worst.text(), befall(worst.effects(), nation)));
+			for (Nation.FacedDilemma faced : nation.settleDilemmas()) {
+				Event.Choice choice = faced.applying();
+				String outcome = announced(choice.text(), befall(choice.effects(), nation));
+				report.add(faced.chosen() == null
+						? "You did not choose in time what to do about " + faced.dilemma().name() + ". " + outcome
+						: outcome);
 			}
 			for (String completed : nation.progressConstruction()) {
 				report.add("Your " + completed + " has been built.");
@@ -767,21 +767,22 @@ public class Game {
 	}
 
 	/**
-	 * Applies the choice a Player made for one of their Nation's Dilemmas at
-	 * once, to be described in their next Turn Report.
+	 * Records the choice a Player made for one of their Nation's Dilemmas; it
+	 * applies as the Turn ends, when their Turn Report describes it.
 	 */
 	private ActionResult answer(Nation nation, Action.AnswerDilemma answer) {
-		Optional<Event> dilemma = nation.dilemma(answer.dilemma());
-		if (dilemma.isEmpty()) {
+		Optional<Nation.FacedDilemma> faced = nation.dilemma(answer.dilemma());
+		if (faced.isEmpty()) {
 			return ActionResult.rejected("There is no Dilemma called " + answer.dilemma() + " awaiting your choice.");
 		}
-		Optional<Event.Choice> choice = dilemma.get().choice(answer.choice());
+		if (faced.get().chosen() != null) {
+			return ActionResult.rejected("You have already chosen what to do about " + answer.dilemma() + ".");
+		}
+		Optional<Event.Choice> choice = faced.get().dilemma().choice(answer.choice());
 		if (choice.isEmpty()) {
 			return ActionResult.rejected(answer.dilemma() + " offers no choice called " + answer.choice() + ".");
 		}
-		nation.settleDilemma(dilemma.get());
-		duringTurnReports.computeIfAbsent(nation.name(), n -> new ArrayList<>())
-			.add(announced(choice.get().text(), befall(choice.get().effects(), nation)));
+		nation.choose(faced.get(), choice.get());
 		return ActionResult.ACCEPTED;
 	}
 

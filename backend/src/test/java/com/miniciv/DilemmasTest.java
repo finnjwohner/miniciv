@@ -1,5 +1,6 @@
 package com.miniciv;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -103,24 +104,29 @@ class DilemmasTest {
 	}
 
 	@Test
-	void aPlayerSeesADilemmaAtTheStartOfTheTurnAndTheirAnswerAppliesAtOnce() throws Exception {
+	void aPlayerSeesADilemmaAtTheStartOfTheTurnAndTheirAnswerIsRecordedAtOnce() throws Exception {
 		startAndEndFirstTurn();
 		Map<?, ?> view = rome.privately().next();
 		assertThat(view.get("turn")).isEqualTo(2);
-		assertThat(view.get("dilemmas")).isEqualTo(List.of(Map.of("name", "Outbreak", "text",
-				"Sickness broke out in your Nation", "choices",
-				List.of(Map.of("name", "Quarantine", "effects",
+		Map<String, Object> outbreak = new HashMap<>();
+		outbreak.put("name", "Outbreak");
+		outbreak.put("text", "Sickness broke out in your Nation");
+		outbreak.put("choices", List.of(
+				Map.of("name", "Quarantine", "effects",
 						Map.of("gold", -15, "population", 0, "research", 0, "damageDefense", 0, "travelTurns", 0), "worst",
 						false, "text", "You quarantined the sick"),
-						Map.of("name", "Let it spread", "effects",
-								Map.of("gold", 0, "population", -8, "research", 0, "damageDefense", 0, "travelTurns", 0),
-								"worst", true, "text", "You let the sickness spread")))));
+				Map.of("name", "Let it spread", "effects",
+						Map.of("gold", 0, "population", -8, "research", 0, "damageDefense", 0, "travelTurns", 0), "worst",
+						true, "text", "You let the sickness spread")));
+		outbreak.put("chosen", null);
+		assertThat(view.get("dilemmas")).isEqualTo(List.of(outbreak));
 
 		send(rome, "/dilemmas", Map.of("token", rome.token(), "dilemma", "Outbreak", "choice", "Quarantine"));
 
 		Map<?, ?> answered = rome.privately().next();
-		assertThat(answered.get("dilemmas")).isEqualTo(List.of());
-		assertThat(answered.get("gold")).isEqualTo(45);
+		outbreak.put("chosen", "Quarantine");
+		assertThat(answered.get("dilemmas")).isEqualTo(List.of(outbreak));
+		assertThat(answered.get("gold")).isEqualTo(60);
 	}
 
 	@Test

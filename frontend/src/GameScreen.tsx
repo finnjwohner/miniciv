@@ -376,7 +376,7 @@ function describeChoiceEffects(effects: Effects) {
   return changes.length > 0 ? changes.join(', ') : 'no effect'
 }
 
-/** The Dilemmas awaiting the Player's choice; any left unanswered when the Turn ends get their worst choice. */
+/** This Turn's Dilemmas; the choice made, or else the worst, applies as the Turn ends. */
 function Dilemmas({
   nation,
   onAnswer,
@@ -391,12 +391,17 @@ function Dilemmas({
       {nation.dilemmas.map((dilemma) => (
         <div key={dilemma.name}>
           <p>
-            <strong>{dilemma.text}.</strong> Choose before the Turn ends, or the worst choice applies.
+            <strong>{dilemma.text}.</strong>{' '}
+            {dilemma.chosen
+              ? `You chose ${dilemma.chosen}; it applies as the Turn ends.`
+              : 'Choose before the Turn ends, or the worst choice applies.'}
           </p>
           <ul>
             {dilemma.choices.map((choice) => (
               <li key={choice.name}>
-                <button onClick={() => onAnswer(dilemma.name, choice.name)}>{choice.name}</button>{' '}
+                <button onClick={() => onAnswer(dilemma.name, choice.name)} disabled={dilemma.chosen !== null}>
+                  {choice.name}
+                </button>{' '}
                 {describeChoiceEffects(choice.effects)}
                 {choice.worst && ' (applies if you do not choose)'}
               </li>

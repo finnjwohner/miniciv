@@ -98,7 +98,7 @@ export function useRoom(code: string, token: string) {
     })
   }
 
-  /** Makes a choice for one of the Nation's Dilemmas; a rejection's reason arrives in `rejection`. */
+  /** Makes a choice for one of the Nation's Dilemmas, applying as the Turn ends; a rejection's reason arrives in `rejection`. */
   const answerDilemma = (dilemma: string, choice: string) => {
     setRejection(null)
     client.current?.publish({

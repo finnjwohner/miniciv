@@ -60,10 +60,9 @@ class Nation {
 	private TurnReport turnReport;
 
 	/**
-	 * The Dilemmas awaiting the Player's choice before this Turn ends, in the
-	 * order they happened.
+	 * The Dilemmas to settle as this Turn ends, in the order they happened.
 	 */
-	private final List<Event> dilemmas = new ArrayList<>();
+	private final List<FacedDilemma> dilemmas = new ArrayList<>();
 
 	/**
 	 * The Nation or Nations that conquered this one, such as "Rome and Egypt",
@@ -229,39 +228,65 @@ class Nation {
 	 * Has a Dilemma await the Player's choice before the next Turn ends.
 	 */
 	void faceDilemma(Event dilemma) {
-		dilemmas.add(dilemma);
+		dilemmas.add(new FacedDilemma(dilemma, null));
 		version++;
 	}
 
 	/**
-	 * The Dilemmas the Player may still answer: none once the Nation is out of
-	 * the Game or the Game is won.
+	 * A Dilemma the Nation faces this Turn, and the choice its Player made.
+	 *
+	 * @param chosen the choice made, or null while the Player has not chosen
+	 */
+	record FacedDilemma(Event dilemma, Event.Choice chosen) {
+
+		/**
+		 * The choice that applies as the Turn ends: the one made, or else the
+		 * worst.
+		 */
+		Event.Choice applying() {
+			return chosen == null ? dilemma.worstChoice() : chosen;
+		}
+
+		Dilemma view() {
+			return new Dilemma(dilemma.name(), dilemma.text(), dilemma.choices(),
+					chosen == null ? null : chosen.name());
+		}
+
+	}
+
+	/**
+	 * The Dilemmas the Player sees: none once the Nation is out of the Game or
+	 * the Game is won.
 	 */
 	private List<Dilemma> awaitingChoice(String winner) {
-		return inGame() && winner == null ? dilemmas.stream().map(Event::asDilemma).toList() : List.of();
+		return inGame() && winner == null ? dilemmas.stream().map(FacedDilemma::view).toList() : List.of();
 	}
 
 	/**
-	 * The Dilemmas awaiting the Player's choice, in the order they happened.
+	 * The Dilemma of the given name the Nation faces this Turn, if any.
 	 */
-	List<Event> dilemmas() {
-		return List.copyOf(dilemmas);
+	Optional<FacedDilemma> dilemma(String name) {
+		return dilemmas.stream().filter(faced -> faced.dilemma().name().equals(name)).findFirst();
 	}
 
 	/**
-	 * The Dilemma of the given name awaiting the Player's choice, if any.
+	 * Records the Player's choice for a Dilemma the Nation faces, to apply as
+	 * the Turn ends.
 	 */
-	Optional<Event> dilemma(String name) {
-		return dilemmas.stream().filter(dilemma -> dilemma.name().equals(name)).findFirst();
-	}
-
-	/**
-	 * Stops a Dilemma awaiting the Player's choice, as its choice has been
-	 * made or applied for them.
-	 */
-	void settleDilemma(Event dilemma) {
-		dilemmas.remove(dilemma);
+	void choose(FacedDilemma faced, Event.Choice choice) {
+		dilemmas.set(dilemmas.indexOf(faced), new FacedDilemma(faced.dilemma(), choice));
 		version++;
+	}
+
+	/**
+	 * Stops facing every Dilemma, as the Turn ends.
+	 *
+	 * @return the Dilemmas the Nation faced, in the order they happened
+	 */
+	List<FacedDilemma> settleDilemmas() {
+		List<FacedDilemma> settled = List.copyOf(dilemmas);
+		dilemmas.clear();
+		return settled;
 	}
 
 	/**
