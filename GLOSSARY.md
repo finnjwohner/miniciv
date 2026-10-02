@@ -104,6 +104,10 @@ _Avoid_: Skirmish, ambush
 The fight that happens when Warparties arrive at a Nation; Warparties arriving on the same Turn fight as one. Its outcome is reported the following Turn, and surviving attackers head home.
 _Avoid_: Fight, combat, clash
 
+**Plunder**:
+The Gold and Research a Warparty's surviving Units take from the Nation they fought, scaled by their remaining Strength and carried home to their own Nation.
+_Avoid_: Loot, spoils, booty
+
 **Conquest**:
 Taking a Nation by bringing both its Population and its Army to 0; the conquering Nation seizes a large share of its Gold and Research, and the conquered Player is knocked out.
 _Avoid_: Domination, elimination

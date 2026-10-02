@@ -1,8 +1,10 @@
 package com.miniciv.engine;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.random.RandomGenerator;
 
 import org.junit.jupiter.api.Test;
 
@@ -31,7 +33,21 @@ class GameTest {
 
 	static final String BASE_INCOME_REPORT = "Your Nation gained 10 Gold, 2 Population and 3 Research.";
 
-	Game game = new Game(RULESET, List.of("Rome", "Carthage", "Egypt"), new Random(42));
+	/**
+	 * Luck that leaves every Battle to Strength and counters alone.
+	 */
+	static final RandomGenerator EVEN_LUCK = luck(Long.MIN_VALUE);
+
+	Game game = new Game(RULESET, List.of("Rome", "Carthage", "Egypt"), EVEN_LUCK);
+
+	/**
+	 * A random source that draws the given values over and over; Long.MIN_VALUE
+	 * draws a double of exactly 0.5, 0 the lowest and -1 the highest.
+	 */
+	static RandomGenerator luck(long... draws) {
+		int[] next = { 0 };
+		return () -> draws[next[0]++ % draws.length];
+	}
 
 	@Test
 	void everyNationStartsWithTheSameBaseGoldPopulationAndResearch() {
@@ -427,32 +443,173 @@ class GameTest {
 
 		game.endTurn();
 		NationView rome = game.viewOf("Rome");
-		assertThat(rome.warparties()).containsExactly(new Warparty("Carthage", Map.of("Warrior", 2), true, 3));
-		assertThat(rome.turnReport().lines())
-			.contains("Your Warparty of Warrior ×2 arrived at Carthage and is heading home.");
+		assertThat(rome.warparties()).containsExactly(new Warparty("Carthage", Map.of("Warrior", 2), false, 0));
+		assertThat(rome.turnReport().lines()).contains(
+				"Your Warparty of Warrior ×2 arrived at Carthage; the Battle will be fought as this Turn ends.");
 		assertThat(game.viewOf("Carthage").turnReport().lines()).containsExactly(
-				"A Warparty from Rome arrived at your Nation.", BASE_INCOME_REPORT);
+				"A Warparty from Rome arrived at your Nation; the Battle will be fought as this Turn ends.",
+				BASE_INCOME_REPORT);
 		assertThat(game.viewOf("Egypt").turnReport().lines()).containsExactly(BASE_INCOME_REPORT);
 	}
 
-	@Test
-	void anArrivedWarpartyComesHomeOverTheSameTravelTimeAndRejoinsTheArmy() {
-		armyOf("Rome", "Warrior", 3);
-		game.act("Rome", new Action.SendWarparty("Carthage", Map.of("Warrior", 2)));
-		for (int turn = 1; turn <= 5; turn++) {
+	/**
+	 * Sends a Warparty and ends Turns until it has arrived at its target, so
+	 * that the Battle is fought as the next Turn ends.
+	 */
+	void arrived(String nation, String target, Map<String, Integer> units) {
+		assertThat(game.act(nation, new Action.SendWarparty(target, units))).isEqualTo(ActionResult.ACCEPTED);
+		for (int turn = 1; turn <= 3; turn++) {
 			game.endTurn();
 		}
-		assertThat(game.viewOf("Rome").warparties()).containsExactly(new Warparty("Carthage", Map.of("Warrior", 2), true, 1));
-		assertThat(game.viewOf("Rome").army()).containsExactly(entry("Warrior", 1));
+	}
+
+	@Test
+	void aWarpartyMeetingNoArmyLosesNothingAndCarriesHomePlunderScaledByItsStrength() {
+		armyOf("Rome", "Warrior", 2);
+		arrived("Rome", "Carthage", Map.of("Warrior", 2));
+		int carthageGold = game.viewOf("Carthage").gold();
+		int carthageResearch = game.viewOf("Carthage").research();
+
+		game.endTurn();
+
+		assertThat(game.viewOf("Rome").warparties())
+			.containsExactly(new Warparty("Carthage", Map.of("Warrior", 2), true, 3, new Plunder(18, 6)));
+		assertThat(game.viewOf("Rome").turnReport().lines()).contains(
+				"Your Warparty of Warrior ×2 met no Army at Carthage.",
+				"Your Warparty took 18 Gold and 6 Research from Carthage and is heading home.");
+		NationView carthage = game.viewOf("Carthage");
+		assertThat(carthage.gold()).isEqualTo(carthageGold - 18 + 10);
+		assertThat(carthage.research()).isEqualTo(carthageResearch - 6 + 3);
+		assertThat(carthage.turnReport().lines()).containsExactly(
+				"Rome's Warparty of Warrior ×2 met no Army at your Nation.",
+				"Rome's Warparty took 18 Gold and 6 Research from you and is heading home.", BASE_INCOME_REPORT);
+	}
+
+	@Test
+	void plunderJoinsTheNationWhenItsWarpartyComesHome() {
+		armyOf("Rome", "Warrior", 2);
+		arrived("Rome", "Carthage", Map.of("Warrior", 2));
+		game.endTurn();
+		game.endTurn();
+		game.endTurn();
+		int romeGold = game.viewOf("Rome").gold();
+		int romeResearch = game.viewOf("Rome").research();
 
 		game.endTurn();
 
 		NationView rome = game.viewOf("Rome");
 		assertThat(rome.warparties()).isEmpty();
-		assertThat(rome.army()).containsExactly(entry("Warrior", 3));
-		assertThat(rome.turnReport().lines())
-			.contains("Your Warparty came home from Carthage and Warrior ×2 rejoined your Army.");
-		assertThat(game.viewOf("Carthage").turnReport().lines()).containsExactly(BASE_INCOME_REPORT);
+		assertThat(rome.army()).containsExactly(entry("Warrior", 2));
+		assertThat(rome.gold()).isEqualTo(romeGold + 18 + 10 - 2);
+		assertThat(rome.research()).isEqualTo(romeResearch + 6 + 3);
+		assertThat(rome.turnReport().lines()).contains(
+				"Your Warparty came home from Carthage with 18 Gold and 6 Research, and Warrior ×2 rejoined your Army.");
+	}
+
+	@Test
+	void aMuchStrongerWarpartyWipesOutTheArmyWithoutLossAndBothSidesAreToldOfTheBattle() {
+		game.endTurn();
+		armyOf("Rome", "Warrior", 4);
+		armyOf("Carthage", "Warrior", 1);
+		arrived("Rome", "Carthage", Map.of("Warrior", 4));
+		int carthageGold = game.viewOf("Carthage").gold();
+		int carthageResearch = game.viewOf("Carthage").research();
+
+		game.endTurn();
+
+		assertThat(game.viewOf("Rome").warparties())
+			.containsExactly(new Warparty("Carthage", Map.of("Warrior", 4), true, 3, new Plunder(36, 12)));
+		assertThat(game.viewOf("Rome").turnReport().lines()).contains(
+				"Your Warparty of Warrior ×4 fought Carthage's Army of Warrior ×1. You lost no Units and Carthage lost Warrior ×1.",
+				"Your Warparty took 36 Gold and 12 Research from Carthage and is heading home.");
+		NationView carthage = game.viewOf("Carthage");
+		assertThat(carthage.army()).isEmpty();
+		assertThat(carthage.gold()).isEqualTo(carthageGold - 36 + 10);
+		assertThat(carthage.research()).isEqualTo(carthageResearch - 12 + 3);
+		assertThat(carthage.turnReport().lines()).containsExactly(
+				"Your Army of Warrior ×1 fought Rome's Warparty of Warrior ×4. You lost Warrior ×1 and Rome lost no Units.",
+				"Rome's Warparty took 36 Gold and 12 Research from you and is heading home.", BASE_INCOME_REPORT);
+	}
+
+	@Test
+	void inACloseFightBothSidesLoseUnitsAndTheSurvivorsPlunderLess() {
+		game.endTurn();
+		armyOf("Rome", "Warrior", 2);
+		armyOf("Carthage", "Warrior", 2);
+		arrived("Rome", "Carthage", Map.of("Warrior", 2));
+
+		game.endTurn();
+
+		assertThat(game.viewOf("Rome").warparties())
+			.containsExactly(new Warparty("Carthage", Map.of("Warrior", 1), true, 3, new Plunder(9, 3)));
+		assertThat(game.viewOf("Carthage").army()).containsExactly(entry("Warrior", 1));
+		assertThat(game.viewOf("Rome").turnReport().lines()).contains(
+				"Your Warparty of Warrior ×2 fought Carthage's Army of Warrior ×2. You lost Warrior ×1 and Carthage lost Warrior ×1.");
+	}
+
+	@Test
+	void unitsFightingATypeTheyCounterAreStrongerSoEvenNumbersAreNoLongerAnEvenFight() {
+		armyOf("Rome", "Archer", 2);
+		armyOf("Carthage", "Warrior", 2);
+		arrived("Rome", "Carthage", Map.of("Archer", 2));
+
+		game.endTurn();
+
+		assertThat(game.viewOf("Rome").warparties())
+			.containsExactly(new Warparty("Carthage", Map.of("Archer", 2), true, 3, new Plunder(18, 6)));
+		assertThat(game.viewOf("Carthage").army()).isEmpty();
+		assertThat(game.viewOf("Rome").turnReport().lines()).contains(
+				"Your Warparty of Archer ×2 fought Carthage's Army of Warrior ×2. You lost no Units and Carthage lost Warrior ×2.");
+	}
+
+	@Test
+	void unitsTheDefenderFinishesTrainingInTheTurnAWarpartyArrivesDefendAgainstIt() {
+		armyOf("Rome", "Warrior", 2);
+		arrived("Rome", "Carthage", Map.of("Warrior", 2));
+		assertThat(game.viewOf("Carthage").army()).isEmpty();
+		game.act("Carthage", new Action.TrainUnits("Warrior", 3));
+
+		game.endTurn();
+
+		assertThat(game.viewOf("Rome").warparties()).isEmpty();
+		assertThat(game.viewOf("Carthage").army()).containsExactly(entry("Warrior", 2));
+		assertThat(game.viewOf("Carthage").turnReport().lines()).containsSequence(
+				"Warrior ×3 finished training and joined your Army.",
+				"Your Army of Warrior ×3 fought Rome's Warparty of Warrior ×2. You lost Warrior ×1 and Rome lost Warrior ×2.",
+				"Rome's Warparty was destroyed.");
+	}
+
+	@Test
+	void luckMovesTheOutcomeOfABattleALittle() {
+		game = new Game(RULESET, List.of("Rome", "Carthage", "Egypt"), luck(-1, 0));
+		game.endTurn();
+		armyOf("Rome", "Warrior", 4);
+		game.endTurn();
+		armyOf("Carthage", "Warrior", 4);
+		arrived("Rome", "Carthage", Map.of("Warrior", 4));
+
+		game.endTurn();
+
+		assertThat(game.viewOf("Rome").turnReport().lines()).contains(
+				"Your Warparty of Warrior ×4 fought Carthage's Army of Warrior ×4. You lost Warrior ×1 and Carthage lost Warrior ×3.");
+	}
+
+	@Test
+	void aBattleFoughtFromTheSameSeedHasTheSameOutcome() {
+		List<List<String>> reports = new ArrayList<>();
+		for (int replay = 1; replay <= 2; replay++) {
+			game = new Game(RULESET, List.of("Rome", "Carthage", "Egypt"), new Random(7));
+			game.endTurn();
+			armyOf("Rome", "Warrior", 4);
+			game.endTurn();
+			armyOf("Carthage", "Warrior", 4);
+			arrived("Rome", "Carthage", Map.of("Warrior", 4));
+			game.endTurn();
+			reports.add(game.viewOf("Rome").turnReport().lines());
+		}
+
+		assertThat(reports.get(0)).anyMatch(line -> line.startsWith("Your Warparty of Warrior ×4 fought"));
+		assertThat(reports.get(1)).isEqualTo(reports.get(0));
 	}
 
 	@Test

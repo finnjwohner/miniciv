@@ -146,8 +146,16 @@ function listUnits(units: Record<string, number>) {
 }
 
 function describeWarparty(warparty: Warparty) {
-  const where = warparty.homeward ? `heading home from ${warparty.target}` : `travelling to ${warparty.target}`
-  return `${listUnits(warparty.units)} — ${where}, ${plural(warparty.turnsLeft, 'Turn')} left`
+  const units = listUnits(warparty.units)
+  if (!warparty.homeward && warparty.turnsLeft === 0) {
+    return `${units} — at ${warparty.target}, fighting the Battle as this Turn ends`
+  }
+  if (!warparty.homeward) {
+    return `${units} — travelling to ${warparty.target}, ${plural(warparty.turnsLeft, 'Turn')} left`
+  }
+  const { gold, research } = warparty.plunder
+  const plunder = gold > 0 || research > 0 ? `, carrying ${gold} Gold and ${research} Research` : ''
+  return `${units} — heading home from ${warparty.target}${plunder}, ${plural(warparty.turnsLeft, 'Turn')} left`
 }
 
 /** The Nation's Warparties abroad, and a form to send Units from the Army to another Nation. */
