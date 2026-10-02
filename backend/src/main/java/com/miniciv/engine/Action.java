@@ -53,6 +53,26 @@ public sealed interface Action {
 	}
 
 	/**
+	 * Offers Tribute to the Nation whose Warparty arrived at this one, in
+	 * return for Recalling it; the offer reaches that Nation's Player at once.
+	 *
+	 * @param nation the Nation that sent the Warparty
+	 * @param warparty the Warparty's id among that Nation's Warparties
+	 */
+	record OfferTribute(String nation, int warparty, int gold, int population) implements Action {
+	}
+
+	/**
+	 * Accepts or refuses the Tribute offered for one of the Nation's
+	 * Warparties. Accepting takes the Tribute at once and Recalls the
+	 * Warparty, so there is no Battle.
+	 *
+	 * @param warparty the Warparty's id
+	 */
+	record AnswerTribute(int warparty, boolean accept) implements Action {
+	}
+
+	/**
 	 * Makes a choice for one of the Nation's Dilemmas, which applies as the
 	 * Turn ends.
 	 *

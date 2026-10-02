@@ -92,16 +92,13 @@ public class Rooms {
 		});
 	}
 
+	/**
+	 * Applies a Player's Action, sending every Player whose Nation's view it
+	 * changed their new view: the acting Player's, and another's when the
+	 * Action reaches across, such as Tribute.
+	 */
 	public ActionResult act(String code, String token, Action action) {
-		Room room = find(code).orElseThrow();
-		synchronized (room) {
-			ActionResult result = room.act(token, action);
-			if (result.accepted()) {
-				String playerId = room.playerIdFor(token).orElseThrow();
-				messaging.convertAndSendToUser(playerId, "/queue/game", room.nationViewOf(playerId));
-			}
-			return result;
-		}
+		return change(find(code).orElseThrow(), room -> room.act(token, action));
 	}
 
 	/**

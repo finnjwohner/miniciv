@@ -109,7 +109,8 @@ class Nation {
 		version++;
 	}
 
-	NationView view(int turn, List<MapNation> map, int travelTurns, Ruleset ruleset, String winner) {
+	NationView view(int turn, List<MapNation> map, int travelTurns, List<ArrivedWarparty> arrivals,
+			List<Tribute> tributes, Ruleset ruleset, String winner) {
 		List<BuildingType> availableBuildings = ruleset.buildings()
 			.stream()
 			.filter(building -> hasAccessTo(building.name(), ruleset))
@@ -119,7 +120,7 @@ class Nation {
 				Collections.unmodifiableMap(new LinkedHashMap<>(buildings)), construction, repairs, defense(ruleset), damage(ruleset),
 				availableUnits,
 				Collections.unmodifiableMap(new LinkedHashMap<>(army)), training, warparties, travelTurns, upkeep(ruleset),
-				techTree(ruleset), turnReport, awaitingChoice(winner),
+				arrivals, tributes, techTree(ruleset), turnReport, awaitingChoice(winner),
 				conqueredBy, winner);
 	}
 
@@ -210,6 +211,10 @@ class Nation {
 			}
 		}
 		return turnedBack;
+	}
+
+	int gold() {
+		return gold;
 	}
 
 	int population() {
@@ -341,6 +346,13 @@ class Nation {
 				Math.max(research, -this.research));
 		gain(change.gold(), change.population(), change.research());
 		return change;
+	}
+
+	/**
+	 * Whether the Nation has at least the given Gold and Population.
+	 */
+	boolean canAfford(int gold, int population) {
+		return gold <= this.gold && population <= this.population;
 	}
 
 	void gain(int gold, int population, int research) {

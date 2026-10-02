@@ -103,6 +103,21 @@ export type TechTreeEntry = {
   unlocks: string[]
   standing: 'UNLOCKED' | 'AVAILABLE' | 'LOCKED'
 }
+/** Another Nation's Warparty that arrived at this one and waits for the Battle as this Turn ends. */
+export type ArrivedWarparty = { nation: string; warparty: number }
+/**
+ * Tribute offered this Turn by the defending Nation `from` to the attacking Nation `to` in return for
+ * Recalling its Warparty `warparty`. `answer` is `NONE` until the attacker accepts or refuses; unanswered
+ * as the Turn ends, the offer lapses and the Battle goes ahead.
+ */
+export type Tribute = {
+  from: string
+  to: string
+  warparty: number
+  gold: number
+  population: number
+  answer: 'NONE' | 'ACCEPTED' | 'REFUSED'
+}
 /**
  * A Nation on the Map, as another Nation knows it: its name, and whether it is still in the Game,
  * was conquered, or was removed as its Player was disconnected for too long.
@@ -143,6 +158,10 @@ export type NationView = {
   travelTurns: number
   /** The Gold the Nation's Units cost each Turn, at home and abroad. */
   upkeep: number
+  /** Other Nations' Warparties that arrived at this one and wait for the Battle as this Turn ends. */
+  arrivals: ArrivedWarparty[]
+  /** The Tribute this Nation offered or was offered this Turn, in the order offered. */
+  tributes: Tribute[]
   /** Every Technology in the Tech Tree, in the ruleset's order. */
   techTree: TechTreeEntry[]
   turnReport: TurnReport | null

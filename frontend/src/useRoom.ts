@@ -125,6 +125,30 @@ export function useRoom(code: string, token: string) {
     })
   }
 
+  /**
+   * Offers Tribute against another Nation's Warparty that arrived at this one; the offer reaches that
+   * Nation's Player at once. A rejection's reason arrives in `rejection`.
+   */
+  const offerTribute = (nation: string, warparty: number, gold: number, population: number) => {
+    setRejection(null)
+    client.current?.publish({
+      destination: `/app/rooms/${code}/tributes`,
+      body: JSON.stringify({ token, nation, warparty, gold, population }),
+    })
+  }
+
+  /**
+   * Accepts or refuses the Tribute offered for one of the Nation's Warparties; accepting takes it at once
+   * and Recalls the Warparty. A rejection's reason arrives in `rejection`.
+   */
+  const answerTribute = (warparty: number, accept: boolean) => {
+    setRejection(null)
+    client.current?.publish({
+      destination: `/app/rooms/${code}/tributes/answers`,
+      body: JSON.stringify({ token, warparty, accept }),
+    })
+  }
+
   /** Marks the Player done with the given Turn; ignored if that Turn has already ended. */
   const markDone = (turn: number) =>
     client.current?.publish({
@@ -145,6 +169,8 @@ export function useRoom(code: string, token: string) {
     recallWarparty,
     answerDilemma,
     unlockTechnology,
+    offerTribute,
+    answerTribute,
     markDone,
   }
 }

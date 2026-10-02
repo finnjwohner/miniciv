@@ -7,6 +7,7 @@ import type {
   MapNation,
   NationView,
   TechTreeEntry,
+  Tribute,
   UnitType,
   Warparty,
 } from './api'
@@ -324,6 +325,116 @@ function Warparties({
   )
 }
 
+/** Such as "20 Gold and 3 Population". */
+function describeTribute(tribute: Tribute) {
+  if (tribute.population === 0) return `${tribute.gold} Gold`
+  if (tribute.gold === 0) return `${tribute.population} Population`
+  return `${tribute.gold} Gold and ${tribute.population} Population`
+}
+
+/** The Gold and Population to offer one arrived Warparty as Tribute. */
+function TributeOffer({
+  nation,
+  warparty,
+  onOffer,
+}: {
+  nation: string
+  warparty: number
+  onOffer: (nation: string, warparty: number, gold: number, population: number) => void
+}) {
+  const [gold, setGold] = useState(0)
+  const [population, setPopulation] = useState(0)
+  return (
+    <>
+      <input
+        type="number"
+        min={0}
+        value={gold}
+        onChange={(e) => setGold(Math.floor(Number(e.target.value)))}
+        aria-label={`Gold to offer ${nation}`}
+        style={{ width: '4em' }}
+      />{' '}
+      Gold and{' '}
+      <input
+        type="number"
+        min={0}
+        value={population}
+        onChange={(e) => setPopulation(Math.floor(Number(e.target.value)))}
+        aria-label={`Population to offer ${nation}`}
+        style={{ width: '4em' }}
+      />{' '}
+      Population{' '}
+      <button onClick={() => onOffer(nation, warparty, gold, population)} disabled={gold + population <= 0}>
+        Offer Tribute
+      </button>
+    </>
+  )
+}
+
+/**
+ * Tribute this Turn: each enemy Warparty that arrived at the Nation, with a form to offer its attacker
+ * Tribute or how that offer was answered, and each offer made to this Nation, with buttons to accept or
+ * refuse it.
+ */
+function Tributes({
+  nation,
+  onOffer,
+  onAnswer,
+}: {
+  nation: NationView
+  onOffer: (nation: string, warparty: number, gold: number, population: number) => void
+  onAnswer: (warparty: number, accept: boolean) => void
+}) {
+  const received = nation.tributes.filter((t) => t.to === nation.nation)
+  const offeredFor = (attacker: string, warparty: number) =>
+    nation.tributes.find((t) => t.from === nation.nation && t.to === attacker && t.warparty === warparty)
+  const accepted = nation.tributes.filter((t) => t.from === nation.nation && t.answer === 'ACCEPTED')
+  if (nation.arrivals.length === 0 && received.length === 0 && accepted.length === 0) return null
+  return (
+    <>
+      <h3>Tribute</h3>
+      <ul>
+        {nation.arrivals.map((a) => {
+          const offered = offeredFor(a.nation, a.warparty)
+          return (
+            <li key={`${a.nation}-${a.warparty}`}>
+              A Warparty from {a.nation} has arrived; the Battle will be fought as this Turn ends.{' '}
+              {!offered ? (
+                <TributeOffer nation={a.nation} warparty={a.warparty} onOffer={onOffer} />
+              ) : offered.answer === 'REFUSED' ? (
+                `${a.nation} refused your Tribute of ${describeTribute(offered)}.`
+              ) : (
+                `You offered ${a.nation} ${describeTribute(offered)}; waiting for their answer.`
+              )}
+            </li>
+          )
+        })}
+        {accepted.map((t) => (
+          <li key={`${t.to}-${t.warparty}`}>
+            {t.to} accepted your Tribute of {describeTribute(t)}, and its Warparty turned back home.
+          </li>
+        ))}
+        {received.map((t) => (
+          <li key={`${t.from}-${t.warparty}`}>
+            {t.from} offers you {describeTribute(t)} to Recall your Warparty.{' '}
+            {t.answer === 'NONE' ? (
+              <>
+                <button onClick={() => onAnswer(t.warparty, true)}>Accept</button>{' '}
+                <button onClick={() => onAnswer(t.warparty, false)}>Refuse</button> Unanswered as the Turn ends, the
+                Battle goes ahead.
+              </>
+            ) : t.answer === 'ACCEPTED' ? (
+              'You accepted it.'
+            ) : (
+              'You refused it.'
+            )}
+          </li>
+        ))}
+      </ul>
+    </>
+  )
+}
+
 /** How the Map marks a Nation no longer in the Game. */
 function describeStanding(standing: MapNation['standing']) {
   if (standing === 'CONQUERED') return ' — knocked out'
@@ -489,6 +600,8 @@ function GameScreen({
   onRecallWarparty,
   onAnswerDilemma,
   onUnlockTechnology,
+  onOfferTribute,
+  onAnswerTribute,
   onDone,
 }: {
   room: ReceivedRoom
@@ -503,6 +616,8 @@ function GameScreen({
   onRecallWarparty: (warparty: number) => void
   onAnswerDilemma: (dilemma: string, choice: string) => void
   onUnlockTechnology: (technology: string) => void
+  onOfferTribute: (nation: string, warparty: number, gold: number, population: number) => void
+  onAnswerTribute: (warparty: number, accept: boolean) => void
   onDone: (turn: number) => void
 }) {
   const now = useNow()
@@ -568,6 +683,7 @@ function GameScreen({
           </ul>
           {rejection && <p role="alert">{rejection}</p>}
           <Dilemmas nation={nation} onAnswer={onAnswerDilemma} />
+          <Tributes nation={nation} onOffer={onOfferTribute} onAnswer={onAnswerTribute} />
           <Buildings
             nation={nation}
             onStart={onStartBuilding}
