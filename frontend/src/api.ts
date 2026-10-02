@@ -18,16 +18,20 @@ export type BuildingType = {
   defense: number
 }
 /**
- * The Defense a Nation's defensive Buildings of one type have lost: `destroyed` of them are
- * destroyed, and one more is `damaged`. Repairing and rebuilding them all costs `repairGold`.
+ * The Defense a Nation's defensive Buildings of one type have lost and are not yet being repaired or
+ * rebuilt for: `destroyed` of them are destroyed, and one more has lost `damaged` Defense (0 if none has).
+ * Repairing that one costs `repairGold` and takes `repairTurns`; rebuilding a destroyed one costs what
+ * constructing it does.
  */
 export type BuildingDamage = {
   building: string
   destroyed: number
-  damaged: boolean
-  defenseLost: number
+  damaged: number
   repairGold: number
+  repairTurns: number
 }
+/** A defensive Building being repaired, or rebuilt if `rebuild`, restoring `defense` once done. */
+export type Repair = { building: string; rebuild: boolean; defense: number; turnsLeft: number }
 /** A Building under construction. */
 export type Construction = { building: string; turnsLeft: number }
 /** A kind of Unit, trained by paying Gold and Population upfront and then Gold upkeep every Turn. */
@@ -72,6 +76,8 @@ export type NationView = {
   /** How many of each Building the Nation has completed. */
   buildings: Record<string, number>
   construction: Construction[]
+  /** The defensive Buildings being repaired or rebuilt, in the order started. */
+  repairs: Repair[]
   /** The Nation's Defense, raised by its defensive Buildings. */
   defense: number
   /** The defensive Buildings that have lost Defense, by type. */

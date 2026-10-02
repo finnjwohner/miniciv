@@ -29,22 +29,55 @@ function plural(count: number, word: string) {
   return `${count} ${word}${count === 1 ? '' : 's'}`
 }
 
-function describeDamage(damage: BuildingDamage) {
-  const harmed = []
-  if (damage.destroyed > 0) harmed.push(`${damage.destroyed} destroyed`)
-  if (damage.damaged) harmed.push('1 damaged')
-  return `${harmed.join(', ')}, ${damage.defenseLost} Defense lost`
+/** A defensive Building type's damaged and destroyed Buildings, with buttons to repair and rebuild them. */
+function Damage({
+  damage,
+  building,
+  nation,
+  onRepair,
+  onRebuild,
+}: {
+  damage: BuildingDamage
+  building: BuildingType
+  nation: NationView
+  onRepair: (building: string) => void
+  onRebuild: (building: string) => void
+}) {
+  return (
+    <ul>
+      {damage.damaged > 0 && (
+        <li>
+          1 damaged, {damage.damaged} Defense lost{' '}
+          <button onClick={() => onRepair(damage.building)} disabled={damage.repairGold > nation.gold}>
+            Repair {damage.building}
+          </button>{' '}
+          {damage.repairGold} Gold, {plural(damage.repairTurns, 'Turn')}
+        </li>
+      )}
+      {damage.destroyed > 0 && (
+        <li>
+          {damage.destroyed} destroyed{' '}
+          <button onClick={() => onRebuild(damage.building)} disabled={building.gold > nation.gold}>
+            Rebuild {damage.building}
+          </button>{' '}
+          {building.gold} Gold, {plural(building.turns, 'Turn')}
+        </li>
+      )}
+    </ul>
+  )
 }
 
-/** The Buildings a Nation has and is constructing, and the ones it can start or repair. */
+/** The Buildings a Nation has and is constructing or repairing, and the ones it can start, repair or rebuild. */
 function Buildings({
   nation,
   onStart,
   onRepair,
+  onRebuild,
 }: {
   nation: NationView
   onStart: (building: string) => void
   onRepair: (building: string) => void
+  onRebuild: (building: string) => void
 }) {
   const owned = Object.entries(nation.buildings)
   return (
@@ -56,19 +89,19 @@ function Buildings({
         <ul>
           {owned.map(([name, count]) => {
             const damage = nation.damage.find((d) => d.building === name)
+            const building = nation.availableBuildings.find((b) => b.name === name)
             return (
               <li key={name}>
                 {name}
                 {count > 1 && ` ×${count}`}
-                {damage && (
-                  <>
-                    {' '}
-                    — {describeDamage(damage)}{' '}
-                    <button onClick={() => onRepair(name)} disabled={damage.repairGold > nation.gold}>
-                      Repair {name}
-                    </button>{' '}
-                    {damage.repairGold} Gold
-                  </>
+                {damage && building && (
+                  <Damage
+                    damage={damage}
+                    building={building}
+                    nation={nation}
+                    onRepair={onRepair}
+                    onRebuild={onRebuild}
+                  />
                 )}
               </li>
             )
@@ -76,6 +109,11 @@ function Buildings({
           {nation.construction.map((c, i) => (
             <li key={i}>
               {c.building} — under construction, {plural(c.turnsLeft, 'Turn')} left
+            </li>
+          ))}
+          {nation.repairs.map((r, i) => (
+            <li key={i}>
+              {r.building} — {r.rebuild ? 'being rebuilt' : 'being repaired'}, {plural(r.turnsLeft, 'Turn')} left
             </li>
           ))}
         </ul>
@@ -268,6 +306,7 @@ function GameScreen({
   rejection,
   onStartBuilding,
   onRepairBuilding,
+  onRebuildBuilding,
   onTrainUnits,
   onSendWarparty,
   onDone,
@@ -278,6 +317,7 @@ function GameScreen({
   rejection: string | null
   onStartBuilding: (building: string) => void
   onRepairBuilding: (building: string) => void
+  onRebuildBuilding: (building: string) => void
   onTrainUnits: (unit: string, count: number) => void
   onSendWarparty: (target: string, units: Record<string, number>) => void
   onDone: (turn: number) => void
@@ -301,7 +341,12 @@ function GameScreen({
             <li>Defense: {nation.defense}</li>
           </ul>
           {rejection && <p role="alert">{rejection}</p>}
-          <Buildings nation={nation} onStart={onStartBuilding} onRepair={onRepairBuilding} />
+          <Buildings
+            nation={nation}
+            onStart={onStartBuilding}
+            onRepair={onRepairBuilding}
+            onRebuild={onRebuildBuilding}
+          />
           <Army nation={nation} onTrain={onTrainUnits} />
           <Warparties nation={nation} onSend={onSendWarparty} />
         </>

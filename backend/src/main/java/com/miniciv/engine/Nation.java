@@ -37,6 +37,11 @@ class Nation {
 	private final Map<String, Integer> defenseLost = new LinkedHashMap<>();
 
 	/**
+	 * The defensive Buildings being repaired or rebuilt, in the order started.
+	 */
+	private final List<Repair> repairs = new ArrayList<>();
+
+	/**
 	 * The Units in training, in the order started.
 	 */
 	private final List<Training> training = new ArrayList<>();
@@ -77,7 +82,7 @@ class Nation {
 
 	NationView view(int turn, List<String> otherNations, int travelTurns, Ruleset ruleset) {
 		return new NationView(version, turn, name, gold, population, research, otherNations, ruleset.buildings(),
-				Collections.unmodifiableMap(new LinkedHashMap<>(buildings)), construction, defense(ruleset), damage(ruleset),
+				Collections.unmodifiableMap(new LinkedHashMap<>(buildings)), construction, repairs, defense(ruleset), damage(ruleset),
 				ruleset.units(),
 				Collections.unmodifiableMap(new LinkedHashMap<>(army)), training, warparties, travelTurns, upkeep(ruleset),
 				turnReport);
@@ -101,31 +106,58 @@ class Nation {
 	}
 
 	/**
-	 * Repairs a defensive Building type's damaged Building and rebuilds its
-	 * destroyed ones, for Gold in proportion to the Defense they lost.
+	 * Pays upfront to repair a defensive Building type's damaged Building: Gold
+	 * and Turns in proportion to the Defense it lost, rounded up.
 	 */
 	ActionResult repair(BuildingType building) {
-		int lost = defenseLost.getOrDefault(building.name(), 0);
-		if (lost == 0) {
-			return ActionResult.rejected("You have no damaged or destroyed " + building.name() + ".");
+		int damaged = unrepaired(building) % Math.max(1, building.defense());
+		if (damaged == 0) {
+			return ActionResult.rejected("You have no damaged " + building.name() + " to repair.");
 		}
-		int cost = repairGold(building, lost);
+		return startRepair(building, false, damaged, "Repairing ");
+	}
+
+	/**
+	 * Pays upfront to rebuild one of a defensive Building type's destroyed
+	 * Buildings, for the Gold and Turns constructing it costs.
+	 */
+	ActionResult rebuild(BuildingType building) {
+		if (building.defense() == 0 || unrepaired(building) < building.defense()) {
+			return ActionResult.rejected("You have no destroyed " + building.name() + " to rebuild.");
+		}
+		return startRepair(building, true, building.defense(), "Rebuilding ");
+	}
+
+	private ActionResult startRepair(BuildingType building, boolean rebuild, int defense, String doing) {
+		int cost = proportion(building.gold(), defense, building);
 		if (cost > gold) {
 			return ActionResult
-				.rejected("Repairing " + building.name() + " costs " + cost + " Gold, but you have only " + gold + ".");
+				.rejected(doing + building.name() + " costs " + cost + " Gold, but you have only " + gold + ".");
 		}
 		gold -= cost;
-		defenseLost.remove(building.name());
+		repairs.add(new Repair(building.name(), rebuild, defense, proportion(building.turns(), defense, building)));
 		version++;
 		return ActionResult.ACCEPTED;
 	}
 
 	/**
-	 * The Gold to restore Defense a Building type lost: its Gold for each whole
-	 * Building's worth, rounded up.
+	 * A Building's Gold or Turns in proportion to the share of its Defense
+	 * given, rounded up.
 	 */
-	private static int repairGold(BuildingType building, int defenseLost) {
-		return (int) Math.ceilDiv((long) defenseLost * building.gold(), building.defense());
+	private static int proportion(int whole, int defense, BuildingType building) {
+		return (int) Math.ceilDiv((long) whole * defense, building.defense());
+	}
+
+	/**
+	 * The Defense a Building type has lost and is not yet being repaired or
+	 * rebuilt for.
+	 */
+	private int unrepaired(BuildingType building) {
+		int repairing = repairs.stream()
+			.filter(r -> r.building().equals(building.name()))
+			.mapToInt(Repair::defense)
+			.sum();
+		return defenseLost.getOrDefault(building.name(), 0) - repairing;
 	}
 
 	ActionResult trainUnits(UnitType unit, int count, int turn) {
@@ -227,9 +259,10 @@ class Nation {
 	 * Population its target lost.
 	 *
 	 * @param warparty the Warparty as it was before the Battle
+	 * @param exposure how exposed the target's Population was
 	 */
 	record BattleFought(Warparty warparty, Battle battle, Plunder plunder, DefenseWorn defenseWorn,
-			int populationLost) {
+			int populationLost, Exposure exposure) {
 	}
 
 	/**
@@ -285,11 +318,12 @@ class Nation {
 	private List<BuildingDamage> damage(Ruleset ruleset) {
 		List<BuildingDamage> damage = new ArrayList<>();
 		for (String building : buildings.keySet()) {
-			int lost = defenseLost.getOrDefault(building, 0);
-			if (lost > 0) {
-				BuildingType type = ruleset.building(building).orElseThrow();
-				damage.add(new BuildingDamage(building, lost / type.defense(), lost % type.defense() != 0, lost,
-						repairGold(type, lost)));
+			BuildingType type = ruleset.building(building).orElseThrow();
+			int unrepaired = unrepaired(type);
+			if (unrepaired > 0) {
+				int damaged = unrepaired % type.defense();
+				damage.add(new BuildingDamage(building, unrepaired / type.defense(), damaged,
+						proportion(type.gold(), damaged, type), proportion(type.turns(), damaged, type)));
 			}
 		}
 		return damage;
@@ -525,6 +559,29 @@ class Nation {
 			}
 		}
 		return completed;
+	}
+
+	/**
+	 * Moves every repair one Turn on. A finished one restores the Defense it
+	 * was paid for, or as much as its Building type has lost by then.
+	 *
+	 * @return the repairs finished, in the order started
+	 */
+	List<Repair> progressRepairs() {
+		List<Repair> finished = new ArrayList<>();
+		for (var it = repairs.listIterator(); it.hasNext();) {
+			Repair current = it.next();
+			if (current.turnsLeft() == 1) {
+				it.remove();
+				defenseLost.computeIfPresent(current.building(),
+						(building, lost) -> lost <= current.defense() ? null : lost - current.defense());
+				finished.add(current);
+			}
+			else {
+				it.set(new Repair(current.building(), current.rebuild(), current.defense(), current.turnsLeft() - 1));
+			}
+		}
+		return finished;
 	}
 
 }

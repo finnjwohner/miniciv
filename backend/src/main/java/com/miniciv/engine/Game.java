@@ -49,10 +49,10 @@ public class Game {
 	private static final int POPULATION_PER_STRENGTH = 1;
 
 	/**
-	 * How much more Population a Warparty reduces its target's by once the
-	 * target has no Army left.
+	 * How much more Population a Warparty reduces its target's by when the
+	 * target's Army was wiped out, or it had neither Army nor Defense.
 	 */
-	private static final int NO_ARMY_POPULATION_MULTIPLIER = 2;
+	private static final int EXPOSED_POPULATION_MULTIPLIER = 2;
 
 	private final Ruleset ruleset;
 
@@ -88,6 +88,9 @@ public class Game {
 			List<String> report = reports.get(nation.name());
 			for (String completed : nation.progressConstruction()) {
 				report.add("Your " + completed + " has been built.");
+			}
+			for (Repair finished : nation.progressRepairs()) {
+				report.add("Your " + finished.building() + " has been " + (finished.rebuild() ? "rebuilt." : "repaired."));
 			}
 			Map<String, Integer> trained = nation.progressTraining(turn + 1);
 			if (!trained.isEmpty()) {
@@ -146,7 +149,7 @@ public class Game {
 	 * whose survivors then take plunder scaled by their remaining Strength,
 	 * rounded down. That Strength, rounded down, also wears the Nation's
 	 * Defense down, and what is left once Defense is 0 reduces its Population,
-	 * more so if it has no Army left.
+	 * more so if its Army was wiped out or it had neither Army nor Defense.
 	 */
 	private Nation.BattleFought fight(Warparty warparty) {
 		Nation defender = nation(warparty.target());
@@ -158,9 +161,10 @@ public class Game {
 		int wholeStrength = (int) Math.floor(strength);
 		Nation.DefenseWorn defenseWorn = defender.wearDefense(wholeStrength, ruleset);
 		int strengthLeft = wholeStrength - defenseWorn.worn();
-		int multiplier = battle.armySurvivors().isEmpty() ? NO_ARMY_POPULATION_MULTIPLIER : 1;
+		Exposure exposure = Exposure.of(battle, defenseWorn);
+		int multiplier = exposure == Exposure.DEFENDED ? 1 : EXPOSED_POPULATION_MULTIPLIER;
 		int populationLost = defender.losePopulation(strengthLeft * POPULATION_PER_STRENGTH * multiplier);
-		return new Nation.BattleFought(warparty, battle, plunder, defenseWorn, populationLost);
+		return new Nation.BattleFought(warparty, battle, plunder, defenseWorn, populationLost, exposure);
 	}
 
 	private static void reportBattle(String attacker, Nation.BattleFought fought, List<String> attackerReport,
@@ -194,11 +198,20 @@ public class Game {
 					+ defenseWorn.after() + ", " + buildingsHarmed(defenseWorn) + ".");
 		}
 		if (fought.populationLost() > 0) {
-			boolean noArmyLeft = battle.armySurvivors().isEmpty();
+			String attackerReason = switch (fought.exposure()) {
+				case DEFENDED -> "";
+				case ARMY_WIPED_OUT -> ", doubled as " + defender + "'s Army was wiped out";
+				case UNDEFENDED -> ", doubled as " + defender + " had no Army or Defense";
+			};
+			String defenderReason = switch (fought.exposure()) {
+				case DEFENDED -> "";
+				case ARMY_WIPED_OUT -> ", doubled as your Army was wiped out";
+				case UNDEFENDED -> ", doubled as you had no Army or Defense";
+			};
 			attackerReport.add("Your Warparty reduced " + defender + "'s Population by " + fought.populationLost()
-					+ (noArmyLeft ? ", doubled as " + defender + " had no Army left." : "."));
+					+ attackerReason + ".");
 			defenderReport.add(attacker + "'s Warparty reduced your Population by " + fought.populationLost()
-					+ (noArmyLeft ? ", doubled as you had no Army left." : "."));
+					+ defenderReason + ".");
 		}
 		Plunder plunder = fought.plunder();
 		if (plunder.isNone()) {
@@ -238,10 +251,13 @@ public class Game {
 		return switch (action) {
 			case Action.StartBuilding start -> ruleset.building(start.building())
 				.map(actor::startBuilding)
-				.orElseGet(() -> ActionResult.rejected("There is no Building called " + start.building() + "."));
+				.orElseGet(() -> noSuchBuilding(start.building()));
 			case Action.RepairBuilding repair -> ruleset.building(repair.building())
 				.map(actor::repair)
-				.orElseGet(() -> ActionResult.rejected("There is no Building called " + repair.building() + "."));
+				.orElseGet(() -> noSuchBuilding(repair.building()));
+			case Action.RebuildBuilding rebuild -> ruleset.building(rebuild.building())
+				.map(actor::rebuild)
+				.orElseGet(() -> noSuchBuilding(rebuild.building()));
 			case Action.TrainUnits train -> {
 				if (train.count() < 1) {
 					yield ActionResult.rejected("Train at least one Unit.");
@@ -265,6 +281,10 @@ public class Game {
 				yield actor.sendWarparty(send.target(), send.units(), TRAVEL_TURNS);
 			}
 		};
+	}
+
+	private static ActionResult noSuchBuilding(String building) {
+		return ActionResult.rejected("There is no Building called " + building + ".");
 	}
 
 	private static Optional<String> buildingsAddedLine(int population, int gold) {
