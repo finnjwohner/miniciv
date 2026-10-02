@@ -1082,6 +1082,14 @@ class Nation {
 	}
 
 	/**
+	 * Gold the Nation earns this Turn from its current Population: one for
+	 * every one of its Population.
+	 */
+	int goldFromPopulation() {
+		return population;
+	}
+
+	/**
 	 * Gold the Nation's standing Buildings add this Turn for its current
 	 * Population, rounded down.
 	 */

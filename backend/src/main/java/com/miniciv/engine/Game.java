@@ -27,8 +27,6 @@ public class Game {
 
 	private static final int BASE_RESEARCH = 0;
 
-	private static final int GOLD_PER_TURN = 10;
-
 	private static final int POPULATION_PER_TURN = 2;
 
 	private static final int RESEARCH_PER_TURN = 3;
@@ -379,9 +377,10 @@ public class Game {
 			List<String> report = reports.get(nation.name());
 			int buildingPopulation = nation.populationFromBuildings(ruleset);
 			int buildingGold = nation.goldFromBuildings(ruleset);
-			nation.gain(GOLD_PER_TURN + buildingGold, POPULATION_PER_TURN + buildingPopulation, RESEARCH_PER_TURN);
-			report.add("Your Nation gained " + GOLD_PER_TURN + " Gold, " + POPULATION_PER_TURN + " Population and "
-					+ RESEARCH_PER_TURN + " Research.");
+			int populationGold = nation.goldFromPopulation();
+			nation.gain(populationGold + buildingGold, POPULATION_PER_TURN + buildingPopulation, RESEARCH_PER_TURN);
+			report.add("Your Population earned " + populationGold + " Gold, and your Nation gained "
+					+ POPULATION_PER_TURN + " Population and " + RESEARCH_PER_TURN + " Research.");
 			buildingsAddedLine(buildingPopulation, buildingGold).ifPresent(report::add);
 			for (Nation.Desertion desertion : nation.desertUntilUpkeepIsAffordable(ruleset)) {
 				if (desertion.spy() != null) {

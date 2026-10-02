@@ -142,13 +142,14 @@ class SpiesTest {
 
 	@Test
 	void aSpyAbroadDesertsWhenItsUpkeepCannotBePaid() {
-		UnitType costly = new UnitType("Spy", 0, 1, 1, 30, 0, List.of(), false, true);
+		UnitType costly = new UnitType("Spy", 0, 1, 1, 40, 0, List.of(), false, true);
 		game = new Game(new Ruleset(List.of(costly), List.of(FARM), List.of()), List.of("Rome", "Carthage"), EVEN_LUCK);
 		game.act("Rome", new Action.TrainUnits("Spy", 1));
 		game.endTurn();
 		sendSpy("Rome", "Carthage");
-		game.act("Rome", new Action.StartBuilding("Farm"));
-		assertThat(game.viewOf("Rome").gold()).isLessThan(30 - 10);
+		// Next Turn's Gold is what Rome has plus what its Population earns.
+		NationView rome = game.viewOf("Rome");
+		assertThat(rome.gold() + rome.population()).isLessThan(40);
 
 		game.endTurn();
 
@@ -175,9 +176,9 @@ class SpiesTest {
 
 		spyArrivesAtCarthage();
 
-		assertThat(report("Rome")).contains("Your Spy in Carthage reported that Carthage has 90 Gold.");
+		assertThat(report("Rome")).contains("Your Spy in Carthage reported that Carthage has 102 Gold.");
 		assertThat(onMapOf("Rome", "Carthage").facts())
-			.isEqualTo(new Facts(new Fact<>(90, 4), null, null, null, null, null));
+			.isEqualTo(new Facts(new Fact<>(102, 4), null, null, null, null, null));
 		assertThat(report("Carthage")).noneMatch(line -> line.contains("Spy"));
 	}
 
@@ -281,9 +282,9 @@ class SpiesTest {
 
 		game.endTurn();
 
-		assertThat(report("Rome")).contains("Your Spy in Carthage reported that Carthage has 80 Gold.");
+		assertThat(report("Rome")).contains("Your Spy in Carthage reported that Carthage has 110 Gold.");
 		Facts facts = onMapOf("Rome", "Carthage").facts();
-		assertThat(facts.gold()).isEqualTo(new Fact<>(80, 6));
+		assertThat(facts.gold()).isEqualTo(new Fact<>(110, 6));
 		assertThat(facts.population()).isEqualTo(new Fact<>(20, 5));
 	}
 

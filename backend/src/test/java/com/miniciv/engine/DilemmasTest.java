@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 
 import static com.miniciv.engine.EventsTest.ALWAYS;
 import static com.miniciv.engine.GameTest.BASE_INCOME_REPORT;
+import static com.miniciv.engine.GameTest.incomeReport;
 import static com.miniciv.engine.GameTest.RULESET;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -87,7 +88,7 @@ class DilemmasTest {
 
 		assertThat(report("Carthage")).containsExactly(
 				"You did not choose in time what to do about Outbreak. You let the sickness spread: your Nation lost 8 Population.",
-				BASE_INCOME_REPORT);
+				incomeReport(4));
 		NationView carthage = game.viewOf("Carthage");
 		assertThat(carthage.population()).isEqualTo(6);
 		assertThat(carthage.dilemmas()).isEmpty();
@@ -113,10 +114,10 @@ class DilemmasTest {
 		play(firstDraws(1), EventsTest.starter("Outbreak"));
 		for (int turn = 1; turn <= 2; turn++) {
 			game.endTurn();
-			assertThat(report("Rome")).containsExactly(BASE_INCOME_REPORT);
+			assertThat(report("Rome")).containsExactly(incomeReport(10 + 2 * (turn - 1)));
 		}
 		game.endTurn();
-		assertThat(report("Rome")).containsExactly(BASE_INCOME_REPORT,
+		assertThat(report("Rome")).containsExactly(incomeReport(14),
 				"Sickness broke out in your Nation; choose what to do before this Turn ends.");
 		assertThat(game.viewOf("Rome").dilemmas()).singleElement()
 			.extracting(dilemma -> dilemma.choices().stream().map(Event.Choice::name).toList())
