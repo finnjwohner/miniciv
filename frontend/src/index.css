@@ -1,14 +1,348 @@
+/* miniciv's look: a monospace, semi-pixel-art control panel. Colours and fonts live in these tokens. */
 :root {
-  font-family: system-ui, sans-serif;
-  color-scheme: light dark;
+  --bg: #14161b;
+  --surface: #1d2028;
+  --surface-raised: #262a35;
+  --border: #4a5163;
+  --border-strong: #8a93a8;
+  --text: #e6e2d3;
+  --text-muted: #9a9888;
+  --accent: #f2c14e;
+  --accent-text: #14161b;
+  --good: #7bc96f;
+  --bad: #e2574c;
+
+  --font-body: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+  --font-pixel: 'Press Start 2P', var(--font-body);
+
+  --line: 2px;
+  --space: 0.5rem;
+
+  color-scheme: dark;
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--text);
+  background: var(--bg);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
 }
 
 body {
   margin: 0;
+  min-height: 100vh;
+  background: var(--bg);
 }
 
-main {
-  max-width: 40rem;
+h1,
+h2,
+h3 {
+  font-family: var(--font-pixel);
+  font-weight: normal;
+  line-height: 1.4;
+  letter-spacing: 0.02em;
+}
+
+h1 {
+  font-size: 1.25rem;
+}
+
+h2 {
+  font-size: 0.85rem;
+}
+
+h3 {
+  font-size: 0.7rem;
+}
+
+a {
+  color: var(--accent);
+}
+
+.icon {
+  flex: none;
+  shape-rendering: crispEdges;
+}
+
+/* App frame */
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space);
+  padding: calc(var(--space) * 1.5) calc(var(--space) * 2);
+  border-bottom: var(--line) solid var(--border);
+  background: var(--surface);
+}
+
+.topbar h1 {
+  margin: 0;
+  color: var(--accent);
+}
+
+.screen {
+  max-width: 64rem;
   margin: 0 auto;
-  padding: 2rem 1rem;
+  padding: calc(var(--space) * 3) calc(var(--space) * 2);
+  display: grid;
+  gap: calc(var(--space) * 2);
+}
+
+.screen--narrow {
+  max-width: 34rem;
+}
+
+/* Children stacked with even gaps, ignoring their own margins. */
+.stack {
+  display: grid;
+  gap: calc(var(--space) * 2);
+}
+
+.stack > * {
+  margin: 0;
+}
+
+/* Panel: a titled box */
+
+.panel {
+  min-width: 0;
+  border: var(--line) solid var(--border-strong);
+  background: var(--surface);
+  box-shadow: 4px 4px 0 #000;
+}
+
+.panel__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space);
+  padding: var(--space) calc(var(--space) * 1.5);
+  border-bottom: var(--line) solid var(--border-strong);
+  background: var(--surface-raised);
+}
+
+.panel__title {
+  display: flex;
+  align-items: center;
+  gap: var(--space);
+  margin: 0;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+}
+
+.panel__actions {
+  display: flex;
+  gap: var(--space);
+}
+
+.panel__body {
+  padding: calc(var(--space) * 1.5);
+}
+
+.panel__body > :first-child {
+  margin-top: 0;
+}
+
+.panel__body > :last-child {
+  margin-bottom: 0;
+}
+
+/* Controls */
+
+button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space);
+  padding: calc(var(--space) * 0.75) calc(var(--space) * 1.5);
+  font: inherit;
+  font-weight: 600;
+  color: var(--text);
+  background: var(--surface-raised);
+  border: var(--line) solid var(--border-strong);
+  border-radius: 0;
+  box-shadow: 2px 2px 0 #000;
+  cursor: pointer;
+}
+
+button:hover:not(:disabled) {
+  border-color: var(--text);
+}
+
+button:active:not(:disabled) {
+  transform: translate(2px, 2px);
+  box-shadow: none;
+}
+
+button:disabled {
+  color: var(--text-muted);
+  border-color: var(--border);
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+.button--primary {
+  color: var(--accent-text);
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.button--primary:hover:not(:disabled) {
+  border-color: var(--text);
+}
+
+.button--primary:disabled {
+  color: var(--text-muted);
+  background: var(--surface-raised);
+}
+
+input,
+select {
+  min-width: 0;
+  padding: calc(var(--space) * 0.75) var(--space);
+  font: inherit;
+  color: var(--text);
+  background: var(--bg);
+  border: var(--line) solid var(--border);
+  border-radius: 0;
+}
+
+input:focus-visible,
+select:focus-visible,
+button:focus-visible,
+a:focus-visible {
+  outline: var(--line) solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* A labelled control: the label above, the control (and any button beside it) below. */
+.field {
+  display: grid;
+  gap: calc(var(--space) * 0.5);
+}
+
+.field__label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+
+.field__row {
+  display: flex;
+  gap: var(--space);
+}
+
+.field__row > input {
+  flex: 1;
+}
+
+.muted {
+  color: var(--text-muted);
+}
+
+.alert {
+  padding: var(--space) calc(var(--space) * 1.5);
+  border: var(--line) solid var(--bad);
+  color: var(--bad);
+}
+
+/* A Nation's status: ready, not ready, you */
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--space) * 0.5);
+  padding: 0 calc(var(--space) * 0.75);
+  border: var(--line) solid currentColor;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+
+.tag--good {
+  color: var(--good);
+}
+
+.tag--muted {
+  color: var(--text-muted);
+}
+
+.tag--accent {
+  color: var(--accent);
+}
+
+/* Home */
+
+.divider {
+  display: flex;
+  align-items: center;
+  gap: var(--space);
+  font-family: var(--font-pixel);
+  font-size: 0.6rem;
+  color: var(--text-muted);
+}
+
+.divider::before,
+.divider::after {
+  content: '';
+  flex: 1;
+  border-top: var(--line) dashed var(--border);
+}
+
+/* Room */
+
+.room {
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  align-items: start;
+}
+
+.roster {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: var(--space);
+}
+
+.roster__nation {
+  display: flex;
+  align-items: center;
+  gap: var(--space);
+  padding: var(--space);
+  border: var(--line) solid var(--border);
+  background: var(--bg);
+}
+
+.roster__nation--you {
+  border-color: var(--accent);
+}
+
+.roster__name {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-weight: 600;
+}
+
+.invite-link {
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 40rem) {
+  .room {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .screen {
+    padding: calc(var(--space) * 2);
+  }
+
+  .field__row {
+    flex-wrap: wrap;
+  }
 }
