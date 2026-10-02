@@ -62,6 +62,8 @@ export type UnitType = {
   strength: number
   /** The Unit types this one multiplies its Strength against. */
   counters: string[]
+  /** Whether it is a Scout: never fights or leaves its Nation, but may discover other Nations' Warparties abroad. */
+  scout: boolean
 }
 /** Units of one type in training; they join the Army at the start of `readyOnTurn`. */
 export type Training = { unit: string; count: number; readyOnTurn: number }

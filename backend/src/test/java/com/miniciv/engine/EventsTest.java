@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.random.RandomGenerator;
+import java.util.stream.Stream;
 
 import org.junit.jupiter.api.Test;
 
@@ -30,6 +31,11 @@ class EventsTest {
 	 */
 	static final RandomGenerator NEVER = luck(-1);
 
+	/**
+	 * A cheap Unit, to send Warparties large enough for Rumours of war.
+	 */
+	static final UnitType RECRUIT = new UnitType("Recruit", 5, 1, 1, 1, 0.1, List.of());
+
 	Game game;
 
 	static Event starter(String name) {
@@ -37,7 +43,8 @@ class EventsTest {
 	}
 
 	void play(RandomGenerator luck, Event... events) {
-		game = new Game(new Ruleset(RULESET.units(), RULESET.buildings(), List.of(), List.of(events)),
+		List<UnitType> units = Stream.concat(RULESET.units().stream(), Stream.of(RECRUIT)).toList();
+		game = new Game(new Ruleset(units, RULESET.buildings(), List.of(), List.of(events)),
 				List.of("Rome", "Carthage"), luck);
 	}
 
@@ -175,10 +182,10 @@ class EventsTest {
 	@Test
 	void rumoursWarnANationOfALargeWarpartyApproachingButNotOfASmallOne() {
 		play(ALWAYS, starter("Rumours of war"));
-		armyOf("Rome", "Scout", 8);
-		armyOf("Carthage", "Scout", 7);
-		game.act("Rome", new Action.SendWarparty("Carthage", Map.of("Scout", 8)));
-		game.act("Carthage", new Action.SendWarparty("Rome", Map.of("Scout", 7)));
+		armyOf("Rome", "Recruit", 8);
+		armyOf("Carthage", "Recruit", 7);
+		game.act("Rome", new Action.SendWarparty("Carthage", Map.of("Recruit", 8)));
+		game.act("Carthage", new Action.SendWarparty("Rome", Map.of("Recruit", 7)));
 
 		game.endTurn();
 
@@ -189,8 +196,8 @@ class EventsTest {
 	@Test
 	void eventsAreRolledInTheOrderListedForEachNationAndWarpartyInTurn() {
 		play(luck(-1, 0, 0, -1), starter("Good harvest"), starter("Rumours of war"));
-		armyOf("Rome", "Scout", 8);
-		game.act("Rome", new Action.SendWarparty("Carthage", Map.of("Scout", 8)));
+		armyOf("Rome", "Recruit", 8);
+		game.act("Rome", new Action.SendWarparty("Carthage", Map.of("Recruit", 8)));
 
 		game.endTurn();
 
@@ -206,8 +213,8 @@ class EventsTest {
 		List<List<String>> reports = new ArrayList<>();
 		for (int replay = 1; replay <= 2; replay++) {
 			play(new Random(21), STARTER.toArray(Event[]::new));
-			armyOf("Rome", "Scout", 8);
-			game.act("Rome", new Action.SendWarparty("Carthage", Map.of("Scout", 8)));
+			armyOf("Rome", "Recruit", 8);
+			game.act("Rome", new Action.SendWarparty("Carthage", Map.of("Recruit", 8)));
 			List<String> lines = new ArrayList<>();
 			for (int turn = 1; turn <= 20; turn++) {
 				game.endTurn();

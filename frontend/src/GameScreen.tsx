@@ -147,9 +147,10 @@ function Buildings({
 /** A Unit type's costs, training time, Strength, upkeep and counters, in one line. */
 function describeUnit(unit: UnitType) {
   const counters = unit.counters.length > 0 ? `, counters ${unit.counters.join(', ')}` : ''
+  const role = unit.scout ? 'stays home and may discover Warparties abroad' : `Strength ${unit.strength}`
   return (
     `${unit.gold} Gold and ${unit.population} Population, ${plural(unit.turns, 'Turn')} — ` +
-    `Strength ${unit.strength}, upkeep ${unit.upkeep} Gold per Turn${counters}`
+    `${role}, upkeep ${unit.upkeep} Gold per Turn${counters}`
   )
 }
 
@@ -252,7 +253,8 @@ function Warparties({
   const targets = otherNations(nation)
   const [target, setTarget] = useState(targets[0] ?? '')
   const [chosen, setChosen] = useState<Record<string, number>>({})
-  const army = Object.entries(nation.army)
+  const scouts = new Set(nation.availableUnits.filter((u) => u.scout).map((u) => u.name))
+  const army = Object.entries(nation.army).filter(([name]) => !scouts.has(name))
   const units: Record<string, number> = {}
   for (const [name, owned] of army) {
     const count = Math.min(chosen[name] ?? 0, owned)

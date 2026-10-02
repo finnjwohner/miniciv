@@ -30,7 +30,7 @@ class GameTest {
 
 	static final UnitType HORSEMAN = new UnitType("Horseman", 20, 2, 2, 6, 4, List.of("Archer"));
 
-	static final UnitType SCOUT = new UnitType("Scout", 5, 1, 1, 1, 0.1, List.of());
+	static final UnitType SCOUT = new UnitType("Scout", 5, 1, 1, 1, 0, List.of(), true);
 
 	static final Ruleset RULESET = new Ruleset(List.of(WARRIOR, ARCHER, HORSEMAN, SCOUT),
 			List.of(FARM, GRANARY, BANK, WALLS, MOAT), List.of());
@@ -597,36 +597,6 @@ class GameTest {
 				"Warrior ×3 finished training and joined your Army.",
 				"Your Army of Warrior ×3 fought Rome's Warparty of Warrior ×2. You lost Warrior ×1 and Rome lost Warrior ×2.",
 				"Rome's Warparty was destroyed.");
-	}
-
-	@Test
-	void scoutsInABeatenWarpartyAreLostWithIt() {
-		armyOf("Rome", "Warrior", 1);
-		armyOf("Rome", "Scout", 1);
-		armyOf("Carthage", "Warrior", 3);
-		arrived("Rome", "Carthage", Map.of("Warrior", 1, "Scout", 1));
-
-		game.endTurn();
-
-		assertThat(game.viewOf("Rome").warparties()).isEmpty();
-		assertThat(game.viewOf("Rome").turnReport().lines()).contains(
-				"Your Warparty of Warrior ×1 and Scout ×1 fought Carthage's Army of Warrior ×3. You lost Warrior ×1 and Scout ×1 and Carthage lost no Units.",
-				"Your Warparty sent to Carthage was destroyed.");
-	}
-
-	@Test
-	void scoutsAtHomeAreLostWithABeatenArmy() {
-		game.endTurn();
-		armyOf("Rome", "Warrior", 4);
-		armyOf("Carthage", "Warrior", 1);
-		armyOf("Carthage", "Scout", 1);
-		arrived("Rome", "Carthage", Map.of("Warrior", 4));
-
-		game.endTurn();
-
-		assertThat(game.viewOf("Carthage").army()).isEmpty();
-		assertThat(game.viewOf("Carthage").turnReport().lines()).contains(
-				"Your Army of Warrior ×1 and Scout ×1 fought Rome's Warparty of Warrior ×4. You lost Warrior ×1 and Scout ×1 and Rome lost no Units.");
 	}
 
 	@Test

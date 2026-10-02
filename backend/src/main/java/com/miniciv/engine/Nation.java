@@ -166,11 +166,11 @@ class Nation {
 	}
 
 	/**
-	 * Whether the Nation is left with neither Population nor Army, and so is
-	 * conquered.
+	 * Whether the Nation is left with neither Population nor Units that fight,
+	 * and so is conquered: Scouts, which never fight, cannot hold it.
 	 */
-	boolean hasNeitherPopulationNorArmy() {
-		return population == 0 && army.isEmpty();
+	boolean hasNeitherPopulationNorFighters(Ruleset ruleset) {
+		return population == 0 && fighters(ruleset).isEmpty();
 	}
 
 	/**
@@ -626,6 +626,26 @@ class Nation {
 
 	Map<String, Integer> army() {
 		return Collections.unmodifiableMap(new LinkedHashMap<>(army));
+	}
+
+	/**
+	 * The Army's Units that fight in a Battle: all but its Scouts.
+	 */
+	Map<String, Integer> fighters(Ruleset ruleset) {
+		Map<String, Integer> fighters = new LinkedHashMap<>(army);
+		fighters.keySet().removeIf(unit -> ruleset.unit(unit).orElseThrow().scout());
+		return Collections.unmodifiableMap(fighters);
+	}
+
+	/**
+	 * How many Scouts the Nation has at home.
+	 */
+	int scouts(Ruleset ruleset) {
+		return army.entrySet()
+			.stream()
+			.filter(owned -> ruleset.unit(owned.getKey()).orElseThrow().scout())
+			.mapToInt(Map.Entry::getValue)
+			.sum();
 	}
 
 	/**
