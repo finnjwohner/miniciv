@@ -63,6 +63,12 @@ public class Game {
 	 */
 	private static final double CONQUEST_SHARE = 0.75;
 
+	/**
+	 * The chance each Scout at home gives its Nation, each Turn, of
+	 * discovering each other Nation's Warparty abroad.
+	 */
+	private static final double DISCOVERY_CHANCE_PER_SCOUT = 0.2;
+
 	private final Ruleset ruleset;
 
 	private final Map<String, Nation> nations = new LinkedHashMap<>();
@@ -279,6 +285,7 @@ public class Game {
 			}
 		}
 		rollEvents(reports);
+		scout(reports);
 		List<Nation> left = remaining();
 		if (left.size() == 1) {
 			winner = left.getFirst().name();
@@ -360,7 +367,7 @@ public class Game {
 				.forEach(warparty -> arrivals.add(new Arrival(attacker, warparty)));
 		}
 		Battle battle = Battle.fight(arrivals.stream().map(arrival -> arrival.warparty().units()).toList(),
-				defender.army(), ruleset, random);
+				defender.fighters(ruleset), ruleset, random);
 		defender.lose(battle.armyLost());
 		List<Double> strengths = IntStream.range(0, arrivals.size())
 			.mapToObj(arrival -> battle.warpartySurvivingStrength(arrival, ruleset))
@@ -378,7 +385,7 @@ public class Game {
 				: IntStream.range(0, arrivals.size())
 					.mapToObj(arrival -> battle.warpartySurvivors(arrival).isEmpty() ? 0.0 : 1.0)
 					.toList();
-		boolean conquered = battle.anyWarpartySurvived() && defender.hasNeitherPopulationNorArmy();
+		boolean conquered = battle.anyWarpartySurvived() && defender.hasNeitherPopulationNorFighters(ruleset);
 		Plunder taken;
 		if (conquered) {
 			List<String> conquerors = IntStream.range(0, arrivals.size())
@@ -658,6 +665,52 @@ public class Game {
 		}
 	}
 
+	/**
+	 * Has each Nation still in the Game in order, if it has Scouts at home,
+	 * watch for every other Nation's Warparty abroad, taking the Nations in
+	 * order and each one's Warparties in the order sent, drawing once from the
+	 * seeded random source for each. Each Scout gives an equal chance, of its
+	 * own, of discovering a Warparty. One discovered is announced in the Turn
+	 * Report; a Warparty that has arrived at the Nation watching was
+	 * announced already, and is not looked for.
+	 */
+	private void scout(Map<String, List<String>> reports) {
+		for (Nation scouting : remaining()) {
+			int scouts = scouting.scouts(ruleset);
+			if (scouts == 0) {
+				continue;
+			}
+			double chance = 1 - Math.pow(1 - DISCOVERY_CHANCE_PER_SCOUT, scouts);
+			for (Nation other : remaining()) {
+				if (other == scouting) {
+					continue;
+				}
+				for (Warparty warparty : other.warparties()) {
+					if (warparty.awaitingBattle() && warparty.target().equals(scouting.name())) {
+						continue;
+					}
+					if (random.nextDouble() < chance) {
+						reports.get(scouting.name())
+							.add("Your Scouts discovered " + other.name() + "'s Warparty of " + listed(warparty.units())
+									+ " " + whereabouts(warparty, scouting.name()) + ".");
+					}
+				}
+			}
+		}
+	}
+
+	/**
+	 * Such as "heading to Egypt", "waiting at Egypt for the Battle" or
+	 * "heading home from your Nation", for the Nation that sees it.
+	 */
+	private static String whereabouts(Warparty warparty, String seenBy) {
+		String target = warparty.target().equals(seenBy) ? "your Nation" : warparty.target();
+		if (warparty.homeward()) {
+			return "heading home from " + target;
+		}
+		return warparty.awaitingBattle() ? "waiting at " + target + " for the Battle" : "heading to " + target;
+	}
+
 	private boolean happens(Event event) {
 		return random.nextDouble() < event.chance();
 	}
@@ -786,6 +839,9 @@ public class Game {
 				if (send.units().isEmpty()
 						|| send.units().values().stream().anyMatch(count -> count == null || count < 1)) {
 					yield ActionResult.rejected("Choose at least one Unit to send.");
+				}
+				if (send.units().keySet().stream().anyMatch(unit -> ruleset.unit(unit).filter(UnitType::scout).isPresent())) {
+					yield ActionResult.rejected("Scouts stay at home and cannot be sent in a Warparty.");
 				}
 				yield actor.sendWarparty(send.target(), send.units(), TRAVEL_TURNS);
 			}

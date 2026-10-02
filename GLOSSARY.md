@@ -105,7 +105,7 @@ A group of Units a Player sends from their Army toward another Nation; it travel
 _Avoid_: Attack, expedition, army
 
 **Scout**:
-A Unit that works unseen in the background, giving its Nation a chance each Turn to discover Warparties abroad.
+A Unit that works unseen in the background, giving its Nation a chance each Turn to discover Warparties abroad, better the more Scouts it has. Scouts stay at home and never fight, so they cannot hold off a Battle or Conquest.
 _Avoid_: Spy, lookout
 
 **Spy**:

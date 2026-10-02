@@ -186,9 +186,9 @@ class TurnsTest {
 		view.put("damage", List.of());
 		view.put("availableUnits",
 				List.of(Map.of("name", "Warrior", "gold", 20, "population", 2, "turns", 1, "upkeep", 1, "strength", 3.0,
-						"counters", List.of()),
+						"counters", List.of(), "scout", false),
 						Map.of("name", "Catapult", "gold", 50, "population", 1, "turns", 1, "upkeep", 1, "strength", 20.0,
-								"counters", List.of())));
+								"counters", List.of(), "scout", false)));
 		view.put("army", Map.of());
 		view.put("training", training);
 		view.put("warparties", List.of());
