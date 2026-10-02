@@ -1,11 +1,14 @@
 package com.miniciv.engine;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.random.RandomGenerator;
+import java.util.stream.IntStream;
 
 /**
  * One match of miniciv. The engine knows only Nations and Turns: no time,
@@ -149,15 +152,10 @@ public class Game {
 							+ listed(returned.units()) + " rejoined your Army.");
 			}
 		}
-		for (Nation attacker : inPlay) {
-			// An attacker conquered earlier in this Turn no longer fights.
-			if (attacker.conquered()) {
-				continue;
-			}
-			for (Nation.BattleFought fought : attacker.fightBattles(warparty -> fight(attacker, warparty),
-					TRAVEL_TURNS)) {
-				reportBattle(attacker.name(), fought, reports);
-			}
+		// A Nation conquered earlier in this Turn no longer fights, and its
+		// Warparties are gone.
+		for (Optional<String> target = nextBattle(); target.isPresent(); target = nextBattle()) {
+			reportBattle(fight(nation(target.get())), reports);
 		}
 		for (Nation nation : remaining()) {
 			for (Warparty arrived : nation.travelOut()) {
@@ -200,42 +198,160 @@ public class Game {
 	}
 
 	/**
-	 * Fights a Warparty's Battle against the Army of the Nation it arrived at.
-	 * The Warparty's surviving Strength, rounded down, wears the Nation's
-	 * Defense down, and what is left once Defense is 0 reduces its Population,
-	 * more so if its Army was wiped out or it had neither Army nor Defense. A
-	 * Nation left with neither Population nor Army is conquered, unless the
-	 * Warparty was wiped out too; otherwise the survivors take plunder scaled
-	 * by their remaining Strength, rounded down.
+	 * The Nation the next Battle is fought at: the target of the first
+	 * Warparty awaiting a Battle, taking the Nations in order and each one's
+	 * Warparties in the order sent.
 	 */
-	private Nation.BattleFought fight(Nation attacker, Warparty warparty) {
-		Nation defender = nation(warparty.target());
-		Battle battle = Battle.fight(warparty.units(), defender.army(), ruleset, random);
+	private Optional<String> nextBattle() {
+		return remaining().stream()
+			.flatMap(nation -> nation.awaitingBattle().stream())
+			.map(Warparty::target)
+			.findFirst();
+	}
+
+	/**
+	 * A Warparty that arrived at a Nation, and the Nation that sent it.
+	 */
+	private record Arrival(Nation attacker, Warparty warparty) {
+	}
+
+	/**
+	 * A Battle fought at a Nation, what each attacking Warparty took, and the
+	 * Defense and Population the Nation lost.
+	 *
+	 * @param arrivals the attacking Warparties, as they were before the Battle,
+	 *        in the order they fought in the Battle
+	 * @param shares the plunder each attacking Warparty took or, if the
+	 *        Nation was conquered, its share of what was seized
+	 * @param exposure how exposed the Nation's Population was
+	 * @param conquest how the Nation was conquered, or null if it was not
+	 */
+	private record BattleFought(Nation defender, List<Arrival> arrivals, Battle battle, List<Plunder> shares,
+			Nation.DefenseWorn defenseWorn, int populationLost, Exposure exposure, Nation.Conquest conquest) {
+
+		/**
+		 * Whether some of the attacking Warparty's Units at the given index
+		 * survived.
+		 */
+		boolean survived(int arrival) {
+			return !battle.warpartySurvivors(arrival).isEmpty();
+		}
+
+		/**
+		 * The attacking Warparties some of whose Units survived.
+		 */
+		List<Arrival> survivors() {
+			return IntStream.range(0, arrivals.size()).filter(this::survived).mapToObj(arrivals::get).toList();
+		}
+
+	}
+
+	/**
+	 * Fights the Battle at a Nation: every Warparty awaiting a Battle there,
+	 * from the Nations in order and each one's in the order sent, fights its
+	 * Army as one. The Warparties' surviving Strength, rounded down, wears the
+	 * Nation's Defense down, and what is left once Defense is 0 reduces its
+	 * Population, more so if its Army was wiped out or it had neither Army nor
+	 * Defense. A Nation left with neither Population nor Army is conquered,
+	 * unless the Warparties were all wiped out too; otherwise the survivors
+	 * take plunder scaled by their remaining Strength, rounded down. What is
+	 * plundered or seized is split between the Warparties in proportion to
+	 * their surviving Strength, so one wiped out gets none of it.
+	 */
+	private BattleFought fight(Nation defender) {
+		List<Arrival> arrivals = new ArrayList<>();
+		for (Nation attacker : remaining()) {
+			attacker.awaitingBattle()
+				.stream()
+				.filter(warparty -> warparty.target().equals(defender.name()))
+				.forEach(warparty -> arrivals.add(new Arrival(attacker, warparty)));
+		}
+		Battle battle = Battle.fight(arrivals.stream().map(arrival -> arrival.warparty().units()).toList(),
+				defender.army(), ruleset, random);
 		defender.lose(battle.armyLost());
-		double strength = battle.warpartySurvivingStrength(ruleset);
+		List<Double> strengths = IntStream.range(0, arrivals.size())
+			.mapToObj(arrival -> battle.warpartySurvivingStrength(arrival, ruleset))
+			.toList();
+		double strength = strengths.stream().mapToDouble(Double::doubleValue).sum();
 		int wholeStrength = (int) Math.floor(strength);
 		Nation.DefenseWorn defenseWorn = defender.wearDefense(wholeStrength, ruleset);
 		int strengthLeft = wholeStrength - defenseWorn.worn();
 		Exposure exposure = Exposure.of(battle, defenseWorn);
 		int multiplier = exposure == Exposure.DEFENDED ? 1 : EXPOSED_POPULATION_MULTIPLIER;
 		int populationLost = defender.losePopulation(strengthLeft * POPULATION_PER_STRENGTH * multiplier);
-		if (!battle.warpartySurvivors().isEmpty() && defender.hasNeitherPopulationNorArmy()) {
-			return new Nation.BattleFought(warparty, battle, Plunder.NONE, defenseWorn, populationLost, exposure,
-					conquer(attacker, defender));
+		// Survivors with no Strength at all still take an equal share of what
+		// is seized.
+		List<Double> weights = strength > 0 ? strengths
+				: IntStream.range(0, arrivals.size())
+					.mapToObj(arrival -> battle.warpartySurvivors(arrival).isEmpty() ? 0.0 : 1.0)
+					.toList();
+		boolean conquered = battle.anyWarpartySurvived() && defender.hasNeitherPopulationNorArmy();
+		Plunder taken;
+		if (conquered) {
+			List<String> conquerors = IntStream.range(0, arrivals.size())
+				.filter(arrival -> !battle.warpartySurvivors(arrival).isEmpty())
+				.mapToObj(arrival -> arrivals.get(arrival).attacker().name())
+				.distinct()
+				.toList();
+			taken = defender.conquer(joined(conquerors), CONQUEST_SHARE);
 		}
-		Plunder plunder = defender.plundered((int) Math.floor(strength * PLUNDER_GOLD_PER_STRENGTH),
-				(int) Math.floor(strength * PLUNDER_RESEARCH_PER_STRENGTH));
-		return new Nation.BattleFought(warparty, battle, plunder, defenseWorn, populationLost, exposure, null);
+		else {
+			taken = defender.plundered((int) Math.floor(strength * PLUNDER_GOLD_PER_STRENGTH),
+					(int) Math.floor(strength * PLUNDER_RESEARCH_PER_STRENGTH));
+		}
+		List<Plunder> shares = shared(taken, weights);
+		for (int i = 0; i < arrivals.size(); i++) {
+			Nation attacker = arrivals.get(i).attacker();
+			if (conquered) {
+				attacker.seize(shares.get(i));
+			}
+			attacker.foughtBattle(arrivals.get(i).warparty(), battle.warpartySurvivors(i),
+					conquered ? Plunder.NONE : shares.get(i), TRAVEL_TURNS);
+		}
+		return new BattleFought(defender, arrivals, battle, shares, defenseWorn, populationLost, exposure,
+				conquered ? turnBackFrom(defender, taken) : null);
 	}
 
 	/**
-	 * Takes a Nation out of the Game: its conqueror seizes a large share of its
-	 * Gold and Research, and every other Warparty heading to it turns back
-	 * home.
+	 * Gold and Research split in proportion to the weights given; see
+	 * {@link #apportioned(int, List)}.
 	 */
-	private Nation.Conquest conquer(Nation conqueror, Nation conquered) {
-		Plunder seized = conquered.conquer(conqueror.name(), CONQUEST_SHARE);
-		conqueror.seize(seized);
+	private static List<Plunder> shared(Plunder plunder, List<Double> weights) {
+		List<Integer> gold = apportioned(plunder.gold(), weights);
+		List<Integer> research = apportioned(plunder.research(), weights);
+		return IntStream.range(0, weights.size()).mapToObj(i -> new Plunder(gold.get(i), research.get(i))).toList();
+	}
+
+	/**
+	 * An amount split in proportion to the weights given, each share rounded
+	 * down, the leftover going one at a time to the shares with the largest
+	 * remainders, and between equal remainders to the one listed first.
+	 */
+	private static List<Integer> apportioned(int amount, List<Double> weights) {
+		double total = weights.stream().mapToDouble(Double::doubleValue).sum();
+		int[] shares = new int[weights.size()];
+		if (total == 0) {
+			return Arrays.stream(shares).boxed().toList();
+		}
+		double[] exact = weights.stream().mapToDouble(weight -> amount * weight / total).toArray();
+		int given = 0;
+		for (int i = 0; i < shares.length; i++) {
+			shares[i] = (int) Math.floor(exact[i]);
+			given += shares[i];
+		}
+		List<Integer> byRemainder = new ArrayList<>(IntStream.range(0, shares.length).boxed().toList());
+		byRemainder.sort(Comparator.comparingDouble((Integer i) -> exact[i] - Math.floor(exact[i])).reversed());
+		for (int i = 0; given < amount; i++, given++) {
+			shares[byRemainder.get(i)]++;
+		}
+		return Arrays.stream(shares).boxed().toList();
+	}
+
+	/**
+	 * Records a Nation as conquered, and turns every other Warparty heading to
+	 * it back home.
+	 */
+	private Nation.Conquest turnBackFrom(Nation conquered, Plunder seized) {
 		this.conquered.add(conquered.name());
 		Map<String, List<Warparty>> turnedBack = new LinkedHashMap<>();
 		for (Nation nation : remaining()) {
@@ -247,36 +363,57 @@ public class Game {
 		return new Nation.Conquest(seized, turnedBack);
 	}
 
-	private void reportBattle(String attacker, Nation.BattleFought fought, Map<String, List<String>> reports) {
+	private void reportBattle(BattleFought fought, Map<String, List<String>> reports) {
 		Battle battle = fought.battle();
-		String defender = fought.warparty().target();
-		List<String> attackerReport = reports.get(attacker);
+		List<Arrival> arrivals = fought.arrivals();
+		String defender = fought.defender().name();
 		List<String> defenderReport = reports.get(defender);
-		String warparty = listed(battle.warparty());
-		if (battle.army().isEmpty()) {
-			attackerReport.add("Your Warparty of " + warparty + " met no Army at " + defender + ".");
-			defenderReport.add(attacker + "'s Warparty of " + warparty + " met no Army at your Nation.");
+		String army = battle.army().isEmpty() ? null : listed(battle.army());
+		List<String> sides = new ArrayList<>();
+		List<String> losses = new ArrayList<>(List.of("You lost " + lost(battle.armyLost())));
+		for (int i = 0; i < arrivals.size(); i++) {
+			String attacker = arrivals.get(i).attacker().name();
+			String warparty = listed(battle.warparties().get(i));
+			sides.add(attacker + "'s Warparty of " + warparty);
+			losses.add(attacker + " lost " + lost(battle.warpartiesLost().get(i)));
+			List<String> alongside = new ArrayList<>();
+			for (int j = 0; j < arrivals.size(); j++) {
+				if (j != i) {
+					String other = arrivals.get(j).attacker().name();
+					alongside.add((other.equals(attacker) ? "your" : other + "'s") + " Warparty of "
+							+ listed(battle.warparties().get(j)));
+				}
+			}
+			String allies = alongside.isEmpty() ? "" : " alongside " + joined(alongside);
+			reports.get(attacker)
+				.add(army == null
+						? "Your Warparty of " + warparty + " met no Army at " + defender
+								+ (allies.isEmpty() ? "" : "," + allies) + "."
+						: "Your Warparty of " + warparty + " fought " + defender + "'s Army of " + army + allies
+								+ ". You lost " + lost(battle.warpartiesLost().get(i)) + " and " + defender + " lost "
+								+ lost(battle.armyLost()) + ".");
 		}
-		else {
-			String army = listed(battle.army());
-			attackerReport.add("Your Warparty of " + warparty + " fought " + defender + "'s Army of " + army
-					+ ". You lost " + lost(battle.warpartyLost()) + " and " + defender + " lost "
-					+ lost(battle.armyLost()) + ".");
-			defenderReport.add("Your Army of " + army + " fought " + attacker + "'s Warparty of " + warparty
-					+ ". You lost " + lost(battle.armyLost()) + " and " + attacker + " lost "
-					+ lost(battle.warpartyLost()) + ".");
+		defenderReport.add(army == null ? joined(sides) + " met no Army at your Nation."
+				: "Your Army of " + army + " fought " + joined(sides) + ". " + joined(losses) + ".");
+		for (int i = 0; i < arrivals.size(); i++) {
+			if (!fought.survived(i)) {
+				String attacker = arrivals.get(i).attacker().name();
+				reports.get(attacker).add("Your Warparty sent to " + defender + " was destroyed.");
+				defenderReport.add(attacker + "'s Warparty was destroyed.");
+			}
 		}
-		if (battle.warpartySurvivors().isEmpty()) {
-			attackerReport.add("Your Warparty sent to " + defender + " was destroyed.");
-			defenderReport.add(attacker + "'s Warparty was destroyed.");
+		List<Arrival> survivors = fought.survivors();
+		if (survivors.isEmpty()) {
 			return;
 		}
+		List<String> attackers = survivors.stream().map(arrival -> arrival.attacker().name()).distinct().toList();
 		Nation.DefenseWorn defenseWorn = fought.defenseWorn();
 		if (defenseWorn.worn() > 0) {
-			attackerReport.add("Your Warparty wore " + defender + "'s Defense down by " + defenseWorn.worn() + ", "
-					+ buildingsHarmed(defenseWorn) + ".");
-			defenderReport.add(attacker + "'s Warparty wore your Defense down from " + defenseWorn.before() + " to "
-					+ defenseWorn.after() + ", " + buildingsHarmed(defenseWorn) + ".");
+			attackers.forEach(attacker -> reports.get(attacker)
+				.add(warpartiesFrom(attacker, survivors) + " wore " + defender + "'s Defense down by "
+						+ defenseWorn.worn() + ", " + buildingsHarmed(defenseWorn) + "."));
+			defenderReport.add(warpartiesOf(survivors) + " wore your Defense down from " + defenseWorn.before()
+					+ " to " + defenseWorn.after() + ", " + buildingsHarmed(defenseWorn) + ".");
 		}
 		if (fought.populationLost() > 0) {
 			String attackerReason = switch (fought.exposure()) {
@@ -289,20 +426,36 @@ public class Game {
 				case ARMY_WIPED_OUT -> ", doubled as your Army was wiped out";
 				case UNDEFENDED -> ", doubled as you had no Army or Defense";
 			};
-			attackerReport.add("Your Warparty reduced " + defender + "'s Population by " + fought.populationLost()
-					+ attackerReason + ".");
-			defenderReport.add(attacker + "'s Warparty reduced your Population by " + fought.populationLost()
+			attackers.forEach(attacker -> reports.get(attacker)
+				.add(warpartiesFrom(attacker, survivors) + " reduced " + defender + "'s Population by "
+						+ fought.populationLost() + attackerReason + "."));
+			defenderReport.add(warpartiesOf(survivors) + " reduced your Population by " + fought.populationLost()
 					+ defenderReason + ".");
 		}
 		Nation.Conquest conquest = fought.conquest();
 		if (conquest != null) {
 			String seized = conquest.seized().described();
-			attackerReport.add("Your Warparty conquered " + defender + ", seizing " + seized + ", and is heading home.");
-			defenderReport.add(attacker + "'s Warparty conquered your Nation, seizing " + seized
+			if (survivors.size() == 1) {
+				reports.get(attackers.getFirst())
+					.add("Your Warparty conquered " + defender + ", seizing " + seized + ", and is heading home.");
+			}
+			else {
+				for (String attacker : attackers) {
+					reports.get(attacker).add(warpartiesFrom(attacker, survivors) + " conquered " + defender + ".");
+					for (int i = 0; i < arrivals.size(); i++) {
+						if (fought.survived(i) && arrivals.get(i).attacker().name().equals(attacker)) {
+							reports.get(attacker)
+								.add("Your Warparty of " + listed(battle.warparties().get(i)) + " seized "
+										+ fought.shares().get(i).described() + " as its share and is heading home.");
+						}
+					}
+				}
+			}
+			defenderReport.add(warpartiesOf(survivors) + " conquered your Nation, seizing " + seized
 					+ ". You are knocked out of the Game.");
 			reports.forEach((nation, report) -> {
-				if (!nation.equals(attacker) && !nation(nation).conquered()) {
-					report.add(attacker + " conquered " + defender + ".");
+				if (!attackers.contains(nation) && !nation(nation).conquered()) {
+					report.add(joined(attackers) + " conquered " + defender + ".");
 				}
 			});
 			conquest.turnedBack()
@@ -311,15 +464,48 @@ public class Game {
 							+ " turned back home, as " + defender + " was conquered.")));
 			return;
 		}
-		Plunder plunder = fought.plunder();
-		if (plunder.isNone()) {
-			attackerReport.add("Your Warparty took nothing from " + defender + " and is heading home.");
-			defenderReport.add(attacker + "'s Warparty took nothing from you and is heading home.");
+		String share = survivors.size() > 1 ? " as its share" : "";
+		for (int i = 0; i < arrivals.size(); i++) {
+			if (!fought.survived(i)) {
+				continue;
+			}
+			String attacker = arrivals.get(i).attacker().name();
+			Plunder plunder = fought.shares().get(i);
+			if (plunder.isNone()) {
+				reports.get(attacker).add("Your Warparty took nothing from " + defender + " and is heading home.");
+				defenderReport.add(attacker + "'s Warparty took nothing from you and is heading home.");
+			}
+			else {
+				reports.get(attacker)
+					.add("Your Warparty took " + plunder.described() + " from " + defender + share
+							+ " and is heading home.");
+				defenderReport
+					.add(attacker + "'s Warparty took " + plunder.described() + " from you and is heading home.");
+			}
 		}
-		else {
-			attackerReport.add("Your Warparty took " + plunder.described() + " from " + defender + " and is heading home.");
-			defenderReport.add(attacker + "'s Warparty took " + plunder.described() + " from you and is heading home.");
-		}
+	}
+
+	/**
+	 * Such as "Rome's and Egypt's Warparties", for the Nation they attacked.
+	 */
+	private static String warpartiesOf(List<Arrival> arrivals) {
+		List<String> nations = arrivals.stream().map(arrival -> arrival.attacker().name() + "'s").distinct().toList();
+		return joined(nations) + (arrivals.size() == 1 ? " Warparty" : " Warparties");
+	}
+
+	/**
+	 * Such as "Your Warparty and Egypt's", for a Nation that sent at least one
+	 * of them.
+	 */
+	private static String warpartiesFrom(String nation, List<Arrival> arrivals) {
+		long own = arrivals.stream().filter(arrival -> arrival.attacker().name().equals(nation)).count();
+		List<String> others = arrivals.stream()
+			.map(arrival -> arrival.attacker().name())
+			.filter(other -> !other.equals(nation))
+			.distinct()
+			.map(other -> other + "'s")
+			.toList();
+		return (own == 1 ? "Your Warparty" : "Your Warparties") + (others.isEmpty() ? "" : " and " + joined(others));
 	}
 
 	/**

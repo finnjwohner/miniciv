@@ -121,11 +121,11 @@ The fight that happens when Warparties arrive at a Nation; Warparties arriving o
 _Avoid_: Fight, combat, clash
 
 **Plunder**:
-The Gold and Research a Warparty's surviving Units take from the Nation they fought, scaled by their remaining Strength and carried home to their own Nation.
+The Gold and Research a Warparty's surviving Units take from the Nation they fought, scaled by their remaining Strength and carried home to their own Nation. Warparties fighting a Battle as one split it in proportion to their remaining Strength.
 _Avoid_: Loot, spoils, booty
 
 **Conquest**:
-Taking a Nation by bringing both its Population and its Army to 0 in a Battle that some of the attacking Units survive; a Nation is only conquered when attacked, and a Warparty wiped out in the Battle conquers nothing. The conquering Nation seizes a large share of its Gold and Research, and the conquered Player is knocked out.
+Taking a Nation by bringing both its Population and its Army to 0 in a Battle that some of the attacking Units survive; a Nation is only conquered when attacked, and a Warparty wiped out in the Battle conquers nothing. The conquering Nation seizes a large share of its Gold and Research, split like Plunder when several Warparties conquer it together, and the conquered Player is knocked out.
 _Avoid_: Domination, elimination
 
 ## Events

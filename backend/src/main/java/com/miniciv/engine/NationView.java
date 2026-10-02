@@ -26,8 +26,9 @@ import java.util.Map;
  * @param warparties the Nation's Warparties abroad, in the order sent
  * @param travelTurns how many Turns a Warparty takes to reach another Nation
  * @param upkeep the Gold the Nation's Units cost each Turn, at home and abroad
- * @param conqueredBy the Nation that conquered this one, knocking its Player
- *        out of the Game, or null if none has
+ * @param conqueredBy the Nation or Nations that conquered this one, such as
+ *        "Rome and Egypt", knocking its Player out of the Game, or null if
+ *        none has
  * @param winner the Nation that won the Game, or null while it goes on
  */
 public record NationView(int version, int turn, String nation, int gold, int population, int research,

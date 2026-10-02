@@ -7,17 +7,19 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.random.RandomGenerator;
+import java.util.stream.IntStream;
 
 /**
- * The fight between a Warparty and the Army of the Nation it arrived at.
+ * The fight between the Warparties that arrived at a Nation on the same Turn,
+ * fighting as one, and the Nation's Army.
  *
- * @param warparty how many of each Unit type the Warparty held
+ * @param warparties how many of each Unit type each Warparty held
  * @param army how many of each Unit type the Army held
- * @param warpartyLost how many of each Unit type the Warparty lost
+ * @param warpartiesLost how many of each Unit type each Warparty lost
  * @param armyLost how many of each Unit type the Army lost
  */
-record Battle(Map<String, Integer> warparty, Map<String, Integer> army, Map<String, Integer> warpartyLost,
-		Map<String, Integer> armyLost) {
+record Battle(List<Map<String, Integer>> warparties, Map<String, Integer> army,
+		List<Map<String, Integer>> warpartiesLost, Map<String, Integer> armyLost) {
 
 	/**
 	 * How much a Unit's Strength is multiplied against a Unit type it counters.
@@ -30,33 +32,54 @@ record Battle(Map<String, Integer> warparty, Map<String, Integer> army, Map<Stri
 	private static final double LUCK = 0.1;
 
 	Battle {
-		warparty = Collections.unmodifiableMap(new LinkedHashMap<>(warparty));
-		army = Collections.unmodifiableMap(new LinkedHashMap<>(army));
-		warpartyLost = Collections.unmodifiableMap(new LinkedHashMap<>(warpartyLost));
-		armyLost = Collections.unmodifiableMap(new LinkedHashMap<>(armyLost));
+		warparties = warparties.stream().map(Battle::copied).toList();
+		army = copied(army);
+		warpartiesLost = warpartiesLost.stream().map(Battle::copied).toList();
+		armyLost = copied(armyLost);
+	}
+
+	private static Map<String, Integer> copied(Map<String, Integer> units) {
+		return Collections.unmodifiableMap(new LinkedHashMap<>(units));
 	}
 
 	/**
-	 * Fights a Battle. Each side's Strength is the sum of its Units' Strength,
-	 * each multiplied by how many of the other side's Units it counters, and
-	 * then moved a little by luck, drawn for the Warparty and then the Army.
-	 * Each side then loses a share of its Units that grows with the
-	 * square of how much stronger the other side was: half each in an even
-	 * fight, and all of the weaker side's once the other is about 1.4 times as
-	 * strong. Units without Strength take no part.
+	 * Fights a Battle. The Warparties fight as one side: its Strength is the
+	 * sum of all their Units' Strength, each multiplied by how many of the
+	 * Army's Units it counters, and the Army's is multiplied by how many of all
+	 * the Warparties' Units it counters; each is then moved a little by luck,
+	 * drawn for the Warparties and then the Army. Each side then loses a share
+	 * of its Units that grows with the square of how much stronger the other
+	 * side was: half each in an even fight, and all of the weaker side's once
+	 * the other is about 1.4 times as strong. Every Warparty loses the same
+	 * share of its own Units. Units without Strength take no part.
+	 *
+	 * @param warparties how many of each Unit type each Warparty holds
 	 */
-	static Battle fight(Map<String, Integer> warparty, Map<String, Integer> army, Ruleset ruleset,
+	static Battle fight(List<Map<String, Integer>> warparties, Map<String, Integer> army, Ruleset ruleset,
 			RandomGenerator random) {
-		Map<String, Integer> warpartyFighting = withStrength(warparty, ruleset);
+		List<Map<String, Integer>> warpartiesFighting = warparties.stream().map(w -> withStrength(w, ruleset)).toList();
+		Map<String, Integer> attacking = new LinkedHashMap<>();
+		warpartiesFighting.forEach(w -> w.forEach((unit, count) -> attacking.merge(unit, count, Integer::sum)));
 		Map<String, Integer> armyFighting = withStrength(army, ruleset);
-		double warpartyStrength = strength(warpartyFighting, armyFighting, ruleset) * luck(random);
-		double armyStrength = strength(armyFighting, warpartyFighting, ruleset) * luck(random);
-		return new Battle(warparty, army, losses(warpartyFighting, lossShare(warpartyStrength, armyStrength)),
-				losses(armyFighting, lossShare(armyStrength, warpartyStrength)));
+		double warpartiesStrength = strength(attacking, armyFighting, ruleset) * luck(random);
+		double armyStrength = strength(armyFighting, attacking, ruleset) * luck(random);
+		double warpartyShare = lossShare(warpartiesStrength, armyStrength);
+		return new Battle(warparties, army, warpartiesFighting.stream().map(w -> losses(w, warpartyShare)).toList(),
+				losses(armyFighting, lossShare(armyStrength, warpartiesStrength)));
 	}
 
-	Map<String, Integer> warpartySurvivors() {
-		return survivors(warparty, warpartyLost);
+	/**
+	 * The surviving Units of the Warparty at the given index.
+	 */
+	Map<String, Integer> warpartySurvivors(int warparty) {
+		return survivors(warparties.get(warparty), warpartiesLost.get(warparty));
+	}
+
+	/**
+	 * Whether any of the Warparties' Units survived.
+	 */
+	boolean anyWarpartySurvived() {
+		return IntStream.range(0, warparties.size()).anyMatch(w -> !warpartySurvivors(w).isEmpty());
 	}
 
 	Map<String, Integer> armySurvivors() {
@@ -64,10 +87,11 @@ record Battle(Map<String, Integer> warparty, Map<String, Integer> army, Map<Stri
 	}
 
 	/**
-	 * The Warparty's surviving Units' Strength, without counters or luck.
+	 * The surviving Units' Strength of the Warparty at the given index, without
+	 * counters or luck.
 	 */
-	double warpartySurvivingStrength(Ruleset ruleset) {
-		return warpartySurvivors().entrySet()
+	double warpartySurvivingStrength(int warparty, Ruleset ruleset) {
+		return warpartySurvivors(warparty).entrySet()
 			.stream()
 			.mapToDouble(s -> ruleset.unit(s.getKey()).orElseThrow().strength() * s.getValue())
 			.sum();

@@ -102,7 +102,7 @@ export type NationView = {
   /** The Gold the Nation's Units cost each Turn, at home and abroad. */
   upkeep: number
   turnReport: TurnReport | null
-  /** The Nation that conquered this one, knocking this Player out, or null. */
+  /** The Nation or Nations that conquered this one, such as "Rome and Egypt", knocking this Player out, or null. */
   conqueredBy: string | null
   /** The Nation that won the Game, or null while it goes on. */
   winner: string | null

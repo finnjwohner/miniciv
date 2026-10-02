@@ -1031,27 +1031,26 @@ class GameTest {
 		game.act("Rome", new Action.TrainUnits("Giant", 1));
 		game.act("Egypt", new Action.TrainUnits("Warrior", 2));
 		game.endTurn();
-		game.act("Egypt", new Action.SendWarparty("Carthage", Map.of("Warrior", 1)));
 		game.act("Rome", new Action.SendWarparty("Carthage", Map.of("Giant", 1)));
 		game.endTurn();
 		game.act("Egypt", new Action.SendWarparty("Carthage", Map.of("Warrior", 1)));
 		game.endTurn();
+		game.act("Egypt", new Action.SendWarparty("Carthage", Map.of("Warrior", 1)));
 		game.endTurn();
 		assertThat(game.viewOf("Egypt").warparties()).containsExactly(
-				new Warparty("Carthage", Map.of("Warrior", 1), false, 0),
-				new Warparty("Carthage", Map.of("Warrior", 1), false, 1));
+				new Warparty("Carthage", Map.of("Warrior", 1), false, 1),
+				new Warparty("Carthage", Map.of("Warrior", 1), false, 2));
 
 		game.endTurn();
 
 		NationView egypt = game.viewOf("Egypt");
-		assertThat(egypt.warparties()).containsExactly(new Warparty("Carthage", Map.of("Warrior", 1), true, 3),
-				new Warparty("Carthage", Map.of("Warrior", 1), true, 2));
+		assertThat(egypt.warparties()).containsExactly(new Warparty("Carthage", Map.of("Warrior", 1), true, 2),
+				new Warparty("Carthage", Map.of("Warrior", 1), true, 1));
 		assertThat(egypt.turnReport().lines()).containsExactly("Rome conquered Carthage.",
 				"Your Warparty of Warrior ×1 heading to Carthage turned back home, as Carthage was conquered.",
 				"Your Warparty of Warrior ×1 heading to Carthage turned back home, as Carthage was conquered.",
 				BASE_INCOME_REPORT, "Your Units' upkeep cost 2 Gold.");
 
-		game.endTurn();
 		game.endTurn();
 
 		egypt = game.viewOf("Egypt");
@@ -1123,6 +1122,187 @@ class GameTest {
 		assertThat(game.viewOf("Rome")).isEqualTo(rome);
 		assertThat(game.act("Rome", new Action.TrainUnits("Warrior", 1)))
 			.isEqualTo(ActionResult.rejected("The Game is over."));
+	}
+
+	/**
+	 * Sends Warparties, as their Nation and Units in turn, and ends Turns
+	 * until they have all arrived at their target together, so that the Battle
+	 * is fought as the next Turn ends.
+	 */
+	void arrivedTogether(String target, Object... warparties) {
+		for (int i = 0; i < warparties.length; i += 2) {
+			@SuppressWarnings("unchecked")
+			Map<String, Integer> units = (Map<String, Integer>) warparties[i + 1];
+			assertThat(game.act((String) warparties[i], new Action.SendWarparty(target, units)))
+				.isEqualTo(ActionResult.ACCEPTED);
+		}
+		for (int turn = 1; turn <= 3; turn++) {
+			game.endTurn();
+		}
+	}
+
+	@Test
+	void warpartiesFromDifferentNationsArrivingTogetherFightAsOneAndEachLosesTheSameShareOfItsUnits() {
+		for (int turn = 1; turn <= 5; turn++) {
+			game.endTurn();
+		}
+		game.act("Rome", new Action.TrainUnits("Warrior", 2));
+		game.act("Egypt", new Action.TrainUnits("Warrior", 2));
+		game.act("Carthage", new Action.TrainUnits("Warrior", 3));
+		game.endTurn();
+		arrivedTogether("Carthage", "Rome", Map.of("Warrior", 2), "Egypt", Map.of("Warrior", 2));
+
+		game.endTurn();
+
+		assertThat(game.viewOf("Carthage").army()).isEmpty();
+		assertThat(game.viewOf("Rome").warparties())
+			.containsExactly(new Warparty("Carthage", Map.of("Warrior", 1), true, 3, new Plunder(9, 3)));
+		assertThat(game.viewOf("Egypt").warparties())
+			.containsExactly(new Warparty("Carthage", Map.of("Warrior", 1), true, 3, new Plunder(9, 3)));
+		assertThat(game.viewOf("Rome").turnReport().lines()).contains(
+				"Your Warparty of Warrior ×2 fought Carthage's Army of Warrior ×3 alongside Egypt's Warparty of Warrior ×2. You lost Warrior ×1 and Carthage lost Warrior ×3.",
+				"Your Warparty and Egypt's reduced Carthage's Population by 12, doubled as Carthage's Army was wiped out.",
+				"Your Warparty took 9 Gold and 3 Research from Carthage as its share and is heading home.");
+		assertThat(game.viewOf("Egypt").turnReport().lines()).contains(
+				"Your Warparty of Warrior ×2 fought Carthage's Army of Warrior ×3 alongside Rome's Warparty of Warrior ×2. You lost Warrior ×1 and Carthage lost Warrior ×3.",
+				"Your Warparty and Rome's reduced Carthage's Population by 12, doubled as Carthage's Army was wiped out.",
+				"Your Warparty took 9 Gold and 3 Research from Carthage as its share and is heading home.");
+		assertThat(game.viewOf("Carthage").turnReport().lines()).containsExactly(
+				"Your Army of Warrior ×3 fought Rome's Warparty of Warrior ×2 and Egypt's Warparty of Warrior ×2. You lost Warrior ×3, Rome lost Warrior ×1 and Egypt lost Warrior ×1.",
+				"Rome's and Egypt's Warparties reduced your Population by 12, doubled as your Army was wiped out.",
+				"Rome's Warparty took 9 Gold and 3 Research from you and is heading home.",
+				"Egypt's Warparty took 9 Gold and 3 Research from you and is heading home.", BASE_INCOME_REPORT);
+	}
+
+	@Test
+	void plunderFromAJointAttackIsSplitInProportionToEachWarpartysStrength() {
+		for (int turn = 1; turn <= 5; turn++) {
+			game.endTurn();
+		}
+		game.act("Rome", new Action.TrainUnits("Warrior", 1));
+		game.act("Egypt", new Action.TrainUnits("Warrior", 3));
+		game.endTurn();
+		arrivedTogether("Carthage", "Rome", Map.of("Warrior", 1), "Egypt", Map.of("Warrior", 3));
+		int carthageGold = game.viewOf("Carthage").gold();
+
+		game.endTurn();
+
+		assertThat(game.viewOf("Rome").warparties())
+			.containsExactly(new Warparty("Carthage", Map.of("Warrior", 1), true, 3, new Plunder(9, 3)));
+		assertThat(game.viewOf("Egypt").warparties())
+			.containsExactly(new Warparty("Carthage", Map.of("Warrior", 3), true, 3, new Plunder(27, 9)));
+		assertThat(game.viewOf("Carthage").gold()).isEqualTo(carthageGold - 36 + 10);
+		assertThat(game.viewOf("Rome").turnReport().lines()).contains(
+				"Your Warparty of Warrior ×1 met no Army at Carthage, alongside Egypt's Warparty of Warrior ×3.",
+				"Your Warparty took 9 Gold and 3 Research from Carthage as its share and is heading home.");
+		assertThat(game.viewOf("Egypt").turnReport().lines()).contains(
+				"Your Warparty of Warrior ×3 met no Army at Carthage, alongside Rome's Warparty of Warrior ×1.",
+				"Your Warparty took 27 Gold and 9 Research from Carthage as its share and is heading home.");
+		assertThat(game.viewOf("Carthage").turnReport().lines()).containsExactly(
+				"Rome's Warparty of Warrior ×1 and Egypt's Warparty of Warrior ×3 met no Army at your Nation.",
+				"Rome's and Egypt's Warparties reduced your Population by 24, doubled as you had no Army or Defense.",
+				"Rome's Warparty took 9 Gold and 3 Research from you and is heading home.",
+				"Egypt's Warparty took 27 Gold and 9 Research from you and is heading home.", BASE_INCOME_REPORT);
+	}
+
+	@Test
+	void aWarpartyWipedOutInAJointAttackGetsNoShareOfThePlunder() {
+		for (int turn = 1; turn <= 5; turn++) {
+			game.endTurn();
+		}
+		game.act("Rome", new Action.TrainUnits("Warrior", 1));
+		game.act("Egypt", new Action.TrainUnits("Warrior", 3));
+		game.act("Carthage", new Action.TrainUnits("Warrior", 4));
+		game.endTurn();
+		arrivedTogether("Carthage", "Rome", Map.of("Warrior", 1), "Egypt", Map.of("Warrior", 3));
+
+		game.endTurn();
+
+		assertThat(game.viewOf("Rome").warparties()).isEmpty();
+		assertThat(game.viewOf("Egypt").warparties())
+			.containsExactly(new Warparty("Carthage", Map.of("Warrior", 1), true, 3, new Plunder(9, 3)));
+		assertThat(game.viewOf("Carthage").army()).containsExactly(entry("Warrior", 2));
+		assertThat(game.viewOf("Rome").turnReport().lines()).contains(
+				"Your Warparty of Warrior ×1 fought Carthage's Army of Warrior ×4 alongside Egypt's Warparty of Warrior ×3. You lost Warrior ×1 and Carthage lost Warrior ×2.",
+				"Your Warparty sent to Carthage was destroyed.");
+		assertThat(game.viewOf("Egypt").turnReport().lines())
+			.contains("Your Warparty took 9 Gold and 3 Research from Carthage and is heading home.");
+		assertThat(game.viewOf("Carthage").turnReport().lines()).containsExactly(
+				"Your Army of Warrior ×4 fought Rome's Warparty of Warrior ×1 and Egypt's Warparty of Warrior ×3. You lost Warrior ×2, Rome lost Warrior ×1 and Egypt lost Warrior ×2.",
+				"Rome's Warparty was destroyed.", "Egypt's Warparty reduced your Population by 3.",
+				"Egypt's Warparty took 9 Gold and 3 Research from you and is heading home.",
+				BASE_INCOME_REPORT, "Your Units' upkeep cost 2 Gold.");
+	}
+
+	@Test
+	void warpartiesFromOneNationArrivingTogetherAlsoFightAsOne() {
+		for (int turn = 1; turn <= 5; turn++) {
+			game.endTurn();
+		}
+		game.act("Rome", new Action.TrainUnits("Warrior", 4));
+		game.act("Carthage", new Action.TrainUnits("Warrior", 3));
+		game.endTurn();
+		arrivedTogether("Carthage", "Rome", Map.of("Warrior", 2), "Rome", Map.of("Warrior", 2));
+
+		game.endTurn();
+
+		assertThat(game.viewOf("Rome").warparties()).containsExactly(
+				new Warparty("Carthage", Map.of("Warrior", 1), true, 3, new Plunder(9, 3)),
+				new Warparty("Carthage", Map.of("Warrior", 1), true, 3, new Plunder(9, 3)));
+		String battle = "Your Warparty of Warrior ×2 fought Carthage's Army of Warrior ×3 alongside your Warparty of Warrior ×2. You lost Warrior ×1 and Carthage lost Warrior ×3.";
+		assertThat(game.viewOf("Rome").turnReport().lines()).containsSubsequence(battle, battle,
+				"Your Warparties reduced Carthage's Population by 12, doubled as Carthage's Army was wiped out.");
+		assertThat(game.viewOf("Carthage").turnReport().lines()).contains(
+				"Your Army of Warrior ×3 fought Rome's Warparty of Warrior ×2 and Rome's Warparty of Warrior ×2. You lost Warrior ×3, Rome lost Warrior ×1 and Rome lost Warrior ×1.",
+				"Rome's Warparties reduced your Population by 12, doubled as your Army was wiped out.");
+	}
+
+	@Test
+	void theSpoilsOfAJointConquestAreSplitInProportionToEachWarpartysStrength() {
+		gameWithGiants("Rome", "Carthage", "Egypt", "Persia");
+		game.act("Rome", new Action.TrainUnits("Giant", 1));
+		game.act("Egypt", new Action.TrainUnits("Giant", 1));
+		game.endTurn();
+		arrivedTogether("Carthage", "Rome", Map.of("Giant", 1), "Egypt", Map.of("Giant", 1));
+		NationView carthage = game.viewOf("Carthage");
+		int carthagePopulation = carthage.population();
+		int seizedGold = carthage.gold() * 3 / 4;
+		int seizedResearch = carthage.research() * 3 / 4;
+		String seized = seizedGold + " Gold and " + seizedResearch + " Research";
+		int romeGold = game.viewOf("Rome").gold();
+		int egyptGold = game.viewOf("Egypt").gold();
+		// Equal Strength splits evenly; what cannot be split goes to the
+		// Warparty listed first.
+		int romeShare = (seizedGold + 1) / 2;
+		int egyptShare = seizedGold / 2;
+		String romeShareOfResearch = (seizedResearch + 1) / 2 + " Research";
+		String egyptShareOfResearch = seizedResearch / 2 + " Research";
+
+		game.endTurn();
+
+		carthage = game.viewOf("Carthage");
+		assertThat(carthage.conqueredBy()).isEqualTo("Rome and Egypt");
+		assertThat(game.conquered()).containsExactly("Carthage");
+		assertThat(carthage.turnReport().lines()).containsExactly(
+				"Rome's Warparty of Giant ×1 and Egypt's Warparty of Giant ×1 met no Army at your Nation.",
+				"Rome's and Egypt's Warparties reduced your Population by " + carthagePopulation
+						+ ", doubled as you had no Army or Defense.",
+				"Rome's and Egypt's Warparties conquered your Nation, seizing " + seized
+						+ ". You are knocked out of the Game.");
+		NationView rome = game.viewOf("Rome");
+		assertThat(rome.gold()).isEqualTo(romeGold + romeShare + 10 - 1);
+		assertThat(rome.warparties()).containsExactly(new Warparty("Carthage", Map.of("Giant", 1), true, 3));
+		assertThat(rome.turnReport().lines()).contains("Your Warparty and Egypt's conquered Carthage.",
+				"Your Warparty of Giant ×1 seized " + romeShare + " Gold and " + romeShareOfResearch
+						+ " as its share and is heading home.")
+			.doesNotContain("Rome and Egypt conquered Carthage.");
+		NationView egypt = game.viewOf("Egypt");
+		assertThat(egypt.gold()).isEqualTo(egyptGold + egyptShare + 10 - 1);
+		assertThat(egypt.turnReport().lines()).contains("Your Warparty and Rome's conquered Carthage.",
+				"Your Warparty of Giant ×1 seized " + egyptShare + " Gold and " + egyptShareOfResearch
+						+ " as its share and is heading home.");
+		assertThat(game.viewOf("Persia").turnReport().lines()).containsExactly("Rome and Egypt conquered Carthage.",
+				BASE_INCOME_REPORT);
 	}
 
 	@Test

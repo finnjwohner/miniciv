@@ -7,7 +7,6 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
 
 /**
  * A Nation's state inside the engine.
@@ -60,8 +59,8 @@ class Nation {
 	private TurnReport turnReport;
 
 	/**
-	 * The Nation that conquered this one, or null while it is still in the
-	 * Game.
+	 * The Nation or Nations that conquered this one, such as "Rome and Egypt",
+	 * or null while it is still in the Game.
 	 */
 	private String conqueredBy;
 
@@ -116,12 +115,14 @@ class Nation {
 
 	/**
 	 * Takes the Nation out of the Game: its Warparties abroad disappear, and
-	 * its conqueror seizes a share of its Gold and Research, rounded down.
+	 * its conquerors seize a share of its Gold and Research, rounded down.
 	 *
+	 * @param conquerors the Nation or Nations that conquered it, such as "Rome
+	 * and Egypt"
 	 * @return the Gold and Research seized
 	 */
-	Plunder conquer(String conqueror, double share) {
-		conqueredBy = conqueror;
+	Plunder conquer(String conquerors, double share) {
+		conqueredBy = conquerors;
 		warparties.clear();
 		return plundered((int) Math.floor(gold * share), (int) Math.floor(research * share));
 	}
@@ -319,20 +320,8 @@ class Nation {
 	}
 
 	/**
-	 * A Battle a Warparty fought, the plunder it took, and the Defense and
-	 * Population its target lost.
-	 *
-	 * @param warparty the Warparty as it was before the Battle
-	 * @param exposure how exposed the target's Population was
-	 * @param conquest how the target was conquered, or null if it was not
-	 */
-	record BattleFought(Warparty warparty, Battle battle, Plunder plunder, DefenseWorn defenseWorn,
-			int populationLost, Exposure exposure, Conquest conquest) {
-	}
-
-	/**
-	 * What a Nation's conqueror seized from it, and the other Warparties heading
-	 * to it that turned back home.
+	 * What a Nation's conquerors seized from it, and the other Warparties
+	 * heading to it that turned back home.
 	 *
 	 * @param turnedBack those Warparties as they were before, by the Nation
 	 * that sent them
@@ -341,32 +330,32 @@ class Nation {
 	}
 
 	/**
-	 * Fights the Battle of every Warparty awaiting one, in the order sent. Its
-	 * survivors head home with their plunder; a Warparty with none disappears.
-	 * A Battle that conquers its target may turn this Nation's later
-	 * Warparties back home before their turn comes, so they fight no Battle.
-	 *
-	 * @param fight fights a Warparty's Battle at its target and takes its
-	 * plunder
+	 * The Warparties that have arrived at their target and await the Battle,
+	 * in the order sent.
 	 */
-	List<BattleFought> fightBattles(Function<Warparty, BattleFought> fight, int travelTurns) {
-		List<BattleFought> fought = new ArrayList<>();
+	List<Warparty> awaitingBattle() {
+		return warparties.stream().filter(Warparty::awaitingBattle).toList();
+	}
+
+	/**
+	 * Sends one of the Warparties awaiting the Battle home from it with its
+	 * surviving Units and its plunder; one with no survivors disappears.
+	 *
+	 * @param warparty the Warparty, as {@link #awaitingBattle()} gave it
+	 */
+	void foughtBattle(Warparty warparty, Map<String, Integer> survivors, Plunder plunder, int travelTurns) {
 		for (var it = warparties.listIterator(); it.hasNext();) {
-			Warparty current = it.next();
-			if (!current.awaitingBattle()) {
-				continue;
+			if (it.next() == warparty) {
+				if (survivors.isEmpty()) {
+					it.remove();
+				}
+				else {
+					it.set(warparty.headingHome(survivors, plunder, travelTurns));
+				}
+				return;
 			}
-			BattleFought battle = fight.apply(current);
-			Map<String, Integer> survivors = battle.battle().warpartySurvivors();
-			if (survivors.isEmpty()) {
-				it.remove();
-			}
-			else {
-				it.set(current.headingHome(survivors, battle.plunder(), travelTurns));
-			}
-			fought.add(battle);
 		}
-		return fought;
+		throw new IllegalArgumentException("Not a Warparty of " + name);
 	}
 
 	Map<String, Integer> army() {
