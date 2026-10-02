@@ -14,9 +14,9 @@ class TechTreeTest {
 
 	static final UnitType HORSEMAN = new UnitType("Horseman", 20, 2, 2, 2, 4, List.of());
 
-	static final BuildingType FARM = new BuildingType("Farm", 30, 2, 1, 0, 0);
+	static final BuildingType FARM = new BuildingType("Farm", 30, 2, 1, 0, 0, 0, 0);
 
-	static final BuildingType WALLS = new BuildingType("Walls", 30, 2, 0, 0, 10);
+	static final BuildingType WALLS = new BuildingType("Walls", 30, 2, 0, 0, 0, 0, 10);
 
 	static final Technology MASONRY = new Technology("Masonry", 6, List.of(), List.of("Walls"));
 

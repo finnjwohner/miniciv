@@ -377,11 +377,13 @@ public class Game {
 			List<String> report = reports.get(nation.name());
 			int buildingPopulation = nation.populationFromBuildings(ruleset);
 			int buildingGold = nation.goldFromBuildings(ruleset);
+			int buildingResearch = nation.researchFromBuildings(ruleset);
 			int populationGold = nation.goldFromPopulation();
-			nation.gain(populationGold + buildingGold, POPULATION_PER_TURN + buildingPopulation, RESEARCH_PER_TURN);
+			nation.gain(populationGold + buildingGold, POPULATION_PER_TURN + buildingPopulation,
+					RESEARCH_PER_TURN + buildingResearch);
 			report.add("Your Population earned " + populationGold + " Gold, and your Nation gained "
 					+ POPULATION_PER_TURN + " Population and " + RESEARCH_PER_TURN + " Research.");
-			buildingsAddedLine(buildingPopulation, buildingGold).ifPresent(report::add);
+			buildingsAddedLine(buildingPopulation, buildingGold, buildingResearch).ifPresent(report::add);
 			for (Nation.Desertion desertion : nation.desertUntilUpkeepIsAffordable(ruleset)) {
 				if (desertion.spy() != null) {
 					report.add("You could not pay your Units' upkeep, so your Spy sent to " + desertion.spy().target()
@@ -1478,7 +1480,7 @@ public class Game {
 		return ActionResult.rejected("There is no Building called " + building + ".");
 	}
 
-	private static Optional<String> buildingsAddedLine(int population, int gold) {
+	private static Optional<String> buildingsAddedLine(int population, int gold, int research) {
 		List<String> added = new ArrayList<>();
 		if (population > 0) {
 			added.add(population + " Population");
@@ -1486,8 +1488,10 @@ public class Game {
 		if (gold > 0) {
 			added.add(gold + " Gold");
 		}
-		return added.isEmpty() ? Optional.empty()
-				: Optional.of("Your Buildings added " + String.join(" and ", added) + ".");
+		if (research > 0) {
+			added.add(research + " Research");
+		}
+		return added.isEmpty() ? Optional.empty() : Optional.of("Your Buildings added " + joined(added) + ".");
 	}
 
 	/**

@@ -36,6 +36,20 @@ class RulesetFilesTest {
 	}
 
 	@Test
+	void theShippedMarketAndLibraryAddFlatGoldAndResearchAndTheGranaryThreePopulation() {
+		Ruleset ruleset = RulesetFiles.load("ruleset");
+
+		assertThat(ruleset.building("Market")).contains(new BuildingType("Market", 40, 2, 0, 3, 0, 0, 0));
+		assertThat(ruleset.building("Library")).contains(new BuildingType("Library", 50, 3, 0, 0, 0, 2, 0));
+		assertThat(ruleset.building("Granary")).contains(new BuildingType("Granary", 60, 3, 3, 0, 0, 0, 0));
+		assertThat(ruleset.building("Farm")).map(BuildingType::goldPerTurn).contains(0);
+		assertThat(ruleset.building("Farm")).map(BuildingType::researchPerTurn).contains(0);
+		assertThat(ruleset.unlockedBy("Library")).map(Technology::name).contains("Writing");
+		assertThat(ruleset.unlockedBy("Spy")).map(Technology::name).contains("Writing");
+		assertThat(ruleset.unlockedBy("Market")).isEmpty();
+	}
+
+	@Test
 	void contentReferringToAnUnknownTypeFailsToLoad() {
 		assertThatExceptionOfType(InvalidRuleset.class).isThrownBy(() -> RulesetFiles.load("rulesets/unknown-counter"))
 			.withMessageContaining("Unit type Warrior counters Lancer, which is not a Unit type");
@@ -53,6 +67,10 @@ class RulesetFilesTest {
 		assertThatExceptionOfType(InvalidRuleset.class).isThrownBy(() -> RulesetFiles.load("rulesets/misspelt-field"))
 			.withMessageContaining("rulesets/misspelt-field/buildings.json")
 			.withMessageContaining("populatonPerTurn");
+		assertThatExceptionOfType(InvalidRuleset.class)
+			.isThrownBy(() -> RulesetFiles.load("rulesets/misspelt-research-field"))
+			.withMessageContaining("rulesets/misspelt-research-field/buildings.json")
+			.withMessageContaining("researchPerTurns");
 	}
 
 	@Test

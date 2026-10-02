@@ -11,6 +11,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Predicate;
+import java.util.function.ToIntFunction;
 
 /**
  * A Nation's state inside the engine.
@@ -1075,10 +1076,7 @@ class Nation {
 	 * Population the Nation's standing Buildings add this Turn.
 	 */
 	int populationFromBuildings(Ruleset ruleset) {
-		return standing(ruleset).entrySet()
-			.stream()
-			.mapToInt(owned -> ruleset.building(owned.getKey()).orElseThrow().populationPerTurn() * owned.getValue())
-			.sum();
+		return fromStanding(ruleset, BuildingType::populationPerTurn);
 	}
 
 	/**
@@ -1090,16 +1088,36 @@ class Nation {
 	}
 
 	/**
-	 * Gold the Nation's standing Buildings add this Turn for its current
-	 * Population, rounded down.
+	 * Gold the Nation's standing Buildings add this Turn: their flat Gold plus
+	 * their Gold for its current Population, rounded down.
 	 */
 	int goldFromBuildings(Ruleset ruleset) {
+		int flat = fromStanding(ruleset, BuildingType::goldPerTurn);
 		BigDecimal goldPerPopulation = standing(ruleset).entrySet()
 			.stream()
 			.map(owned -> BigDecimal.valueOf(ruleset.building(owned.getKey()).orElseThrow().goldPerPopulation())
 				.multiply(BigDecimal.valueOf(owned.getValue())))
 			.reduce(BigDecimal.ZERO, BigDecimal::add);
-		return goldPerPopulation.multiply(BigDecimal.valueOf(population)).setScale(0, RoundingMode.FLOOR).intValueExact();
+		return flat + goldPerPopulation.multiply(BigDecimal.valueOf(population))
+			.setScale(0, RoundingMode.FLOOR)
+			.intValueExact();
+	}
+
+	/**
+	 * Research the Nation's standing Buildings add this Turn.
+	 */
+	int researchFromBuildings(Ruleset ruleset) {
+		return fromStanding(ruleset, BuildingType::researchPerTurn);
+	}
+
+	/**
+	 * Sums one per-Turn effect over the Nation's standing Buildings.
+	 */
+	private int fromStanding(Ruleset ruleset, ToIntFunction<BuildingType> effect) {
+		return standing(ruleset).entrySet()
+			.stream()
+			.mapToInt(owned -> effect.applyAsInt(ruleset.building(owned.getKey()).orElseThrow()) * owned.getValue())
+			.sum();
 	}
 
 	/**

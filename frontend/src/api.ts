@@ -26,13 +26,15 @@ export type RoomView = { code: string; version: number; players: PlayerView[]; g
 
 /** What happened to a Nation as a Turn resolved. */
 export type TurnReport = { turn: number; lines: string[] }
-/** A kind of Building; once complete it adds its Population and Gold every Turn, and raises Defense while standing. */
+/** A kind of Building; once complete it adds its Population, Gold and Research every Turn, and raises Defense while standing. */
 export type BuildingType = {
   name: string
   gold: number
   turns: number
   populationPerTurn: number
+  goldPerTurn: number
   goldPerPopulation: number
+  researchPerTurn: number
   defense: number
 }
 /**
