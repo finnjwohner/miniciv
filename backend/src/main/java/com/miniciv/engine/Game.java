@@ -131,15 +131,16 @@ public class Game {
 
 	/**
 	 * Fights a Warparty's Battle against the Army of the Nation it arrived at,
-	 * whose survivors then take plunder scaled by their remaining Strength.
+	 * whose survivors then take plunder scaled by their remaining Strength,
+	 * rounded down.
 	 */
 	private Nation.BattleFought fight(Warparty warparty) {
 		Nation defender = nation(warparty.target());
 		Battle battle = Battle.fight(warparty.units(), defender.army(), ruleset, random);
 		defender.lose(battle.armyLost());
-		int strength = battle.warpartySurvivingStrength(ruleset);
-		Plunder plunder = defender.plundered(strength * PLUNDER_GOLD_PER_STRENGTH,
-				strength * PLUNDER_RESEARCH_PER_STRENGTH);
+		double strength = battle.warpartySurvivingStrength(ruleset);
+		Plunder plunder = defender.plundered((int) Math.floor(strength * PLUNDER_GOLD_PER_STRENGTH),
+				(int) Math.floor(strength * PLUNDER_RESEARCH_PER_STRENGTH));
 		return new Nation.BattleFought(warparty, battle, plunder);
 	}
 
@@ -195,7 +196,7 @@ public class Game {
 				if (train.count() < 1) {
 					yield ActionResult.rejected("Train at least one Unit.");
 				}
-				yield ruleset.trainableUnit(train.unit())
+				yield ruleset.unit(train.unit())
 					.map(unit -> actor.trainUnits(unit, train.count(), turn))
 					.orElseGet(() -> ActionResult
 						.rejected("There is no Unit called " + train.unit() + " that you can train."));

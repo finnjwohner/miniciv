@@ -62,10 +62,10 @@ record Battle(Map<String, Integer> warparty, Map<String, Integer> army, Map<Stri
 	/**
 	 * The Warparty's surviving Units' Strength, without counters or luck.
 	 */
-	int warpartySurvivingStrength(Ruleset ruleset) {
+	double warpartySurvivingStrength(Ruleset ruleset) {
 		return warpartySurvivors().entrySet()
 			.stream()
-			.mapToInt(s -> ruleset.unit(s.getKey()).orElseThrow().strength() * s.getValue())
+			.mapToDouble(s -> ruleset.unit(s.getKey()).orElseThrow().strength() * s.getValue())
 			.sum();
 	}
 

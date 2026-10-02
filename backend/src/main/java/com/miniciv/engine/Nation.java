@@ -71,7 +71,7 @@ class Nation {
 
 	NationView view(int turn, List<String> otherNations, int travelTurns, Ruleset ruleset) {
 		return new NationView(version, turn, name, gold, population, research, otherNations, ruleset.buildings(),
-				Collections.unmodifiableMap(new LinkedHashMap<>(buildings)), construction, ruleset.trainableUnits(),
+				Collections.unmodifiableMap(new LinkedHashMap<>(buildings)), construction, ruleset.units(),
 				Collections.unmodifiableMap(new LinkedHashMap<>(army)), training, warparties, travelTurns, upkeep(ruleset),
 				turnReport);
 	}

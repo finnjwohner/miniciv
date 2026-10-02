@@ -7,9 +7,11 @@ import java.util.List;
  * Gold upkeep every Turn after.
  *
  * @param turns how many Turns training takes
+ * @param strength how much it contributes in a Battle; Scouts and Spies have
+ * only a little
  * @param counters the Unit types this one multiplies its Strength against
  */
-public record UnitType(String name, int gold, int population, int turns, int upkeep, int strength,
+public record UnitType(String name, int gold, int population, int turns, int upkeep, double strength,
 		List<String> counters) {
 
 	public UnitType {
