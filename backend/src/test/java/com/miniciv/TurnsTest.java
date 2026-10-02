@@ -353,7 +353,8 @@ class TurnsTest {
 		Map<?, ?> view = rome.privately().next();
 		assertThat(view.get("army")).isEqualTo(Map.of());
 		assertThat(view.get("warparties")).isEqualTo(List.of(
-				Map.of("target", "Carthage", "units", Map.of("Warrior", 2), "homeward", false, "turnsLeft", 3)));
+				Map.of("target", "Carthage", "units", Map.of("Warrior", 2), "homeward", false, "turnsLeft", 3, "plunder",
+						Map.of("gold", 0, "research", 0))));
 		carthage.privately().expectNone();
 	}
 

@@ -7,6 +7,7 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 
 /**
  * A Nation's state inside the engine.
@@ -139,38 +140,110 @@ class Nation {
 	}
 
 	/**
-	 * Warparties that reached where they were heading as a Turn resolved, as
-	 * they were when they got there.
+	 * Moves every Warparty heading home one Turn on; one reaching home rejoins
+	 * the Army and hands over its plunder.
 	 *
-	 * @param arrived those that reached their target and turned for home
-	 * @param returned those that came home and rejoined the Army
+	 * @return those that came home, as they were when they got there
 	 */
-	record Travelled(List<Warparty> arrived, List<Warparty> returned) {
-	}
-
-	/**
-	 * Moves every Warparty one Turn on. One reaching its target turns for home
-	 * over the same travel time; one reaching home rejoins the Army.
-	 */
-	Travelled travel(int travelTurns) {
-		List<Warparty> arrived = new ArrayList<>();
+	List<Warparty> travelHome() {
 		List<Warparty> returned = new ArrayList<>();
 		for (var it = warparties.listIterator(); it.hasNext();) {
 			Warparty current = it.next();
+			if (!current.homeward()) {
+				continue;
+			}
 			if (current.turnsLeft() > 1) {
 				it.set(current.travelled());
-			}
-			else if (!current.homeward()) {
-				it.set(current.headingHome(travelTurns));
-				arrived.add(current);
 			}
 			else {
 				it.remove();
 				current.units().forEach((unit, count) -> army.merge(unit, count, Integer::sum));
+				gold += current.plunder().gold();
+				research += current.plunder().research();
 				returned.add(current);
 			}
 		}
-		return new Travelled(arrived, returned);
+		return returned;
+	}
+
+	/**
+	 * Moves every Warparty travelling to its target one Turn on; one reaching
+	 * its target waits there for the Battle.
+	 *
+	 * @return those that arrived at their target
+	 */
+	List<Warparty> travelOut() {
+		List<Warparty> arrived = new ArrayList<>();
+		for (var it = warparties.listIterator(); it.hasNext();) {
+			Warparty current = it.next();
+			if (current.homeward() || current.awaitingBattle()) {
+				continue;
+			}
+			it.set(current.travelled());
+			if (current.turnsLeft() == 1) {
+				arrived.add(current);
+			}
+		}
+		return arrived;
+	}
+
+	/**
+	 * A Battle a Warparty fought, and the plunder it took.
+	 *
+	 * @param warparty the Warparty as it was before the Battle
+	 */
+	record BattleFought(Warparty warparty, Battle battle, Plunder plunder) {
+	}
+
+	/**
+	 * Fights the Battle of every Warparty awaiting one, in the order sent. Its
+	 * survivors head home with their plunder; a Warparty with none disappears.
+	 *
+	 * @param fight fights a Warparty's Battle at its target and takes its
+	 * plunder
+	 */
+	List<BattleFought> fightBattles(Function<Warparty, BattleFought> fight, int travelTurns) {
+		List<BattleFought> fought = new ArrayList<>();
+		for (var it = warparties.listIterator(); it.hasNext();) {
+			Warparty current = it.next();
+			if (!current.awaitingBattle()) {
+				continue;
+			}
+			BattleFought battle = fight.apply(current);
+			Map<String, Integer> survivors = battle.battle().warpartySurvivors();
+			if (survivors.isEmpty()) {
+				it.remove();
+			}
+			else {
+				it.set(current.headingHome(survivors, battle.plunder(), travelTurns));
+			}
+			fought.add(battle);
+		}
+		return fought;
+	}
+
+	Map<String, Integer> army() {
+		return Collections.unmodifiableMap(new LinkedHashMap<>(army));
+	}
+
+	/**
+	 * Removes Units the Army lost.
+	 */
+	void lose(Map<String, Integer> units) {
+		units.forEach((unit, count) -> army.computeIfPresent(unit, (u, owned) -> owned <= count ? null : owned - count));
+	}
+
+	/**
+	 * Gives up Gold and Research to plunderers, as much as the Nation has.
+	 *
+	 * @return the Gold and Research taken
+	 */
+	Plunder plundered(int gold, int research) {
+		int goldTaken = Math.min(gold, this.gold);
+		int researchTaken = Math.min(research, this.research);
+		this.gold -= goldTaken;
+		this.research -= researchTaken;
+		return new Plunder(goldTaken, researchTaken);
 	}
 
 	/**

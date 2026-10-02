@@ -32,6 +32,16 @@ public class Game {
 	 */
 	private static final int TRAVEL_TURNS = 3;
 
+	/**
+	 * How much Gold a Warparty's surviving Strength lets it plunder.
+	 */
+	private static final int PLUNDER_GOLD_PER_STRENGTH = 3;
+
+	/**
+	 * How much Research a Warparty's surviving Strength lets it plunder.
+	 */
+	private static final int PLUNDER_RESEARCH_PER_STRENGTH = 1;
+
 	private final Ruleset ruleset;
 
 	private final Map<String, Nation> nations = new LinkedHashMap<>();
@@ -73,17 +83,27 @@ public class Game {
 			}
 		}
 		for (Nation nation : nations.values()) {
-			Nation.Travelled travelled = nation.travel(TRAVEL_TURNS);
-			for (Warparty arrived : travelled.arrived()) {
+			for (Warparty returned : nation.travelHome()) {
+				String plunder = returned.plunder().isNone() ? "" : " with " + returned.plunder().described() + ",";
+				reports.get(nation.name())
+					.add("Your Warparty came home from " + returned.target() + plunder + " and "
+							+ listed(returned.units()) + " rejoined your Army.");
+			}
+		}
+		for (Nation attacker : nations.values()) {
+			for (Nation.BattleFought fought : attacker.fightBattles(this::fight, TRAVEL_TURNS)) {
+				reportBattle(attacker.name(), fought, reports.get(attacker.name()),
+						reports.get(fought.warparty().target()));
+			}
+		}
+		for (Nation nation : nations.values()) {
+			for (Warparty arrived : nation.travelOut()) {
 				reports.get(nation.name())
 					.add("Your Warparty of " + listed(arrived.units()) + " arrived at " + arrived.target()
-							+ " and is heading home.");
-				reports.get(arrived.target()).add("A Warparty from " + nation.name() + " arrived at your Nation.");
-			}
-			for (Warparty returned : travelled.returned()) {
-				reports.get(nation.name())
-					.add("Your Warparty came home from " + returned.target() + " and " + listed(returned.units())
-							+ " rejoined your Army.");
+							+ "; the Battle will be fought as this Turn ends.");
+				reports.get(arrived.target())
+					.add("A Warparty from " + nation.name()
+							+ " arrived at your Nation; the Battle will be fought as this Turn ends.");
 			}
 		}
 		for (Nation nation : nations.values()) {
@@ -107,6 +127,58 @@ public class Game {
 			nation.turnReport(new TurnReport(turn, report));
 		}
 		turn++;
+	}
+
+	/**
+	 * Fights a Warparty's Battle against the Army of the Nation it arrived at,
+	 * whose survivors then take plunder scaled by their remaining Strength.
+	 */
+	private Nation.BattleFought fight(Warparty warparty) {
+		Nation defender = nation(warparty.target());
+		Battle battle = Battle.fight(warparty.units(), defender.army(), ruleset, random);
+		defender.lose(battle.armyLost());
+		int strength = battle.warpartySurvivingStrength(ruleset);
+		Plunder plunder = defender.plundered(strength * PLUNDER_GOLD_PER_STRENGTH,
+				strength * PLUNDER_RESEARCH_PER_STRENGTH);
+		return new Nation.BattleFought(warparty, battle, plunder);
+	}
+
+	private static void reportBattle(String attacker, Nation.BattleFought fought, List<String> attackerReport,
+			List<String> defenderReport) {
+		Battle battle = fought.battle();
+		String defender = fought.warparty().target();
+		String warparty = listed(battle.warparty());
+		if (battle.army().isEmpty()) {
+			attackerReport.add("Your Warparty of " + warparty + " met no Army at " + defender + ".");
+			defenderReport.add(attacker + "'s Warparty of " + warparty + " met no Army at your Nation.");
+		}
+		else {
+			String army = listed(battle.army());
+			attackerReport.add("Your Warparty of " + warparty + " fought " + defender + "'s Army of " + army
+					+ ". You lost " + lost(battle.warpartyLost()) + " and " + defender + " lost "
+					+ lost(battle.armyLost()) + ".");
+			defenderReport.add("Your Army of " + army + " fought " + attacker + "'s Warparty of " + warparty
+					+ ". You lost " + lost(battle.armyLost()) + " and " + attacker + " lost "
+					+ lost(battle.warpartyLost()) + ".");
+		}
+		if (battle.warpartySurvivors().isEmpty()) {
+			attackerReport.add("Your Warparty sent to " + defender + " was destroyed.");
+			defenderReport.add(attacker + "'s Warparty was destroyed.");
+			return;
+		}
+		Plunder plunder = fought.plunder();
+		if (plunder.isNone()) {
+			attackerReport.add("Your Warparty took nothing from " + defender + " and is heading home.");
+			defenderReport.add(attacker + "'s Warparty took nothing from you and is heading home.");
+		}
+		else {
+			attackerReport.add("Your Warparty took " + plunder.described() + " from " + defender + " and is heading home.");
+			defenderReport.add(attacker + "'s Warparty took " + plunder.described() + " from you and is heading home.");
+		}
+	}
+
+	private static String lost(Map<String, Integer> units) {
+		return units.isEmpty() ? "no Units" : listed(units);
 	}
 
 	/**
