@@ -188,6 +188,54 @@ class Nation {
 		return turnedBack;
 	}
 
+	int population() {
+		return population;
+	}
+
+	/**
+	 * The Nation's Warparties abroad, in the order sent.
+	 */
+	List<Warparty> warparties() {
+		return List.copyOf(warparties);
+	}
+
+	/**
+	 * Changes the Nation's trip for one of its Warparties travelling by the
+	 * given number of Turns; see {@link Warparty#delayed(int)}.
+	 *
+	 * @param warparty the Warparty, as {@link #warparties()} gave it
+	 * @return the Warparty as it is now
+	 */
+	Warparty delay(Warparty warparty, int turns) {
+		for (var it = warparties.listIterator(); it.hasNext();) {
+			if (it.next() == warparty) {
+				Warparty delayed = warparty.delayed(turns);
+				it.set(delayed);
+				return delayed;
+			}
+		}
+		throw new IllegalArgumentException("Not a Warparty of " + name);
+	}
+
+	/**
+	 * How much an Event changed a Nation's Gold, Population and Research by.
+	 */
+	record Change(int gold, int population, int research) {
+	}
+
+	/**
+	 * Changes the Nation's Gold, Population and Research by the given amounts,
+	 * taking no more than it has.
+	 *
+	 * @return how much each actually changed by
+	 */
+	Change change(int gold, int population, int research) {
+		Change change = new Change(Math.max(gold, -this.gold), Math.max(population, -this.population),
+				Math.max(research, -this.research));
+		gain(change.gold(), change.population(), change.research());
+		return change;
+	}
+
 	void gain(int gold, int population, int research) {
 		this.gold += gold;
 		this.population += population;

@@ -15,6 +15,8 @@ class RulesetFilesTest {
 			.contains("Warrior", "Archer", "Horseman", "Scout", "Spy");
 		assertThat(ruleset.buildings()).extracting(BuildingType::name).contains("Farm", "Granary", "Bank");
 		assertThat(ruleset.technologies()).isNotEmpty();
+		assertThat(ruleset.events()).extracting(Event::name)
+			.contains("Good harvest", "Plague", "Dust storm", "Rumours of war");
 	}
 
 	@Test
@@ -28,6 +30,16 @@ class RulesetFilesTest {
 		assertThatExceptionOfType(InvalidRuleset.class).isThrownBy(() -> RulesetFiles.load("rulesets/misspelt-field"))
 			.withMessageContaining("rulesets/misspelt-field/buildings.json")
 			.withMessageContaining("populatonPerTurn");
+	}
+
+	@Test
+	void anEventWithAnUnknownConditionOrSubjectFailsToLoadNamingTheFile() {
+		assertThatExceptionOfType(InvalidRuleset.class).isThrownBy(() -> RulesetFiles.load("rulesets/unknown-condition"))
+			.withMessageContaining("rulesets/unknown-condition/events.json")
+			.withMessageContaining("goldAtLeast");
+		assertThatExceptionOfType(InvalidRuleset.class).isThrownBy(() -> RulesetFiles.load("rulesets/unknown-subject"))
+			.withMessageContaining("rulesets/unknown-subject/events.json")
+			.withMessageContaining("Spy");
 	}
 
 	@Test

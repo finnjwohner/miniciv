@@ -244,6 +244,7 @@ public class Game {
 				report.add("Your Units' upkeep cost " + upkeep + " Gold.");
 			}
 		}
+		rollEvents(reports);
 		List<Nation> left = remaining();
 		if (left.size() == 1) {
 			winner = left.getFirst().name();
@@ -582,6 +583,117 @@ public class Game {
 
 	private static String lost(Map<String, Integer> units) {
 		return units.isEmpty() ? "no Units" : listed(units);
+	}
+
+	/**
+	 * Rolls every Event, in the order listed, for each Nation still in the
+	 * Game in order or each of its travelling Warparties in the order sent,
+	 * that the Event's conditions hold for, drawing once from the seeded random
+	 * source for each. One that happens takes effect at once and is announced
+	 * in the Turn Report of the Nation it happened to, or that sent the
+	 * Warparty.
+	 */
+	private void rollEvents(Map<String, List<String>> reports) {
+		for (Event event : ruleset.events()) {
+			for (Nation nation : remaining()) {
+				List<String> report = reports.get(nation.name());
+				switch (event.subject()) {
+					case NATION -> {
+						if (event.when().holdForNation(turn, nation.population(), largestApproaching(nation))
+								&& happens(event)) {
+							report.add(announced(event, befall(event, nation)));
+						}
+					}
+					case WARPARTY -> {
+						for (Warparty warparty : nation.warparties()) {
+							if (!warparty.awaitingBattle() && event.when().holdForWarparty(turn, warparty)
+									&& happens(event)) {
+								report.add(announced(event,
+										List.of(delayed(warparty, nation.delay(warparty, event.effects().travelTurns())))));
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	private boolean happens(Event event) {
+		return random.nextDouble() < event.chance();
+	}
+
+	/**
+	 * How many Units the largest Warparty travelling to a Nation holds, or 0 if
+	 * none is.
+	 */
+	private int largestApproaching(Nation target) {
+		return remaining().stream()
+			.flatMap(nation -> nation.warparties().stream())
+			.filter(warparty -> warparty.approaching(target.name()))
+			.mapToInt(Warparty::unitCount)
+			.max()
+			.orElse(0);
+	}
+
+	/**
+	 * Applies an Event's effects to a Nation.
+	 *
+	 * @return what changed, such as "your Nation gained 4 Population"
+	 */
+	private List<String> befall(Event event, Nation nation) {
+		Event.Effects effects = event.effects();
+		List<String> changes = new ArrayList<>();
+		Nation.Change change = nation.change(effects.gold(), effects.population(), effects.research());
+		Map<String, Integer> changed = new LinkedHashMap<>();
+		changed.put("Gold", change.gold());
+		changed.put("Population", change.population());
+		changed.put("Research", change.research());
+		List<String> gained = new ArrayList<>();
+		List<String> lost = new ArrayList<>();
+		changed.forEach((resource, amount) -> {
+			if (amount > 0) {
+				gained.add(amount + " " + resource);
+			}
+			else if (amount < 0) {
+				lost.add(-amount + " " + resource);
+			}
+		});
+		List<String> resources = new ArrayList<>();
+		if (!gained.isEmpty()) {
+			resources.add("gained " + joined(gained));
+		}
+		if (!lost.isEmpty()) {
+			resources.add("lost " + joined(lost));
+		}
+		if (!resources.isEmpty()) {
+			changes.add("your Nation " + String.join(" and ", resources));
+		}
+		if (effects.damageDefense() > 0) {
+			Nation.DefenseWorn defenseWorn = nation.wearDefense(effects.damageDefense(), ruleset);
+			if (defenseWorn.worn() > 0) {
+				changes.add("your Defense was worn down from " + defenseWorn.before() + " to " + defenseWorn.after()
+						+ ", " + buildingsHarmed(defenseWorn));
+			}
+		}
+		return changes;
+	}
+
+	/**
+	 * Such as "your Warparty of Warrior ×2 heading to Carthage will now arrive
+	 * in 3 Turns".
+	 */
+	private static String delayed(Warparty before, Warparty after) {
+		String turns = after.turnsLeft() + (after.turnsLeft() == 1 ? " Turn" : " Turns");
+		return "your Warparty of " + listed(before.units())
+				+ (before.homeward() ? " heading home from " + before.target() + " will now get home in " + turns
+						: " heading to " + before.target() + " will now arrive in " + turns);
+	}
+
+	/**
+	 * An Event's line in the Turn Report: its text, then what it changed.
+	 */
+	private static String announced(Event event, List<String> changes) {
+		return event.text() + (changes.isEmpty() ? "." : ": " + String.join(" and ", changes) + ".");
 	}
 
 	/**
