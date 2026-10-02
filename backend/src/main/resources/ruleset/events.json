@@ -1,0 +1,10 @@
+[
+  { "name": "Good harvest", "subject": "Nation", "chance": 0.08, "when": { "turnAtLeast": 2 },
+    "effects": { "population": 4 }, "text": "A good harvest filled your granaries" },
+  { "name": "Plague", "subject": "Nation", "chance": 0.04, "when": { "turnAtLeast": 4, "populationAtLeast": 12 },
+    "effects": { "population": -6 }, "text": "Plague swept through your Nation" },
+  { "name": "Dust storm", "subject": "Warparty", "chance": 0.1,
+    "effects": { "travelTurns": 1 }, "text": "A dust storm swept the plains" },
+  { "name": "Rumours of war", "subject": "Nation", "chance": 0.5, "when": { "approachingUnitsAtLeast": 8 },
+    "text": "Rumours spread of a large army marching on your Nation" }
+]

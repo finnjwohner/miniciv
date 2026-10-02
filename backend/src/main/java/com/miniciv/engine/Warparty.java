@@ -37,6 +37,13 @@ public record Warparty(String target, Map<String, Integer> units, boolean homewa
 	}
 
 	/**
+	 * Whether it is travelling to the given Nation and has not yet arrived.
+	 */
+	boolean approaching(String nation) {
+		return !homeward && turnsLeft > 0 && target.equals(nation);
+	}
+
+	/**
 	 * This Warparty one Turn closer to where it is heading.
 	 */
 	Warparty travelled() {
@@ -58,6 +65,21 @@ public record Warparty(String target, Map<String, Integer> units, boolean homewa
 	 */
 	Warparty turnedBack(int travelTurns) {
 		return new Warparty(target, units, true, Math.max(1, travelTurns - turnsLeft), plunder);
+	}
+
+	/**
+	 * How many Units it holds, of every type.
+	 */
+	int unitCount() {
+		return units.values().stream().mapToInt(Integer::intValue).sum();
+	}
+
+	/**
+	 * This Warparty with its trip changed by the given number of Turns, still
+	 * taking at least one more.
+	 */
+	Warparty delayed(int turns) {
+		return new Warparty(target, units, homeward, Math.max(1, turnsLeft + turns), plunder);
 	}
 
 	/**

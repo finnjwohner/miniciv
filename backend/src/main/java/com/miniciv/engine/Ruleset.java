@@ -9,19 +9,29 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
- * The game content: Unit types, Building types and Technologies. It is checked
- * when made, so a Game never meets content that refers to something missing.
+ * The game content: Unit types, Building types, Technologies and Events. It is
+ * checked when made, so a Game never meets content that refers to something
+ * missing.
  */
-public record Ruleset(List<UnitType> units, List<BuildingType> buildings, List<Technology> technologies) {
+public record Ruleset(List<UnitType> units, List<BuildingType> buildings, List<Technology> technologies,
+		List<Event> events) {
 
 	public Ruleset {
 		units = List.copyOf(units);
 		buildings = List.copyOf(buildings);
 		technologies = List.copyOf(technologies);
-		List<String> problems = problems(units, buildings, technologies);
+		events = List.copyOf(events);
+		List<String> problems = problems(units, buildings, technologies, events);
 		if (!problems.isEmpty()) {
 			throw new InvalidRuleset("The ruleset is invalid:\n" + String.join("\n", problems));
 		}
+	}
+
+	/**
+	 * Game content with no Events.
+	 */
+	public Ruleset(List<UnitType> units, List<BuildingType> buildings, List<Technology> technologies) {
+		this(units, buildings, technologies, List.of());
 	}
 
 	public Optional<BuildingType> building(String name) {
@@ -33,7 +43,7 @@ public record Ruleset(List<UnitType> units, List<BuildingType> buildings, List<T
 	}
 
 	private static List<String> problems(List<UnitType> units, List<BuildingType> buildings,
-			List<Technology> technologies) {
+			List<Technology> technologies, List<Event> events) {
 		List<String> problems = new ArrayList<>();
 		Set<String> unitNames = names(units.stream().map(UnitType::name));
 		Set<String> buildingNames = names(buildings.stream().map(BuildingType::name));
@@ -48,10 +58,15 @@ public record Ruleset(List<UnitType> units, List<BuildingType> buildings, List<T
 		if (technologies.stream().map(Technology::name).anyMatch(Ruleset::isBlank)) {
 			problems.add("A Technology has no name.");
 		}
+		if (events.stream().map(Event::name).anyMatch(Ruleset::isBlank)) {
+			problems.add("An Event has no name.");
+		}
 		duplicates(Stream.concat(units.stream().map(UnitType::name), buildings.stream().map(BuildingType::name)))
 			.forEach(name -> problems.add("There is more than one Unit or Building type called " + name + "."));
 		duplicates(technologies.stream().map(Technology::name))
 			.forEach(name -> problems.add("There is more than one Technology called " + name + "."));
+		duplicates(events.stream().map(Event::name))
+			.forEach(name -> problems.add("There is more than one Event called " + name + "."));
 
 		for (UnitType unit : units) {
 			String subject = "Unit type " + unit.name();
@@ -92,6 +107,7 @@ public record Ruleset(List<UnitType> units, List<BuildingType> buildings, List<T
 				}
 			}
 		}
+		events.forEach(event -> problems.addAll(event.problems()));
 		return problems;
 	}
 

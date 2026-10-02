@@ -1,0 +1,3 @@
+[
+  { "name": "Gold rush", "subject": "Nation", "chance": 0.1, "when": { "goldAtLeast": 50 }, "text": "Gold was found" }
+]
