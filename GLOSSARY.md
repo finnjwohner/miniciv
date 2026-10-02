@@ -125,7 +125,7 @@ The Gold and Research a Warparty's surviving Units take from the Nation they fou
 _Avoid_: Loot, spoils, booty
 
 **Conquest**:
-Taking a Nation by bringing both its Population and its Army to 0; the conquering Nation seizes a large share of its Gold and Research, and the conquered Player is knocked out.
+Taking a Nation by bringing both its Population and its Army to 0 in a Battle that some of the attacking Units survive; a Nation is only conquered when attacked, and a Warparty wiped out in the Battle conquers nothing. The conquering Nation seizes a large share of its Gold and Research, and the conquered Player is knocked out.
 _Avoid_: Domination, elimination
 
 ## Events

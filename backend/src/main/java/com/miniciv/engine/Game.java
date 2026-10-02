@@ -204,8 +204,9 @@ public class Game {
 	 * The Warparty's surviving Strength, rounded down, wears the Nation's
 	 * Defense down, and what is left once Defense is 0 reduces its Population,
 	 * more so if its Army was wiped out or it had neither Army nor Defense. A
-	 * Nation left with neither Population nor Army is conquered; otherwise the
-	 * survivors take plunder scaled by their remaining Strength, rounded down.
+	 * Nation left with neither Population nor Army is conquered, unless the
+	 * Warparty was wiped out too; otherwise the survivors take plunder scaled
+	 * by their remaining Strength, rounded down.
 	 */
 	private Nation.BattleFought fight(Nation attacker, Warparty warparty) {
 		Nation defender = nation(warparty.target());
@@ -218,7 +219,7 @@ public class Game {
 		Exposure exposure = Exposure.of(battle, defenseWorn);
 		int multiplier = exposure == Exposure.DEFENDED ? 1 : EXPOSED_POPULATION_MULTIPLIER;
 		int populationLost = defender.losePopulation(strengthLeft * POPULATION_PER_STRENGTH * multiplier);
-		if (defender.hasNeitherPopulationNorArmy()) {
+		if (!battle.warpartySurvivors().isEmpty() && defender.hasNeitherPopulationNorArmy()) {
 			return new Nation.BattleFought(warparty, battle, Plunder.NONE, defenseWorn, populationLost, exposure,
 					conquer(attacker, defender));
 		}
