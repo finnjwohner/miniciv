@@ -99,7 +99,7 @@ class GameTest {
 		assertThat(game.viewOf("Carthage")).isEqualTo(new NationView(2, 2, "Carthage", 60, 12, 3, List.of("Rome", "Egypt"),
 				List.of(FARM, GRANARY, BANK, WALLS, MOAT), Map.of(), List.of(), List.of(), 0, List.of(),
 				List.of(WARRIOR, ARCHER, HORSEMAN, SCOUT), Map.of(), List.of(), List.of(), 3, 0,
-				new TurnReport(1, List.of("Your Nation gained 10 Gold, 2 Population and 3 Research."))));
+				new TurnReport(1, List.of("Your Nation gained 10 Gold, 2 Population and 3 Research.")), null, null));
 	}
 
 	@Test
@@ -511,14 +511,16 @@ class GameTest {
 
 	@Test
 	void aMuchStrongerWarpartyWipesOutTheArmyWithoutLossAndBothSidesAreToldOfTheBattle() {
-		game.endTurn();
+		for (int turn = 1; turn <= 5; turn++) {
+			game.endTurn();
+		}
 		armyOf("Rome", "Warrior", 4);
 		armyOf("Carthage", "Warrior", 1);
 		arrived("Rome", "Carthage", Map.of("Warrior", 4));
 		int carthageGold = game.viewOf("Carthage").gold();
 		int carthageResearch = game.viewOf("Carthage").research();
 		int carthagePopulation = game.viewOf("Carthage").population();
-		assertThat(carthagePopulation).isLessThan(24);
+		assertThat(carthagePopulation).isGreaterThan(24);
 
 		game.endTurn();
 
@@ -533,7 +535,7 @@ class GameTest {
 		assertThat(carthage.research()).isEqualTo(carthageResearch - 12 + 3);
 		assertThat(carthage.turnReport().lines()).containsExactly(
 				"Your Army of Warrior ×1 fought Rome's Warparty of Warrior ×4. You lost Warrior ×1 and Rome lost no Units.",
-				"Rome's Warparty reduced your Population by " + carthagePopulation + ", doubled as your Army was wiped out.",
+				"Rome's Warparty reduced your Population by 24, doubled as your Army was wiped out.",
 				"Rome's Warparty took 36 Gold and 12 Research from you and is heading home.", BASE_INCOME_REPORT);
 	}
 
@@ -770,7 +772,7 @@ class GameTest {
 
 		game.endTurn();
 
-		assertThat(game.viewOf("Carthage").population()).isEqualTo(2);
+		assertThat(game.viewOf("Carthage").population()).isZero();
 		assertThat(game.viewOf("Carthage").turnReport().lines()).contains("Rome's Warparty reduced your Population by "
 				+ carthagePopulation + ", doubled as you had no Army or Defense.");
 	}
@@ -945,6 +947,156 @@ class GameTest {
 		assertThat(rome.gold()).isEqualTo(10 - 7);
 		assertThat(rome.turnReport().lines())
 			.contains("You could not pay your Units' upkeep, so Horseman ×1 deserted from your Warparty sent to Carthage.");
+	}
+
+	static final UnitType GIANT = new UnitType("Giant", 10, 1, 1, 1, 100, List.of());
+
+	/**
+	 * A Game in which a Giant is strong enough to conquer any Nation it
+	 * reaches.
+	 */
+	void gameWithGiants(String... nations) {
+		UnitType warrior = new UnitType("Warrior", 10, 3, 1, 1, 3, List.of());
+		game = new Game(new Ruleset(List.of(warrior, GIANT), List.of(), List.of()), List.of(nations), EVEN_LUCK);
+	}
+
+	@Test
+	void aNationLeftWithNoPopulationAndNoArmyAfterABattleIsConqueredEvenWithAWarpartyAbroad() {
+		gameWithGiants("Rome", "Carthage", "Egypt");
+		game.act("Rome", new Action.TrainUnits("Giant", 1));
+		game.act("Carthage", new Action.TrainUnits("Warrior", 1));
+		game.endTurn();
+		game.act("Carthage", new Action.SendWarparty("Egypt", Map.of("Warrior", 1)));
+		arrived("Rome", "Carthage", Map.of("Giant", 1));
+		NationView carthage = game.viewOf("Carthage");
+		assertThat(carthage.warparties()).hasSize(1);
+		int carthagePopulation = carthage.population();
+		int romeGold = game.viewOf("Rome").gold();
+		int romeResearch = game.viewOf("Rome").research();
+		int seizedGold = carthage.gold() * 3 / 4;
+		int seizedResearch = carthage.research() * 3 / 4;
+		String seized = seizedGold + " Gold and " + seizedResearch + " Research";
+
+		game.endTurn();
+
+		carthage = game.viewOf("Carthage");
+		assertThat(carthage.conqueredBy()).isEqualTo("Rome");
+		assertThat(carthage.population()).isZero();
+		assertThat(carthage.warparties()).isEmpty();
+		assertThat(carthage.turnReport().lines()).containsExactly("Rome's Warparty of Giant ×1 met no Army at your Nation.",
+				"Rome's Warparty reduced your Population by " + carthagePopulation + ", doubled as you had no Army or Defense.",
+				"Rome's Warparty conquered your Nation, seizing " + seized + ". You are knocked out of the Game.");
+		NationView rome = game.viewOf("Rome");
+		assertThat(rome.gold()).isEqualTo(romeGold + seizedGold + 10 - 1);
+		assertThat(rome.research()).isEqualTo(romeResearch + seizedResearch + 3);
+		assertThat(rome.warparties()).containsExactly(new Warparty("Carthage", Map.of("Giant", 1), true, 3));
+		assertThat(rome.turnReport().lines())
+			.contains("Your Warparty conquered Carthage, seizing " + seized + ", and is heading home.");
+		assertThat(rome.otherNations()).containsExactly("Egypt");
+		NationView egypt = game.viewOf("Egypt");
+		assertThat(egypt.turnReport().lines()).containsExactly("Rome conquered Carthage.", BASE_INCOME_REPORT);
+		assertThat(egypt.otherNations()).containsExactly("Rome");
+		assertThat(egypt.winner()).isNull();
+	}
+
+	@Test
+	void warpartiesHeadingToAConqueredNationTurnBackHomeTakingAsLongAsTheyHaveTravelled() {
+		gameWithGiants("Rome", "Carthage", "Egypt");
+		game.act("Rome", new Action.TrainUnits("Giant", 1));
+		game.act("Egypt", new Action.TrainUnits("Warrior", 2));
+		game.endTurn();
+		game.act("Egypt", new Action.SendWarparty("Carthage", Map.of("Warrior", 1)));
+		game.act("Rome", new Action.SendWarparty("Carthage", Map.of("Giant", 1)));
+		game.endTurn();
+		game.act("Egypt", new Action.SendWarparty("Carthage", Map.of("Warrior", 1)));
+		game.endTurn();
+		game.endTurn();
+		assertThat(game.viewOf("Egypt").warparties()).containsExactly(
+				new Warparty("Carthage", Map.of("Warrior", 1), false, 0),
+				new Warparty("Carthage", Map.of("Warrior", 1), false, 1));
+
+		game.endTurn();
+
+		NationView egypt = game.viewOf("Egypt");
+		assertThat(egypt.warparties()).containsExactly(new Warparty("Carthage", Map.of("Warrior", 1), true, 3),
+				new Warparty("Carthage", Map.of("Warrior", 1), true, 2));
+		assertThat(egypt.turnReport().lines()).containsExactly("Rome conquered Carthage.",
+				"Your Warparty of Warrior ×1 heading to Carthage turned back home, as Carthage was conquered.",
+				"Your Warparty of Warrior ×1 heading to Carthage turned back home, as Carthage was conquered.",
+				BASE_INCOME_REPORT, "Your Units' upkeep cost 2 Gold.");
+
+		game.endTurn();
+		game.endTurn();
+
+		egypt = game.viewOf("Egypt");
+		assertThat(egypt.army()).containsExactly(entry("Warrior", 1));
+		assertThat(egypt.warparties()).containsExactly(new Warparty("Carthage", Map.of("Warrior", 1), true, 1));
+	}
+
+	@Test
+	void aConqueredNationTakesNoFurtherPartAndCannotBeAttacked() {
+		gameWithGiants("Rome", "Carthage", "Egypt");
+		game.act("Rome", new Action.TrainUnits("Giant", 2));
+		game.endTurn();
+		arrived("Rome", "Carthage", Map.of("Giant", 1));
+		game.endTurn();
+		NationView conquered = game.viewOf("Carthage");
+
+		game.endTurn();
+
+		NationView carthage = game.viewOf("Carthage");
+		assertThat(carthage.version()).isEqualTo(conquered.version());
+		assertThat(carthage.gold()).isEqualTo(conquered.gold());
+		assertThat(carthage.turnReport()).isEqualTo(conquered.turnReport());
+		assertThat(game.viewOf("Egypt").turnReport().lines()).containsExactly(BASE_INCOME_REPORT);
+		assertThat(game.nations()).containsExactly("Rome", "Carthage", "Egypt");
+		assertThat(game.conquered()).containsExactly("Carthage");
+		assertThat(game.act("Carthage", new Action.TrainUnits("Warrior", 1)))
+			.isEqualTo(ActionResult.rejected("Your Nation has been conquered."));
+		assertThat(game.act("Rome", new Action.SendWarparty("Carthage", Map.of("Giant", 1))))
+			.isEqualTo(ActionResult.rejected("Carthage has been conquered."));
+	}
+
+	@Test
+	void whenOnlyOneNationRemainsItWinsTheGameAndEveryPlayerSeesIt() {
+		gameWithGiants("Rome", "Carthage", "Egypt");
+		game.act("Rome", new Action.TrainUnits("Giant", 2));
+		game.endTurn();
+		game.act("Rome", new Action.SendWarparty("Carthage", Map.of("Giant", 1)));
+		game.endTurn();
+		arrived("Rome", "Egypt", Map.of("Giant", 1));
+		assertThat(game.conquered()).containsExactly("Carthage");
+		assertThat(game.winner()).isEmpty();
+		int carthageVersion = game.viewOf("Carthage").version();
+
+		game.endTurn();
+
+		assertThat(game.winner()).contains("Rome");
+		NationView rome = game.viewOf("Rome");
+		assertThat(rome.winner()).isEqualTo("Rome");
+		assertThat(rome.turnReport().lines()).last().isEqualTo("You have won the Game.");
+		NationView egypt = game.viewOf("Egypt");
+		assertThat(egypt.winner()).isEqualTo("Rome");
+		assertThat(egypt.turnReport().lines()).last().isEqualTo("Rome has won the Game.");
+		NationView carthage = game.viewOf("Carthage");
+		assertThat(carthage.winner()).isEqualTo("Rome");
+		assertThat(carthage.version()).isGreaterThan(carthageVersion);
+	}
+
+	@Test
+	void onceTheGameIsWonTurnsNoLongerEndAndNoActionIsAccepted() {
+		gameWithGiants("Rome", "Carthage");
+		game.act("Rome", new Action.TrainUnits("Giant", 1));
+		game.endTurn();
+		arrived("Rome", "Carthage", Map.of("Giant", 1));
+		game.endTurn();
+		NationView rome = game.viewOf("Rome");
+
+		game.endTurn();
+
+		assertThat(game.viewOf("Rome")).isEqualTo(rome);
+		assertThat(game.act("Rome", new Action.TrainUnits("Warrior", 1)))
+			.isEqualTo(ActionResult.rejected("The Game is over."));
 	}
 
 	@Test

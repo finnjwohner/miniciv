@@ -59,6 +59,12 @@ class Nation {
 
 	private TurnReport turnReport;
 
+	/**
+	 * The Nation that conquered this one, or null while it is still in the
+	 * Game.
+	 */
+	private String conqueredBy;
+
 	private int version = 1;
 
 	Nation(String name, int gold, int population, int research) {
@@ -80,12 +86,70 @@ class Nation {
 		version++;
 	}
 
-	NationView view(int turn, List<String> otherNations, int travelTurns, Ruleset ruleset) {
+	NationView view(int turn, List<String> otherNations, int travelTurns, Ruleset ruleset, String winner) {
 		return new NationView(version, turn, name, gold, population, research, otherNations, ruleset.buildings(),
 				Collections.unmodifiableMap(new LinkedHashMap<>(buildings)), construction, repairs, defense(ruleset), damage(ruleset),
 				ruleset.units(),
 				Collections.unmodifiableMap(new LinkedHashMap<>(army)), training, warparties, travelTurns, upkeep(ruleset),
-				turnReport);
+				turnReport, conqueredBy, winner);
+	}
+
+	/**
+	 * Marks a change the Nation's Player should see that is not to the Nation
+	 * itself, such as the Game being won.
+	 */
+	void changed() {
+		version++;
+	}
+
+	boolean conquered() {
+		return conqueredBy != null;
+	}
+
+	/**
+	 * Whether the Nation is left with neither Population nor Army, and so is
+	 * conquered.
+	 */
+	boolean hasNeitherPopulationNorArmy() {
+		return population == 0 && army.isEmpty();
+	}
+
+	/**
+	 * Takes the Nation out of the Game: its Warparties abroad disappear, and
+	 * its conqueror seizes a share of its Gold and Research, rounded down.
+	 *
+	 * @return the Gold and Research seized
+	 */
+	Plunder conquer(String conqueror, double share) {
+		conqueredBy = conqueror;
+		warparties.clear();
+		return plundered((int) Math.floor(gold * share), (int) Math.floor(research * share));
+	}
+
+	/**
+	 * Adds Gold and Research seized from a conquered Nation.
+	 */
+	void seize(Plunder seized) {
+		gold += seized.gold();
+		research += seized.research();
+	}
+
+	/**
+	 * Turns every Warparty heading to a Nation, and not yet having fought
+	 * there, back home.
+	 *
+	 * @return those turned back, as they were before
+	 */
+	List<Warparty> turnBackFrom(String target, int travelTurns) {
+		List<Warparty> turnedBack = new ArrayList<>();
+		for (var it = warparties.listIterator(); it.hasNext();) {
+			Warparty current = it.next();
+			if (!current.homeward() && current.target().equals(target)) {
+				it.set(current.turnedBack(travelTurns));
+				turnedBack.add(current);
+			}
+		}
+		return turnedBack;
 	}
 
 	void gain(int gold, int population, int research) {
@@ -260,14 +324,27 @@ class Nation {
 	 *
 	 * @param warparty the Warparty as it was before the Battle
 	 * @param exposure how exposed the target's Population was
+	 * @param conquest how the target was conquered, or null if it was not
 	 */
 	record BattleFought(Warparty warparty, Battle battle, Plunder plunder, DefenseWorn defenseWorn,
-			int populationLost, Exposure exposure) {
+			int populationLost, Exposure exposure, Conquest conquest) {
+	}
+
+	/**
+	 * What a Nation's conqueror seized from it, and the other Warparties heading
+	 * to it that turned back home.
+	 *
+	 * @param turnedBack those Warparties as they were before, by the Nation
+	 * that sent them
+	 */
+	record Conquest(Plunder seized, Map<String, List<Warparty>> turnedBack) {
 	}
 
 	/**
 	 * Fights the Battle of every Warparty awaiting one, in the order sent. Its
 	 * survivors head home with their plunder; a Warparty with none disappears.
+	 * A Battle that conquers its target may turn this Nation's later
+	 * Warparties back home before their turn comes, so they fight no Battle.
 	 *
 	 * @param fight fights a Warparty's Battle at its target and takes its
 	 * plunder

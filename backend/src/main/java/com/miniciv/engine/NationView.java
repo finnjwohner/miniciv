@@ -4,10 +4,12 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * What one Nation's Player may see on a Turn: their own state, the other
- * Nations' names and nothing more about them, and the Turn Report of the Turn
- * before, which is null on the first Turn. The version rises with every change
- * to the Nation, so a browser can ignore a view older than one it already has.
+ * What one Nation's Player may see on a Turn: their own state, the names of the
+ * other Nations still in the Game and nothing more about them, and the Turn
+ * Report of the Turn before, which is null on the first Turn. A conquered
+ * Nation's Player keeps the Turn Report of the Turn it was conquered. The
+ * version rises with every change to the Nation, so a browser can ignore a view
+ * older than one it already has.
  *
  * @param availableBuildings the Buildings the Nation may start
  * @param buildings how many of each Building the Nation has completed
@@ -24,12 +26,16 @@ import java.util.Map;
  * @param warparties the Nation's Warparties abroad, in the order sent
  * @param travelTurns how many Turns a Warparty takes to reach another Nation
  * @param upkeep the Gold the Nation's Units cost each Turn, at home and abroad
+ * @param conqueredBy the Nation that conquered this one, knocking its Player
+ *        out of the Game, or null if none has
+ * @param winner the Nation that won the Game, or null while it goes on
  */
 public record NationView(int version, int turn, String nation, int gold, int population, int research,
 		List<String> otherNations, List<BuildingType> availableBuildings, Map<String, Integer> buildings,
 		List<Construction> construction, List<Repair> repairs, int defense, List<BuildingDamage> damage, List<UnitType> availableUnits,
 		Map<String, Integer> army,
-		List<Training> training, List<Warparty> warparties, int travelTurns, int upkeep, TurnReport turnReport) {
+		List<Training> training, List<Warparty> warparties, int travelTurns, int upkeep, TurnReport turnReport,
+		String conqueredBy, String winner) {
 
 	public NationView {
 		otherNations = List.copyOf(otherNations);

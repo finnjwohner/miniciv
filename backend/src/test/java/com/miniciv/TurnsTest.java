@@ -43,7 +43,9 @@ class TurnsTest {
 		@Bean
 		@Primary
 		Ruleset testRuleset() {
-			return new Ruleset(List.of(new UnitType("Warrior", 20, 2, 1, 1, 3, List.of())),
+			return new Ruleset(
+					List.of(new UnitType("Warrior", 20, 2, 1, 1, 3, List.of()),
+							new UnitType("Catapult", 50, 1, 1, 1, 20, List.of())),
 					List.of(new BuildingType("Farm", 30, 2, 1, 0, 0)), List.of());
 		}
 
@@ -83,6 +85,11 @@ class TurnsTest {
 	Connected rome;
 
 	Connected carthage;
+
+	/**
+	 * A third Player, in the tests that need one.
+	 */
+	Connected egypt;
 
 	/**
 	 * Creates a Room with Rome and Carthage, connects both and readies them so
@@ -171,14 +178,19 @@ class TurnsTest {
 		view.put("repairs", List.of());
 		view.put("defense", 0);
 		view.put("damage", List.of());
-		view.put("availableUnits", List.of(Map.of("name", "Warrior", "gold", 20, "population", 2, "turns", 1, "upkeep", 1,
-				"strength", 3.0, "counters", List.of())));
+		view.put("availableUnits",
+				List.of(Map.of("name", "Warrior", "gold", 20, "population", 2, "turns", 1, "upkeep", 1, "strength", 3.0,
+						"counters", List.of()),
+						Map.of("name", "Catapult", "gold", 50, "population", 1, "turns", 1, "upkeep", 1, "strength", 20.0,
+								"counters", List.of())));
 		view.put("army", Map.of());
 		view.put("training", training);
 		view.put("warparties", List.of());
 		view.put("travelTurns", 3);
 		view.put("upkeep", 0);
 		view.put("turnReport", turnReport);
+		view.put("conqueredBy", null);
+		view.put("winner", null);
 		return view;
 	}
 
@@ -186,6 +198,37 @@ class TurnsTest {
 	void disconnect() {
 		rome.close();
 		carthage.close();
+		if (egypt != null) {
+			egypt.close();
+		}
+	}
+
+	/**
+	 * Has every given Player mark themselves done with a Turn, and waits until
+	 * each has received their view of the next one.
+	 */
+	void endTurn(int turn, Connected... players) throws Exception {
+		for (Connected player : players) {
+			done(player, turn);
+		}
+		for (Connected player : players) {
+			assertThat(player.privately().next().get("turn")).isEqualTo(turn + 1);
+		}
+	}
+
+	/**
+	 * Has Rome train a Catapult on Turn 1 and send it to Carthage, which it
+	 * conquers as Turn 5 ends.
+	 */
+	void romeConquersCarthage(Connected... players) throws Exception {
+		trainUnits(rome, "Catapult", 1);
+		rome.privately().next();
+		endTurn(1, players);
+		sendWarparty(rome, "Carthage", Map.of("Catapult", 1));
+		rome.privately().next();
+		for (int turn = 2; turn <= 5; turn++) {
+			endTurn(turn, players);
+		}
 	}
 
 	@Test
@@ -241,7 +284,13 @@ class TurnsTest {
 		done(rome, 1);
 		done(carthage, 1);
 		rome.privately().next();
-		assertThat(currentGame()).isEqualTo(Map.of("turn", 2, "nations", List.of("Rome", "Carthage"), "millisLeft", 120_000));
+		Map<String, Object> game = new HashMap<>();
+		game.put("turn", 2);
+		game.put("nations", List.of("Rome", "Carthage"));
+		game.put("millisLeft", 120_000);
+		game.put("conquered", List.of());
+		game.put("winner", null);
+		assertThat(currentGame()).isEqualTo(game);
 	}
 
 	@Test
@@ -379,6 +428,45 @@ class TurnsTest {
 
 		assertThat(romeRejections.next()).isEqualTo(Map.of("reason", "Your Army has no Warrior."));
 		rome.privately().expectNone();
+	}
+
+	@Test
+	void whenOneNationIsLeftTheGameEndsEveryoneSeesTheWinnerAndTurnsNoLongerEnd() throws Exception {
+		startGame();
+		rome.privately().next();
+		carthage.privately().next();
+
+		romeConquersCarthage(rome, carthage);
+
+		Map<?, ?> game = currentGame();
+		assertThat(game.get("conquered")).isEqualTo(List.of("Carthage"));
+		assertThat(game.get("winner")).isEqualTo("Rome");
+		assertThat(game.get("millisLeft")).isEqualTo(0);
+		assertThat(carthage.stomp().subscribe("/app/rooms/" + code + "/nation").next())
+			.extracting("conqueredBy", "winner")
+			.containsExactly("Rome", "Rome");
+		clock.advance(Duration.ofMinutes(2));
+		rooms.endDueTurns();
+		done(rome, 6);
+		assertThat(currentGame().get("turn")).isEqualTo(6);
+		rome.privately().expectNone();
+	}
+
+	@Test
+	void aKnockedOutPlayerNeedNotBeDoneForTheTurnToEnd() throws Exception {
+		joinRomeAndCarthage();
+		egypt = connect(join("Egypt"));
+		readyBoth();
+		egypt.stomp().send("/app/rooms/" + code + "/ready", Map.of("token", egypt.token(), "ready", true));
+		rome.privately().next();
+		carthage.privately().next();
+		egypt.privately().next();
+		romeConquersCarthage(rome, carthage, egypt);
+		assertThat(currentGame().get("winner")).isNull();
+
+		endTurn(6, rome, egypt);
+
+		assertThat(currentGame().get("turn")).isEqualTo(7);
 	}
 
 	@Test

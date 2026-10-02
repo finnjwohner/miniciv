@@ -326,12 +326,27 @@ function GameScreen({
   const game = room.game!
   const me = room.players.find((p) => p.id === playerId)
   const turnEndsAt = room.receivedAt + game.millisLeft
+  const knockedOut = me !== undefined && game.conquered.includes(me.nationName)
+  const playing = !game.winner && !knockedOut
 
   return (
     <section>
       <h2>Turn {game.turn}</h2>
-      <p>Time left: {formatCountdown(turnEndsAt - now)}</p>
-      {nation && (
+      {game.winner && (
+        <p role="status">
+          <strong>{game.winner === me?.nationName ? 'You have won the Game!' : `${game.winner} has won the Game.`}</strong>
+        </p>
+      )}
+      {knockedOut && (
+        <p role="status">
+          <strong>
+            Your Nation was conquered{nation?.conqueredBy && ` by ${nation.conqueredBy}`}. You are knocked out of the
+            Game.
+          </strong>
+        </p>
+      )}
+      {playing && <p>Time left: {formatCountdown(turnEndsAt - now)}</p>}
+      {nation && playing && (
         <>
           <h3>{nation.nation}</h3>
           <ul>
@@ -351,9 +366,11 @@ function GameScreen({
           <Warparties nation={nation} onSend={onSendWarparty} />
         </>
       )}
-      <button onClick={() => onDone(game.turn)} disabled={!me || me.done}>
-        {me?.done ? 'Waiting for the other Players…' : 'Done'}
-      </button>
+      {playing && (
+        <button onClick={() => onDone(game.turn)} disabled={!me || me.done}>
+          {me?.done ? 'Waiting for the other Players…' : 'Done'}
+        </button>
+      )}
       <h3>Turn Report</h3>
       {nation?.turnReport ? (
         <ul>
@@ -370,7 +387,11 @@ function GameScreen({
           <li key={p.id}>
             {p.nationName}
             {p.id === playerId && ' (you)'}
-            {p.done && ' — done'}
+            {game.conquered.includes(p.nationName)
+              ? ' — knocked out'
+              : p.nationName === game.winner
+                ? ' — winner'
+                : p.done && ' — done'}
           </li>
         ))}
       </ul>
