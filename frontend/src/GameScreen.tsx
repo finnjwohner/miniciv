@@ -327,7 +327,9 @@ function GameScreen({
   const me = room.players.find((p) => p.id === playerId)
   const turnEndsAt = room.receivedAt + game.millisLeft
   const knockedOut = me !== undefined && game.conquered.includes(me.nationName)
-  const playing = !game.winner && !knockedOut
+  const removed = me !== undefined && game.removed.includes(me.nationName)
+  const playing = !game.winner && !knockedOut && !removed
+  const paused = game.waitingFor.length > 0
 
   return (
     <section>
@@ -345,7 +347,33 @@ function GameScreen({
           </strong>
         </p>
       )}
-      {playing && <p>Time left: {formatCountdown(turnEndsAt - now)}</p>}
+      {removed && (
+        <p role="status">
+          <strong>Your Nation was removed from the Game, as you were disconnected for too long.</strong>
+        </p>
+      )}
+      {game.removed.some((n) => n !== me?.nationName) && (
+        <p role="status">
+          Removed from the Game, as their Players were disconnected for too long:{' '}
+          {game.removed.filter((n) => n !== me?.nationName).join(', ')}.
+        </p>
+      )}
+      {!game.winner && paused && (
+        <div role="status">
+          <p>
+            <strong>The Game is paused.</strong>
+          </p>
+          <ul>
+            {game.waitingFor.map((w) => (
+              <li key={w.nation}>
+                Waiting for {w.nation} to reconnect; removed from the Game in{' '}
+                {formatCountdown(room.receivedAt + w.millisLeft - now)}.
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {playing && <p>Time left: {formatCountdown(paused ? game.millisLeft : turnEndsAt - now)}</p>}
       {nation && playing && (
         <>
           <h3>{nation.nation}</h3>
@@ -389,9 +417,13 @@ function GameScreen({
             {p.id === playerId && ' (you)'}
             {game.conquered.includes(p.nationName)
               ? ' — knocked out'
-              : p.nationName === game.winner
-                ? ' — winner'
-                : p.done && ' — done'}
+              : game.removed.includes(p.nationName)
+                ? ' — removed'
+                : p.nationName === game.winner
+                  ? ' — winner'
+                  : game.waitingFor.some((w) => w.nation === p.nationName)
+                    ? ' — disconnected'
+                    : p.done && ' — done'}
           </li>
         ))}
       </ul>

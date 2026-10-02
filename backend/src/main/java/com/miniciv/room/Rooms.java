@@ -1,5 +1,6 @@
 package com.miniciv.room;
 
+import java.security.Principal;
 import java.security.SecureRandom;
 import java.time.Clock;
 import java.util.Map;
@@ -7,20 +8,26 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
+import org.springframework.context.event.EventListener;
+import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.web.socket.messaging.SessionConnectedEvent;
+import org.springframework.web.socket.messaging.SessionDisconnectEvent;
 
 import com.miniciv.engine.Action;
 import com.miniciv.engine.ActionResult;
+import com.miniciv.engine.NationView;
 import com.miniciv.engine.Ruleset;
 
 /**
  * Every open Room on this server, held in memory. Every change to a Room is
- * broadcast to {@code /topic/rooms/{code}}, and whenever its Game moves to a
- * new Turn each Player is sent their own Nation's view on
- * {@code /user/queue/game}. A Player whose Action is accepted is sent their
- * changed view there too.
+ * broadcast to {@code /topic/rooms/{code}}, and whenever a change reaches a
+ * Player's Nation, such as the Game moving to a new Turn, the Player is sent
+ * their Nation's view on {@code /user/queue/game}. A Player whose Action is
+ * accepted is sent their changed view there too. Players' connections opening
+ * and closing are followed, so the Game can wait for a Player who drops out.
  */
 @Service
 public class Rooms {
@@ -98,6 +105,59 @@ public class Rooms {
 	}
 
 	/**
+	 * Records a connection identified as a Player opening. Listens for the
+	 * connection being acknowledged rather than requested, as only then has
+	 * {@link PlayerIdentification} surely identified it.
+	 */
+	@EventListener
+	void connected(SessionConnectedEvent event) {
+		Principal player = event.getUser();
+		if (player == null) {
+			return;
+		}
+		String connection = SimpMessageHeaderAccessor.getSessionId(event.getMessage().getHeaders());
+		roomOfPlayer(player.getName()).ifPresent(room -> change(room, r -> {
+			r.connected(player.getName(), connection);
+			return null;
+		}));
+	}
+
+	/**
+	 * Records a Player's connection closing.
+	 */
+	@EventListener
+	void disconnected(SessionDisconnectEvent event) {
+		Principal player = event.getUser();
+		if (player == null) {
+			return;
+		}
+		roomOfPlayer(player.getName()).ifPresent(room -> change(room, r -> {
+			r.disconnected(player.getName(), event.getSessionId());
+			return null;
+		}));
+	}
+
+	private Optional<Room> roomOfPlayer(String playerId) {
+		return rooms.values().stream().filter(room -> room.hasPlayerWithId(playerId)).findFirst();
+	}
+
+	/**
+	 * Removes the Nation of every Player who has been disconnected for too
+	 * long.
+	 */
+	@Scheduled(fixedRate = 1000)
+	public void removeLongDisconnected() {
+		for (Room room : rooms.values()) {
+			if (room.removalIsDue()) {
+				change(room, r -> {
+					r.removeLongDisconnected();
+					return null;
+				});
+			}
+		}
+	}
+
+	/**
 	 * Ends every Turn whose time has run out.
 	 */
 	@Scheduled(fixedRate = 1000)
@@ -113,17 +173,25 @@ public class Rooms {
 	}
 
 	/**
-	 * Applies a change and broadcasts the result while still holding the Room,
-	 * so that broadcasts go out in the order the changes happened.
+	 * Applies a change and, if it changed the Room, broadcasts the result, and
+	 * sends each Player whose Nation's view it changed their new view, while
+	 * still holding the Room, so that they go out in the order the changes
+	 * happened.
 	 */
 	private <T> T change(Room room, Function<Room, T> change) {
 		synchronized (room) {
-			int turn = room.turn();
+			int version = room.version();
+			Map<String, NationView> before = room.nationViews();
 			T result = change.apply(room);
-			messaging.convertAndSend("/topic/rooms/" + room.code(), room.view());
-			if (room.turn() != turn) {
-				room.nationViews().forEach((playerId, view) -> messaging.convertAndSendToUser(playerId, "/queue/game", view));
+			Room.View view = room.view();
+			if (view.version() != version) {
+				messaging.convertAndSend("/topic/rooms/" + room.code(), view);
 			}
+			room.nationViews().forEach((playerId, nation) -> {
+				if (!nation.equals(before.get(playerId))) {
+					messaging.convertAndSendToUser(playerId, "/queue/game", nation);
+				}
+			});
 			return result;
 		}
 	}

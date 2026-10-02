@@ -289,7 +289,9 @@ class TurnsTest {
 		game.put("nations", List.of("Rome", "Carthage"));
 		game.put("millisLeft", 120_000);
 		game.put("conquered", List.of());
+		game.put("removed", List.of());
 		game.put("winner", null);
+		game.put("waitingFor", List.of());
 		assertThat(currentGame()).isEqualTo(game);
 	}
 

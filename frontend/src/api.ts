@@ -2,15 +2,24 @@
 
 export type PlayerView = { id: string; nationName: string; ready: boolean; done: boolean }
 /**
- * `millisLeft` is how long was left in the Turn when the server sent it, 0 once the Game is won.
- * `conquered` lists the Nations knocked out so far; `winner` is null while the Game goes on.
+ * A Nation whose Player is disconnected; `millisLeft` is how much longer, when the server sent it,
+ * they may stay disconnected before their Nation is removed.
+ */
+export type Waiting = { nation: string; millisLeft: number }
+/**
+ * `millisLeft` is how long was left in the Turn when the server sent it, 0 once the Game is won; it
+ * does not run down while the Game is paused. `conquered` lists the Nations knocked out so far,
+ * `removed` those removed as their Players were disconnected for too long; `winner` is null while
+ * the Game goes on. The Game is paused while `waitingFor` lists anyone.
  */
 export type GameView = {
   turn: number
   nations: string[]
   millisLeft: number
   conquered: string[]
+  removed: string[]
   winner: string | null
+  waitingFor: Waiting[]
 }
 /** Room-wide state; `version` rises with every change. */
 export type RoomView = { code: string; version: number; players: PlayerView[]; game: GameView | null }
