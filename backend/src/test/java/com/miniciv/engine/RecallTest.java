@@ -5,7 +5,7 @@ import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 
-import static com.miniciv.engine.GameTest.BASE_INCOME_REPORT;
+import static com.miniciv.engine.GameTest.incomeReport;
 import static com.miniciv.engine.GameTest.EVEN_LUCK;
 import static com.miniciv.engine.GameTest.RULESET;
 import static com.miniciv.engine.GameTest.luck;
@@ -47,7 +47,7 @@ class RecallTest {
 			.containsExactly(new Warparty(1, "Carthage", Map.of("Warrior", 2), true, 2, 2));
 		game.endTurn();
 		assertThat(report("Rome")).contains("You Recalled your Warparty of Warrior ×2 heading to Carthage.");
-		assertThat(report("Carthage")).containsExactly(BASE_INCOME_REPORT);
+		assertThat(report("Carthage")).containsExactly(incomeReport(16));
 		assertThat(game.viewOf("Rome").warparties()).singleElement().extracting(Warparty::turnsLeft).isEqualTo(1);
 
 		game.endTurn();
@@ -107,9 +107,9 @@ class RecallTest {
 		game.endTurn();
 
 		assertThat(report("Rome")).containsExactly("You Recalled your Warparty of Warrior ×2 heading to Carthage.",
-				BASE_INCOME_REPORT, "Your Units' upkeep cost 2 Gold.");
+				incomeReport(12), "Your Units' upkeep cost 2 Gold.");
 		assertThat(report("Carthage")).containsExactly("Rome's Warparty turned back home before the Battle.",
-				BASE_INCOME_REPORT);
+				incomeReport(18));
 		assertThat(game.viewOf("Rome").warparties())
 			.containsExactly(new Warparty(1, "Carthage", Map.of("Warrior", 2), true, 2, 3));
 	}

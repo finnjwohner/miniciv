@@ -10,6 +10,7 @@ import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 
 import static com.miniciv.engine.GameTest.BASE_INCOME_REPORT;
+import static com.miniciv.engine.GameTest.incomeReport;
 import static com.miniciv.engine.GameTest.RULESET;
 import static com.miniciv.engine.GameTest.luck;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -67,7 +68,7 @@ class EventsTest {
 		assertThat(report("Rome")).containsExactly(BASE_INCOME_REPORT);
 		game.endTurn();
 
-		assertThat(report("Rome")).containsExactly(BASE_INCOME_REPORT,
+		assertThat(report("Rome")).containsExactly(incomeReport(12),
 				"A good harvest filled your granaries: your Nation gained 4 Population.");
 		assertThat(game.viewOf("Rome").population()).isEqualTo(18);
 		assertThat(game.viewOf("Carthage").population()).isEqualTo(18);
@@ -81,7 +82,7 @@ class EventsTest {
 			game.endTurn();
 		}
 
-		assertThat(report("Rome")).containsExactly(BASE_INCOME_REPORT);
+		assertThat(report("Rome")).containsExactly(incomeReport(20));
 		assertThat(game.viewOf("Rome").population()).isEqualTo(22);
 	}
 
@@ -91,11 +92,11 @@ class EventsTest {
 
 		for (int turn = 1; turn <= 3; turn++) {
 			game.endTurn();
-			assertThat(report("Rome")).containsExactly(BASE_INCOME_REPORT);
+			assertThat(report("Rome")).containsExactly(incomeReport(10 + 2 * (turn - 1)));
 		}
 		game.endTurn();
 
-		assertThat(report("Rome")).containsExactly(BASE_INCOME_REPORT,
+		assertThat(report("Rome")).containsExactly(incomeReport(16),
 				"Plague swept through your Nation: your Nation lost 6 Population.");
 		assertThat(game.viewOf("Rome").population()).isEqualTo(12);
 	}
@@ -125,7 +126,7 @@ class EventsTest {
 
 		game.endTurn();
 
-		assertThat(report("Rome")).containsExactly("Your Walls has been built.", BASE_INCOME_REPORT,
+		assertThat(report("Rome")).containsExactly("Your Walls has been built.", incomeReport(12),
 				"An earthquake shook your Nation: your Defense was worn down from 10 to 6, damaging Walls.");
 		assertThat(game.viewOf("Rome").defense()).isEqualTo(6);
 	}
@@ -143,7 +144,7 @@ class EventsTest {
 
 		game.endTurn();
 
-		assertThat(report("Rome")).containsExactly(BASE_INCOME_REPORT,
+		assertThat(report("Rome")).containsExactly(incomeReport(12),
 				"Your tax collectors outdid themselves: your Nation gained 5 Gold.",
 				"Your scholars debated: your Nation gained 1 Research.");
 	}
@@ -159,9 +160,9 @@ class EventsTest {
 
 		game.endTurn();
 
-		assertThat(report("Rome")).containsExactly("Your Walls has been built.", BASE_INCOME_REPORT,
+		assertThat(report("Rome")).containsExactly("Your Walls has been built.", incomeReport(12),
 				"An earthquake shook your Nation: your Defense was worn down from 10 to 6, damaging Walls.");
-		assertThat(report("Carthage")).containsExactly(BASE_INCOME_REPORT);
+		assertThat(report("Carthage")).containsExactly(incomeReport(12));
 	}
 
 	@Test
@@ -216,6 +217,8 @@ class EventsTest {
 	@Test
 	void rumoursWarnANationOfALargeWarpartyApproachingButNotOfASmallOne() {
 		play(ALWAYS, starter("Rumours of war"));
+		// A Turn's income first, so the Recruits' upkeep stays affordable.
+		game.endTurn();
 		armyOf("Rome", "Recruit", 8);
 		armyOf("Carthage", "Recruit", 7);
 		game.act("Rome", new Action.SendWarparty("Carthage", Map.of("Recruit", 8)));

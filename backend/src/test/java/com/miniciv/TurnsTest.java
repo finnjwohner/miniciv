@@ -51,7 +51,7 @@ class TurnsTest {
 
 	}
 
-	static final String BASE_INCOME_REPORT = "Your Nation gained 10 Gold, 2 Population and 3 Research.";
+	static final String BASE_INCOME_REPORT = "Your Population earned 10 Gold, and your Nation gained 2 Population and 3 Research.";
 
 	@LocalServerPort
 	int port;

@@ -29,6 +29,13 @@ class RulesetFilesTest {
 	}
 
 	@Test
+	void theShippedBankAddsHalfAGoldPerPopulation() {
+		Ruleset ruleset = RulesetFiles.load("ruleset");
+
+		assertThat(ruleset.building("Bank")).map(BuildingType::goldPerPopulation).contains(0.5);
+	}
+
+	@Test
 	void contentReferringToAnUnknownTypeFailsToLoad() {
 		assertThatExceptionOfType(InvalidRuleset.class).isThrownBy(() -> RulesetFiles.load("rulesets/unknown-counter"))
 			.withMessageContaining("Unit type Warrior counters Lancer, which is not a Unit type");
