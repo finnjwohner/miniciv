@@ -3,8 +3,26 @@
     "effects": { "population": 4 }, "text": "A good harvest filled your granaries" },
   { "name": "Plague", "subject": "Nation", "chance": 0.04, "when": { "turnAtLeast": 4, "populationAtLeast": 12 },
     "effects": { "population": -6 }, "text": "Plague swept through your Nation" },
+  { "name": "Silver in the hills", "subject": "Nation", "chance": 0.04, "when": { "turnAtLeast": 3 },
+    "effects": { "gold": 25 }, "text": "Your miners struck a seam of silver in the hills" },
+  { "name": "Wandering scholars", "subject": "Nation", "chance": 0.05, "when": { "turnAtLeast": 3 },
+    "effects": { "research": 8 }, "text": "Wandering scholars shared their learning with your Nation" },
+  { "name": "Settlers", "subject": "Nation", "chance": 0.05, "when": { "turnAtLeast": 2 },
+    "effects": { "population": 3 }, "text": "Settlers from distant lands made their home in your Nation" },
+  { "name": "Market fire", "subject": "Nation", "chance": 0.04, "when": { "turnAtLeast": 4, "goldAtLeast": 40 },
+    "effects": { "gold": -15 }, "text": "Fire tore through your market" },
+  { "name": "Library fire", "subject": "Nation", "chance": 0.03, "when": { "researchAtLeast": 15 },
+    "effects": { "research": -10 }, "text": "Fire took the scrolls of your library" },
+  { "name": "Earthquake", "subject": "Nation", "chance": 0.03, "when": { "turnAtLeast": 5, "defenseAtLeast": 1 },
+    "effects": { "damageDefense": 5 }, "text": "An earthquake shook your Nation" },
   { "name": "Dust storm", "subject": "Warparty", "chance": 0.1,
     "effects": { "travelTurns": 1 }, "text": "A dust storm swept the plains" },
+  { "name": "Swollen river", "subject": "Warparty", "chance": 0.04, "when": { "turnAtLeast": 3 },
+    "effects": { "travelTurns": 2 }, "text": "A swollen river forced a long way round" },
+  { "name": "Local guides", "subject": "Warparty", "chance": 0.06,
+    "effects": { "travelTurns": -1 }, "text": "Local guides showed the way through the hills" },
+  { "name": "Straggling Warparty", "subject": "Warparty", "chance": 0.08, "when": { "unitsAtLeast": 10 },
+    "effects": { "travelTurns": 1 }, "text": "Your great Warparty straggled along the road" },
   { "name": "Rumours of war", "subject": "Nation", "chance": 0.5, "when": { "approachingUnitsAtLeast": 8 },
     "text": "Rumours spread of a large army marching on your Nation" },
   { "name": "Outbreak", "subject": "Nation", "chance": 0.05, "when": { "turnAtLeast": 3, "populationAtLeast": 14 },
@@ -15,5 +33,50 @@
         "text": "Your healers spent their learning on the sick" },
       { "name": "Let it spread", "worst": true, "effects": { "population": -10 },
         "text": "You let the sickness spread" }
+    ] },
+  { "name": "Bandits", "subject": "Nation", "chance": 0.04, "when": { "turnAtLeast": 3, "goldAtLeast": 30 },
+    "text": "Bandits are raiding your roads",
+    "choices": [
+      { "name": "Pay them off", "effects": { "gold": -20 }, "text": "You paid the bandits to move on" },
+      { "name": "Hunt them down", "effects": { "population": -3 }, "text": "Your people hunted the bandits down" },
+      { "name": "Ignore them", "worst": true, "effects": { "gold": -30, "population": -2 },
+        "text": "You ignored the bandits and they plundered freely" }
+    ] },
+  { "name": "Travelling merchants", "subject": "Nation", "chance": 0.04, "when": { "turnAtLeast": 3, "goldAtLeast": 40 },
+    "text": "Travelling merchants offer you books from distant lands",
+    "choices": [
+      { "name": "Buy the books", "effects": { "gold": -30, "research": 15 }, "text": "You bought the merchants' books" },
+      { "name": "Turn them away", "worst": true, "text": "You turned the merchants away" }
+    ] },
+  { "name": "Refugees", "subject": "Nation", "chance": 0.03, "when": { "turnAtLeast": 4, "goldAtLeast": 20 },
+    "text": "Refugees fleeing war have gathered at your border",
+    "choices": [
+      { "name": "Take them in", "effects": { "gold": -20, "population": 6 },
+        "text": "You fed and housed the refugees" },
+      { "name": "Close the border", "worst": true, "text": "You closed the border to the refugees" }
+    ] },
+  { "name": "Flood", "subject": "Nation", "chance": 0.03, "when": { "turnAtLeast": 4, "populationAtLeast": 10 },
+    "text": "Heavy rains have the rivers rising",
+    "choices": [
+      { "name": "Raise levees", "effects": { "gold": -25 }, "text": "You raised levees against the flood" },
+      { "name": "Evacuate the lowlands", "effects": { "population": -3 },
+        "text": "You evacuated the lowlands, though some were lost" },
+      { "name": "Hope it passes", "worst": true, "effects": { "gold": -10, "population": -6 },
+        "text": "You hoped the flood would pass, and it swept the lowlands away" }
+    ] },
+  { "name": "Tax revolt", "subject": "Nation", "chance": 0.03, "when": { "turnAtLeast": 6, "goldAtLeast": 80 },
+    "text": "Your people are protesting against your taxes",
+    "choices": [
+      { "name": "Lower taxes", "effects": { "gold": -30 }, "text": "You lowered taxes" },
+      { "name": "Crush the revolt", "effects": { "population": -4 }, "text": "You crushed the revolt" },
+      { "name": "Ignore the protests", "worst": true, "effects": { "gold": -40, "population": -2 },
+        "text": "You ignored the protests and riots broke out" }
+    ] },
+  { "name": "Crumbling Buildings", "subject": "Nation", "chance": 0.04, "when": { "turnAtLeast": 5, "defenseAtLeast": 5 },
+    "text": "Your engineers warn that your defensive Buildings are crumbling",
+    "choices": [
+      { "name": "Pay the masons", "effects": { "gold": -20 }, "text": "You paid the masons to shore up your defensive Buildings" },
+      { "name": "Leave them be", "worst": true, "effects": { "damageDefense": 6 },
+        "text": "You left your defensive Buildings to crumble" }
     ] }
 ]

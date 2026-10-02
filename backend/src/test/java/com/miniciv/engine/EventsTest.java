@@ -131,6 +131,40 @@ class EventsTest {
 	}
 
 	@Test
+	void anEventCanNeedTheNationToHaveEnoughGoldOrResearch() {
+		play(ALWAYS,
+				new Event("Tax windfall", Event.Subject.NATION, 1, new Event.Conditions(null, null, null, null, 70, null, null),
+						new Event.Effects(5, 0, 0, 0, 0), "Your tax collectors outdid themselves"),
+				new Event("Debate", Event.Subject.NATION, 1, new Event.Conditions(null, null, null, null, null, 6, null),
+						new Event.Effects(0, 0, 1, 0, 0), "Your scholars debated"));
+
+		game.endTurn();
+		assertThat(report("Rome")).containsExactly(BASE_INCOME_REPORT);
+
+		game.endTurn();
+
+		assertThat(report("Rome")).containsExactly(BASE_INCOME_REPORT,
+				"Your tax collectors outdid themselves: your Nation gained 5 Gold.",
+				"Your scholars debated: your Nation gained 1 Research.");
+	}
+
+	@Test
+	void anEventCanNeedTheNationToHaveEnoughDefense() {
+		play(ALWAYS, new Event("Earthquake", Event.Subject.NATION, 1,
+				new Event.Conditions(null, null, null, null, null, null, 10), new Event.Effects(0, 0, 0, 4, 0),
+				"An earthquake shook your Nation"));
+		game.act("Rome", new Action.StartBuilding("Walls"));
+		game.endTurn();
+		assertThat(report("Rome")).containsExactly(BASE_INCOME_REPORT);
+
+		game.endTurn();
+
+		assertThat(report("Rome")).containsExactly("Your Walls has been built.", BASE_INCOME_REPORT,
+				"An earthquake shook your Nation: your Defense was worn down from 10 to 6, damaging Walls.");
+		assertThat(report("Carthage")).containsExactly(BASE_INCOME_REPORT);
+	}
+
+	@Test
 	void aDustStormDelaysATravellingWarpartyAndItsPlayerSeesTheTurnsLeft() {
 		play(ALWAYS, starter("Dust storm"));
 		armyOf("Rome", "Warrior", 2);

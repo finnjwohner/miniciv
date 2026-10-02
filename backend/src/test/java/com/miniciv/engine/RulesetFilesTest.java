@@ -22,6 +22,10 @@ class RulesetFilesTest {
 		assertThat(ruleset.unlockedBy("Warrior")).isEmpty();
 		assertThat(ruleset.events()).extracting(Event::name)
 			.contains("Good harvest", "Plague", "Dust storm", "Rumours of war", "Outbreak");
+		assertThat(ruleset.events()).hasSizeGreaterThanOrEqualTo(15);
+		assertThat(ruleset.events()).filteredOn(Event::dilemma).hasSizeGreaterThanOrEqualTo(5);
+		assertThat(ruleset.events()).filteredOn(event -> event.subject() == Event.Subject.WARPARTY)
+			.hasSizeGreaterThanOrEqualTo(3);
 	}
 
 	@Test
@@ -48,7 +52,7 @@ class RulesetFilesTest {
 	void anEventWithAnUnknownConditionOrSubjectFailsToLoadNamingTheFile() {
 		assertThatExceptionOfType(InvalidRuleset.class).isThrownBy(() -> RulesetFiles.load("rulesets/unknown-condition"))
 			.withMessageContaining("rulesets/unknown-condition/events.json")
-			.withMessageContaining("goldAtLeast");
+			.withMessageContaining("omensAtLeast");
 		assertThatExceptionOfType(InvalidRuleset.class).isThrownBy(() -> RulesetFiles.load("rulesets/unknown-subject"))
 			.withMessageContaining("rulesets/unknown-subject/events.json")
 			.withMessageContaining("Spy");
