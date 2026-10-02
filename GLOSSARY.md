@@ -13,11 +13,19 @@ The place Players gather before a Game starts, joined by a room code or invite l
 _Avoid_: Lobby, server
 
 **Player**:
-A person taking part in a Game. A Player who stays disconnected for more than five minutes in total over a Game has their Nation removed.
+A person taking part in a Game. A Player who stays disconnected for more than five minutes in total over a Game has their Nation Removed.
 _Avoid_: User, account
 
+**Paused**:
+The state of a Game while any Player whose Nation is still in it is disconnected: the Turn timer stops and no Player can act until they reconnect or are Removed.
+_Avoid_: Frozen, suspended, on hold
+
+**Removed**:
+A Nation taken out of the Game because its Player was disconnected for more than five minutes in total; unlike Conquest, nobody seizes anything from it, and Warparties heading to it turn back home.
+_Avoid_: Kicked, dropped, forfeited
+
 **Turn**:
-One step of the Game, at most two minutes long, in which all Players make their decisions at the same time, after which everything resolves together.
+One step of the Game, at most two minutes long not counting time Paused, in which all Players make their decisions at the same time, after which everything resolves together.
 _Avoid_: Round, tick
 
 **Turn Report**:
