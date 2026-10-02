@@ -4,10 +4,12 @@ import type {
   BuildingDamage,
   BuildingType,
   Effects,
+  Fact,
   MapNation,
   NationView,
   TechTreeEntry,
   Tribute,
+  Spy,
   UnitType,
   Warparty,
 } from './api'
@@ -147,7 +149,11 @@ function Buildings({
 /** A Unit type's costs, training time, Strength, upkeep and counters, in one line. */
 function describeUnit(unit: UnitType) {
   const counters = unit.counters.length > 0 ? `, counters ${unit.counters.join(', ')}` : ''
-  const role = unit.scout ? 'stays home and may discover Warparties abroad' : `Strength ${unit.strength}`
+  const role = unit.scout
+    ? 'stays home and may discover Warparties abroad'
+    : unit.spy
+      ? 'sent on its own to report another Nation\'s hidden state'
+      : `Strength ${unit.strength}`
   return (
     `${unit.gold} Gold and ${unit.population} Population, ${plural(unit.turns, 'Turn')} — ` +
     `${role}, upkeep ${unit.upkeep} Gold per Turn${counters}`
@@ -253,8 +259,8 @@ function Warparties({
   const targets = otherNations(nation)
   const [target, setTarget] = useState(targets[0] ?? '')
   const [chosen, setChosen] = useState<Record<string, number>>({})
-  const scouts = new Set(nation.availableUnits.filter((u) => u.scout).map((u) => u.name))
-  const army = Object.entries(nation.army).filter(([name]) => !scouts.has(name))
+  const notInWarparties = new Set(nation.availableUnits.filter((u) => u.scout || u.spy).map((u) => u.name))
+  const army = Object.entries(nation.army).filter(([name]) => !notInWarparties.has(name))
   const units: Record<string, number> = {}
   for (const [name, owned] of army) {
     const count = Math.min(chosen[name] ?? 0, owned)
@@ -321,6 +327,55 @@ function Warparties({
             Send Warparty
           </button>{' '}
           Takes {plural(nation.travelTurns, 'Turn')} to arrive, and as long to come home.
+        </>
+      )}
+    </>
+  )
+}
+
+function describeSpy(spy: Spy) {
+  if (spy.homeward) return `heading home from ${spy.target}, ${plural(spy.turnsLeft, 'Turn')} left`
+  if (spy.turnsLeft === 0) return `in place at ${spy.target}, reporting now and then`
+  return `travelling to ${spy.target}, ${plural(spy.turnsLeft, 'Turn')} left`
+}
+
+/** The Nation's Spies abroad, and a form to send a Spy from the Army to another Nation. */
+function Spies({ nation, onSend }: { nation: NationView; onSend: (target: string) => void }) {
+  const targets = otherNations(nation)
+  const [target, setTarget] = useState(targets[0] ?? '')
+  const spyTypes = new Set(nation.availableUnits.filter((u) => u.spy).map((u) => u.name))
+  const atHome = Object.entries(nation.army)
+    .filter(([name]) => spyTypes.has(name))
+    .reduce((total, [, count]) => total + count, 0)
+  if (atHome === 0 && nation.spies.length === 0) return null
+  return (
+    <>
+      <h3>Spies</h3>
+      {nation.spies.length === 0 ? (
+        <p>No Spies abroad.</p>
+      ) : (
+        <ul>
+          {nation.spies.map((s) => (
+            <li key={s.id}>Spy — {describeSpy(s)}</li>
+          ))}
+        </ul>
+      )}
+      {atHome > 0 && (
+        <>
+          <label>
+            Send a Spy to{' '}
+            <select value={target} onChange={(e) => setTarget(e.target.value)}>
+              {targets.map((n) => (
+                <option key={n} value={n}>
+                  {n}
+                </option>
+              ))}
+            </select>
+          </label>{' '}
+          <button onClick={() => onSend(target)} disabled={!target}>
+            Send Spy
+          </button>{' '}
+          {atHome} at home. Takes {plural(nation.travelTurns, 'Turn')} to arrive, then stays there.
         </>
       )}
     </>
@@ -444,9 +499,35 @@ function describeStanding(standing: MapNation['standing']) {
   return ''
 }
 
+/** Such as "120 (Turn 4)", or "unknown" if nothing has been learned. */
+function describeFact<T>(fact: Fact<T> | null, describe: (value: T) => string) {
+  return fact ? `${describe(fact.value)} (Turn ${fact.turn})` : 'unknown'
+}
+
+/** What this Player's Spies have reported of another Nation, each fact with the Turn it was learned. */
+function KnownFacts({ facts }: { facts: MapNation['facts'] }) {
+  const known = Object.values(facts).some((fact) => fact !== null)
+  if (!known) return null
+  const number = (value: number) => String(value)
+  return (
+    <ul>
+      <li>
+        Gold {describeFact(facts.gold, number)}, Population {describeFact(facts.population, number)}, Research{' '}
+        {describeFact(facts.research, number)}
+      </li>
+      <li>Army: {describeFact(facts.army, (army) => listCounts(army) || 'none')}</li>
+      <li>
+        Buildings: {describeFact(facts.buildings, (buildings) => listCounts(buildings) || 'none')}, Defense{' '}
+        {describeFact(facts.defense, number)}
+      </li>
+    </ul>
+  )
+}
+
 /**
  * A read-only placeholder Map of every Nation in the Game, drawn from this Player's view alone: their
- * own Nation in full, every other Nation by name, and which have been knocked out or removed.
+ * own Nation in full, every other Nation by name with what this Player's Spies reported of it, each fact
+ * with the Turn it was learned, and which have been knocked out or removed.
  */
 function WorldMap({ nation }: { nation: NationView }) {
   return (
@@ -488,12 +569,16 @@ function WorldMap({ nation }: { nation: NationView }) {
                 {nation.warparties.map((w, i) => (
                   <li key={`warparty-${i}`}>Warparty: {describeWarparty(w)}</li>
                 ))}
+                {nation.spies.map((s) => (
+                  <li key={`spy-${s.id}`}>Spy: {describeSpy(s)}</li>
+                ))}
               </ul>
             </li>
           ) : (
             <li key={other.name}>
               {other.name}
               {describeStanding(other.standing)}
+              <KnownFacts facts={other.facts} />
             </li>
           ),
         )}
@@ -600,6 +685,7 @@ function GameScreen({
   onTrainUnits,
   onSendWarparty,
   onRecallWarparty,
+  onSendSpy,
   onAnswerDilemma,
   onUnlockTechnology,
   onOfferTribute,
@@ -616,6 +702,7 @@ function GameScreen({
   onTrainUnits: (unit: string, count: number) => void
   onSendWarparty: (target: string, units: Record<string, number>) => void
   onRecallWarparty: (warparty: number) => void
+  onSendSpy: (target: string) => void
   onAnswerDilemma: (dilemma: string, choice: string) => void
   onUnlockTechnology: (technology: string) => void
   onOfferTribute: (nation: string, warparty: number, gold: number, population: number) => void
@@ -695,6 +782,7 @@ function GameScreen({
           <Army nation={nation} onTrain={onTrainUnits} />
           <TechTree nation={nation} onUnlock={onUnlockTechnology} />
           <Warparties nation={nation} onSend={onSendWarparty} onRecall={onRecallWarparty} />
+          <Spies nation={nation} onSend={onSendSpy} />
         </>
       )}
       {playing && (

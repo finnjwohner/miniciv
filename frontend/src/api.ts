@@ -64,6 +64,8 @@ export type UnitType = {
   counters: string[]
   /** Whether it is a Scout: never fights or leaves its Nation, but may discover other Nations' Warparties abroad. */
   scout: boolean
+  /** Whether it is a Spy: sent on its own, never in a Warparty, to stay in another Nation and report its hidden state. */
+  spy: boolean
 }
 /** Units of one type in training; they join the Army at the start of `readyOnTurn`. */
 export type Training = { unit: string; count: number; readyOnTurn: number }
@@ -83,6 +85,19 @@ export type Warparty = {
   turnsLeft: number
   turnsTravelled: number
   plunder: { gold: number; research: number }
+}
+/**
+ * A Spy sent abroad, told apart by `id`; `turnsLeft` is how many more Turns must resolve before it gets
+ * where it is heading, 0 once it is in place at its target, where it stays and now and then reports.
+ * `homeward` once its target is out of the Game and it is heading back.
+ */
+export type Spy = {
+  id: number
+  unit: string
+  target: string
+  homeward: boolean
+  turnsLeft: number
+  turnsTravelled: number
 }
 /** What a Dilemma's choice changes; resources it would take below 0 stop at 0. */
 export type Effects = { gold: number; population: number; research: number; damageDefense: number; travelTurns: number }
@@ -120,13 +135,29 @@ export type Tribute = {
   population: number
   answer: 'NONE' | 'ACCEPTED' | 'REFUSED'
 }
+/** Something learned of another Nation's hidden state, on the Turn whose resolution it was learned in. */
+export type Fact<T> = { value: T; turn: number }
 /**
- * A Nation on the Map, as another Nation knows it: its name, and whether it is still in the Game,
- * was conquered, or was removed as its Player was disconnected for too long.
+ * What this Nation's Spies have reported of another Nation, each the latest of its kind, or null if
+ * none has been. Its Defense is learned along with its Buildings.
  */
-export type MapNation = { name: string; standing: 'IN_GAME' | 'CONQUERED' | 'REMOVED' }
+export type Facts = {
+  gold: Fact<number> | null
+  population: Fact<number> | null
+  research: Fact<number> | null
+  army: Fact<Record<string, number>> | null
+  buildings: Fact<Record<string, number>> | null
+  defense: Fact<number> | null
+}
 /**
- * What only this Player sees: their own Nation, and the Map with just the names of the others.
+ * A Nation on the Map, as another Nation knows it: its name, whether it is still in the Game,
+ * was conquered, or was removed as its Player was disconnected for too long, and what this Nation has
+ * learned of it.
+ */
+export type MapNation = { name: string; standing: 'IN_GAME' | 'CONQUERED' | 'REMOVED'; facts: Facts }
+/**
+ * What only this Player sees: their own Nation, and the Map with the names of the others and what their
+ * Spies reported of them.
  * `version` rises with every change to the Nation.
  */
 export type NationView = {
@@ -156,6 +187,8 @@ export type NationView = {
   training: Training[]
   /** The Nation's Warparties abroad, in the order sent. */
   warparties: Warparty[]
+  /** The Nation's Spies abroad, in the order sent. */
+  spies: Spy[]
   /** How many Turns a Warparty takes to reach another Nation. */
   travelTurns: number
   /** The Gold the Nation's Units cost each Turn, at home and abroad. */

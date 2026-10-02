@@ -112,6 +112,10 @@ _Avoid_: Spy, lookout
 A Unit that travels to another Nation and stays there until caught, now and then reporting a snapshot of its hidden state (Gold, Population, Research, Army or Buildings). Spies kept at home can catch enemy Spies, and a caught Spy may reveal its sender.
 _Avoid_: Scout, agent
 
+**Fact**:
+One piece of another Nation's hidden state a Spy reported, shown on the Map against that Nation with the Turn it was learned; a later report of the same kind replaces it.
+_Avoid_: Intel, knowledge, info
+
 **Recall**:
 Ordering a Warparty to turn back home; the trip home takes as long as it has travelled so far.
 _Avoid_: Retreat, withdraw

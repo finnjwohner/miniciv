@@ -54,6 +54,7 @@ function JoinedRoom({ code, membership }: { code: string; membership: Membership
     trainUnits,
     sendWarparty,
     recallWarparty,
+    sendSpy,
     answerDilemma,
     unlockTechnology,
     offerTribute,
@@ -74,6 +75,7 @@ function JoinedRoom({ code, membership }: { code: string; membership: Membership
         onTrainUnits={trainUnits}
         onSendWarparty={sendWarparty}
         onRecallWarparty={recallWarparty}
+        onSendSpy={sendSpy}
         onAnswerDilemma={answerDilemma}
         onUnlockTechnology={unlockTechnology}
         onOfferTribute={offerTribute}

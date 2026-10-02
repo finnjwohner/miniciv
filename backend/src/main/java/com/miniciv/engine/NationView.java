@@ -6,7 +6,7 @@ import java.util.Map;
 /**
  * What one Nation's Player may see on a Turn: their own state, the Map of
  * every Nation that took part, by name and whether it is still in the Game,
- * and nothing more about the others, and the Turn
+ * and of the others nothing more than their Spies reported, and the Turn
  * Report of the Turn before, which is null on the first Turn. A conquered
  * Nation's Player keeps the Turn Report of the Turn it was conquered. The
  * version rises with every change to the Nation, so a browser can ignore a view
@@ -14,7 +14,7 @@ import java.util.Map;
  *
  * @param map every Nation that took part in the Game, in the order they
  *        joined, by name and whether it is still in the Game, was conquered
- *        or was removed
+ *        or was removed, with the facts this Nation's Spies reported of it
  * @param availableBuildings the Buildings the Nation may start
  * @param buildings how many of each Building the Nation has completed
  * @param construction the Buildings under construction, in the order started
@@ -28,6 +28,7 @@ import java.util.Map;
  * @param army how many of each Unit type the Nation has at home
  * @param training the Units in training, in the order started
  * @param warparties the Nation's Warparties abroad, in the order sent
+ * @param spies the Nation's Spies abroad, in the order sent
  * @param travelTurns how many Turns a Warparty takes to reach another Nation
  * @param upkeep the Gold the Nation's Units cost each Turn, at home and abroad
  * @param arrivals the other Nations' Warparties that arrived at this one and
@@ -49,7 +50,7 @@ public record NationView(int version, int turn, String nation, int gold, int pop
 		List<MapNation> map, List<BuildingType> availableBuildings, Map<String, Integer> buildings,
 		List<Construction> construction, List<Repair> repairs, int defense, List<BuildingDamage> damage, List<UnitType> availableUnits,
 		Map<String, Integer> army,
-		List<Training> training, List<Warparty> warparties, int travelTurns, int upkeep, List<ArrivedWarparty> arrivals,
+		List<Training> training, List<Warparty> warparties, List<Spy> spies, int travelTurns, int upkeep, List<ArrivedWarparty> arrivals,
 		List<Tribute> tributes, List<TechTreeEntry> techTree,
 		TurnReport turnReport,
 		List<Dilemma> dilemmas, String conqueredBy, String winner) {
@@ -63,6 +64,7 @@ public record NationView(int version, int turn, String nation, int gold, int pop
 		availableUnits = List.copyOf(availableUnits);
 		training = List.copyOf(training);
 		warparties = List.copyOf(warparties);
+		spies = List.copyOf(spies);
 		arrivals = List.copyOf(arrivals);
 		tributes = List.copyOf(tributes);
 		techTree = List.copyOf(techTree);

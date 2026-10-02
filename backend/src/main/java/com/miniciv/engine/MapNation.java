@@ -1,10 +1,21 @@
 package com.miniciv.engine;
 
 /**
- * One Nation on the Map, as every other Nation knows it: its name, and whether
- * it is still in the Game, was conquered or was removed.
+ * One Nation on the Map, as another Nation knows it: its name, whether it is
+ * still in the Game, was conquered or was removed, and what that other Nation
+ * has learned of its hidden state.
+ *
+ * @param facts what the Nation whose Map it is has learned of this one; nothing
+ *        of its own Nation, which it sees in full elsewhere
  */
-public record MapNation(String name, Standing standing) {
+public record MapNation(String name, Standing standing, Facts facts) {
+
+	/**
+	 * A Nation on the Map with nothing learned of it.
+	 */
+	public MapNation(String name, Standing standing) {
+		this(name, standing, Facts.NONE);
+	}
 
 	public enum Standing {
 		/** Neither conquered nor removed. */
