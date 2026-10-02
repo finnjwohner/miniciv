@@ -98,6 +98,15 @@ export function useRoom(code: string, token: string) {
     })
   }
 
+  /** Makes a choice for one of the Nation's Dilemmas; a rejection's reason arrives in `rejection`. */
+  const answerDilemma = (dilemma: string, choice: string) => {
+    setRejection(null)
+    client.current?.publish({
+      destination: `/app/rooms/${code}/dilemmas`,
+      body: JSON.stringify({ token, dilemma, choice }),
+    })
+  }
+
   /** Marks the Player done with the given Turn; ignored if that Turn has already ended. */
   const markDone = (turn: number) =>
     client.current?.publish({
@@ -115,6 +124,7 @@ export function useRoom(code: string, token: string) {
     rebuildBuilding,
     trainUnits,
     sendWarparty,
+    answerDilemma,
     markDone,
   }
 }

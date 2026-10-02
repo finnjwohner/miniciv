@@ -110,7 +110,8 @@ class GameTest {
 						new MapNation("Egypt", MapNation.Standing.IN_GAME)),
 				List.of(FARM, GRANARY, BANK, WALLS, MOAT), Map.of(), List.of(), List.of(), 0, List.of(),
 				List.of(WARRIOR, ARCHER, HORSEMAN, SCOUT), Map.of(), List.of(), List.of(), 3, 0,
-				new TurnReport(1, List.of("Your Nation gained 10 Gold, 2 Population and 3 Research.")), null, null));
+				new TurnReport(1, List.of("Your Nation gained 10 Gold, 2 Population and 3 Research.")), List.of(), null,
+				null));
 	}
 
 	@Test

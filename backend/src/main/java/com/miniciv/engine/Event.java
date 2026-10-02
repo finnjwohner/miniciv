@@ -1,7 +1,10 @@
 package com.miniciv.engine;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
@@ -19,12 +22,69 @@ import com.fasterxml.jackson.annotation.JsonProperty;
  * @param effects what it changes when it happens
  * @param text how the Turn Report announces it, such as "A dust storm swept
  *        the plains", followed by its effects
+ * @param choices for a Dilemma, the two or three choices it offers its
+ *        Player, one of them the worst; empty for any other Event
  */
-public record Event(String name, Subject subject, double chance, Conditions when, Effects effects, String text) {
+public record Event(String name, Subject subject, double chance, Conditions when, Effects effects, String text,
+		List<Choice> choices) {
 
 	public Event {
 		when = when == null ? Conditions.NONE : when;
 		effects = effects == null ? Effects.NONE : effects;
+		choices = choices == null ? List.of() : List.copyOf(choices);
+	}
+
+	/**
+	 * An Event that offers no choices.
+	 */
+	public Event(String name, Subject subject, double chance, Conditions when, Effects effects, String text) {
+		this(name, subject, chance, when, effects, text, List.of());
+	}
+
+	/**
+	 * Whether it is a Dilemma, offering its Player choices.
+	 */
+	boolean dilemma() {
+		return !choices.isEmpty();
+	}
+
+	/**
+	 * The choice of the given name this Dilemma offers, if any.
+	 */
+	Optional<Choice> choice(String name) {
+		return choices.stream().filter(choice -> choice.name().equals(name)).findFirst();
+	}
+
+	/**
+	 * This Dilemma as it awaits its Player's choice.
+	 */
+	Dilemma asDilemma() {
+		return new Dilemma(name, text, choices);
+	}
+
+	/**
+	 * The choice that applies to a Dilemma its Player did not answer in time.
+	 */
+	Choice worstChoice() {
+		return choices.stream().filter(Choice::worst).findFirst().orElseThrow();
+	}
+
+	/**
+	 * One of the choices a Dilemma offers.
+	 *
+	 * @param name what the Player picks it by, unique within the Dilemma
+	 * @param effects what it changes when it applies
+	 * @param worst whether it is the one that applies if the Player does not
+	 *        choose before the Turn ends
+	 * @param text how the Turn Report describes it, such as "You quarantined
+	 *        the sick", followed by its effects
+	 */
+	public record Choice(String name, Effects effects, boolean worst, String text) {
+
+		public Choice {
+			effects = effects == null ? Effects.NONE : effects;
+		}
+
 	}
 
 	/**
@@ -129,6 +189,49 @@ public record Event(String name, Subject subject, double chance, Conditions when
 			String unsuited = subjectName + " happens to a Nation, so it cannot ";
 			unsuited(problems, unsuited + "need unitsAtLeast.", when.unitsAtLeast() != null);
 			unsuited(problems, unsuited + "change travelTurns.", effects.travelTurns() != 0);
+		}
+		if (dilemma()) {
+			problems.addAll(dilemmaProblems(subjectName));
+		}
+		return problems;
+	}
+
+	/**
+	 * What is wrong with this Event as a Dilemma, if anything.
+	 */
+	private List<String> dilemmaProblems(String subjectName) {
+		List<String> problems = new ArrayList<>();
+		if (subject == Subject.WARPARTY) {
+			problems.add(subjectName + " offers choices, so it must happen to a Nation.");
+		}
+		if (!effects.equals(Effects.NONE)) {
+			problems.add(subjectName + " offers choices, so its effects belong to its choices.");
+		}
+		if (choices.size() < 2 || choices.size() > 3) {
+			problems.add(subjectName + " must offer two or three choices.");
+		}
+		if (choices.stream().filter(Choice::worst).count() != 1) {
+			problems.add(subjectName + " must mark exactly one of its choices as the worst.");
+		}
+		Set<String> named = new HashSet<>();
+		for (Choice choice : choices) {
+			if (choice.name() == null || choice.name().isBlank()) {
+				problems.add(subjectName + " has a choice with no name.");
+				continue;
+			}
+			if (!named.add(choice.name())) {
+				problems.add(subjectName + " offers more than one choice called " + choice.name() + ".");
+			}
+			String choiceName = subjectName + "'s choice " + choice.name();
+			if (choice.text() == null || choice.text().isBlank()) {
+				problems.add(choiceName + " has no text to describe it.");
+			}
+			if (choice.effects().travelTurns() != 0) {
+				problems.add(choiceName + " cannot change travelTurns.");
+			}
+			if (choice.effects().damageDefense() < 0) {
+				problems.add(choiceName + " cannot damage Defense by less than 0.");
+			}
 		}
 		return problems;
 	}

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { otherNations } from './api'
-import type { BuildingDamage, BuildingType, MapNation, NationView, UnitType, Warparty } from './api'
+import type { BuildingDamage, BuildingType, Effects, MapNation, NationView, UnitType, Warparty } from './api'
 import type { ReceivedRoom } from './useRoom'
 
 /** The time now, updated a few times a second. */
@@ -365,6 +365,49 @@ function WorldMap({ nation }: { nation: NationView }) {
   )
 }
 
+/** Such as "−15 Gold, −2 Population", or "no effect". */
+function describeChoiceEffects(effects: Effects) {
+  const changes = []
+  const signed = (amount: number) => (amount > 0 ? `+${amount}` : `−${-amount}`)
+  if (effects.gold !== 0) changes.push(`${signed(effects.gold)} Gold`)
+  if (effects.population !== 0) changes.push(`${signed(effects.population)} Population`)
+  if (effects.research !== 0) changes.push(`${signed(effects.research)} Research`)
+  if (effects.damageDefense > 0) changes.push(`−${effects.damageDefense} Defense`)
+  return changes.length > 0 ? changes.join(', ') : 'no effect'
+}
+
+/** The Dilemmas awaiting the Player's choice; any left unanswered when the Turn ends get their worst choice. */
+function Dilemmas({
+  nation,
+  onAnswer,
+}: {
+  nation: NationView
+  onAnswer: (dilemma: string, choice: string) => void
+}) {
+  if (nation.dilemmas.length === 0) return null
+  return (
+    <>
+      <h3>Dilemmas</h3>
+      {nation.dilemmas.map((dilemma) => (
+        <div key={dilemma.name}>
+          <p>
+            <strong>{dilemma.text}.</strong> Choose before the Turn ends, or the worst choice applies.
+          </p>
+          <ul>
+            {dilemma.choices.map((choice) => (
+              <li key={choice.name}>
+                <button onClick={() => onAnswer(dilemma.name, choice.name)}>{choice.name}</button>{' '}
+                {describeChoiceEffects(choice.effects)}
+                {choice.worst && ' (applies if you do not choose)'}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
+    </>
+  )
+}
+
 /** One Turn of the Game as this Player sees it; they mark themselves done once they have decided. */
 function GameScreen({
   room,
@@ -376,6 +419,7 @@ function GameScreen({
   onRebuildBuilding,
   onTrainUnits,
   onSendWarparty,
+  onAnswerDilemma,
   onDone,
 }: {
   room: ReceivedRoom
@@ -387,6 +431,7 @@ function GameScreen({
   onRebuildBuilding: (building: string) => void
   onTrainUnits: (unit: string, count: number) => void
   onSendWarparty: (target: string, units: Record<string, number>) => void
+  onAnswerDilemma: (dilemma: string, choice: string) => void
   onDone: (turn: number) => void
 }) {
   const now = useNow()
@@ -451,6 +496,7 @@ function GameScreen({
             <li>Defense: {nation.defense}</li>
           </ul>
           {rejection && <p role="alert">{rejection}</p>}
+          <Dilemmas nation={nation} onAnswer={onAnswerDilemma} />
           <Buildings
             nation={nation}
             onStart={onStartBuilding}

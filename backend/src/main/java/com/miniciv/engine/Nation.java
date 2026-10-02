@@ -7,6 +7,7 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * A Nation's state inside the engine.
@@ -59,6 +60,12 @@ class Nation {
 	private TurnReport turnReport;
 
 	/**
+	 * The Dilemmas awaiting the Player's choice before this Turn ends, in the
+	 * order they happened.
+	 */
+	private final List<Event> dilemmas = new ArrayList<>();
+
+	/**
 	 * The Nation or Nations that conquered this one, such as "Rome and Egypt",
 	 * or null while it is still in the Game.
 	 */
@@ -96,7 +103,8 @@ class Nation {
 				Collections.unmodifiableMap(new LinkedHashMap<>(buildings)), construction, repairs, defense(ruleset), damage(ruleset),
 				ruleset.units(),
 				Collections.unmodifiableMap(new LinkedHashMap<>(army)), training, warparties, travelTurns, upkeep(ruleset),
-				turnReport, conqueredBy, winner);
+				turnReport, awaitingChoice(winner),
+				conqueredBy, winner);
 	}
 
 	/**
@@ -215,6 +223,45 @@ class Nation {
 			}
 		}
 		throw new IllegalArgumentException("Not a Warparty of " + name);
+	}
+
+	/**
+	 * Has a Dilemma await the Player's choice before the next Turn ends.
+	 */
+	void faceDilemma(Event dilemma) {
+		dilemmas.add(dilemma);
+		version++;
+	}
+
+	/**
+	 * The Dilemmas the Player may still answer: none once the Nation is out of
+	 * the Game or the Game is won.
+	 */
+	private List<Dilemma> awaitingChoice(String winner) {
+		return inGame() && winner == null ? dilemmas.stream().map(Event::asDilemma).toList() : List.of();
+	}
+
+	/**
+	 * The Dilemmas awaiting the Player's choice, in the order they happened.
+	 */
+	List<Event> dilemmas() {
+		return List.copyOf(dilemmas);
+	}
+
+	/**
+	 * The Dilemma of the given name awaiting the Player's choice, if any.
+	 */
+	Optional<Event> dilemma(String name) {
+		return dilemmas.stream().filter(dilemma -> dilemma.name().equals(name)).findFirst();
+	}
+
+	/**
+	 * Stops a Dilemma awaiting the Player's choice, as its choice has been
+	 * made or applied for them.
+	 */
+	void settleDilemma(Event dilemma) {
+		dilemmas.remove(dilemma);
+		version++;
 	}
 
 	/**

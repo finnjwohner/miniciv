@@ -16,7 +16,7 @@ class RulesetFilesTest {
 		assertThat(ruleset.buildings()).extracting(BuildingType::name).contains("Farm", "Granary", "Bank");
 		assertThat(ruleset.technologies()).isNotEmpty();
 		assertThat(ruleset.events()).extracting(Event::name)
-			.contains("Good harvest", "Plague", "Dust storm", "Rumours of war");
+			.contains("Good harvest", "Plague", "Dust storm", "Rumours of war", "Outbreak");
 	}
 
 	@Test

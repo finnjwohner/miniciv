@@ -43,4 +43,14 @@ public sealed interface Action {
 	record SendWarparty(String target, Map<String, Integer> units) implements Action {
 	}
 
+	/**
+	 * Makes a choice for one of the Nation's Dilemmas awaiting it, applying the
+	 * choice's effects now.
+	 *
+	 * @param dilemma the Dilemma's name
+	 * @param choice the name of the choice made
+	 */
+	record AnswerDilemma(String dilemma, String choice) implements Action {
+	}
+
 }
