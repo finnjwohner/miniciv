@@ -4,6 +4,7 @@ import GameScreen from './GameScreen'
 import Home from './Home'
 import JoinRoom from './JoinRoom'
 import RoomScreen from './RoomScreen'
+import { Icon } from './ui/Icon'
 import { useRoom } from './useRoom'
 
 function usePath() {
@@ -25,14 +26,19 @@ function App() {
   const roomCode = path.match(/^\/rooms\/([^/]+)\/?$/)?.[1]
 
   return (
-    <main>
-      <h1>miniciv</h1>
-      {roomCode ? (
-        <Room key={roomCode} code={decodeURIComponent(roomCode).toUpperCase()} />
-      ) : (
-        <Home onJoined={(code) => navigate(`/rooms/${code}`)} />
-      )}
-    </main>
+    <>
+      <header className="topbar">
+        <Icon name="castle" />
+        <h1>miniciv</h1>
+      </header>
+      <main>
+        {roomCode ? (
+          <Room key={roomCode} code={decodeURIComponent(roomCode).toUpperCase()} />
+        ) : (
+          <Home onJoined={(code) => navigate(`/rooms/${code}`)} />
+        )}
+      </main>
+    </>
   )
 }
 
@@ -62,28 +68,35 @@ function JoinedRoom({ code, membership }: { code: string; membership: Membership
     answerEncounter,
     markDone,
   } = useRoom(code, membership.token)
-  if (!room) return <p>Connecting to Room {code}…</p>
+  if (!room)
+    return (
+      <div className="screen screen--narrow">
+        <p className="muted">Connecting to Room {code}…</p>
+      </div>
+    )
   if (room.game)
     return (
-      <GameScreen
-        room={room}
-        nation={nation}
-        playerId={membership.playerId}
-        rejection={rejection}
-        onStartBuilding={startBuilding}
-        onRepairBuilding={repairBuilding}
-        onRebuildBuilding={rebuildBuilding}
-        onTrainUnits={trainUnits}
-        onSendWarparty={sendWarparty}
-        onRecallWarparty={recallWarparty}
-        onSendSpy={sendSpy}
-        onAnswerDilemma={answerDilemma}
-        onUnlockTechnology={unlockTechnology}
-        onOfferTribute={offerTribute}
-        onAnswerTribute={answerTribute}
-        onAnswerEncounter={answerEncounter}
-        onDone={markDone}
-      />
+      <div className="screen">
+        <GameScreen
+          room={room}
+          nation={nation}
+          playerId={membership.playerId}
+          rejection={rejection}
+          onStartBuilding={startBuilding}
+          onRepairBuilding={repairBuilding}
+          onRebuildBuilding={rebuildBuilding}
+          onTrainUnits={trainUnits}
+          onSendWarparty={sendWarparty}
+          onRecallWarparty={recallWarparty}
+          onSendSpy={sendSpy}
+          onAnswerDilemma={answerDilemma}
+          onUnlockTechnology={unlockTechnology}
+          onOfferTribute={offerTribute}
+          onAnswerTribute={answerTribute}
+          onAnswerEncounter={answerEncounter}
+          onDone={markDone}
+        />
+      </div>
     )
   return <RoomScreen room={room} playerId={membership.playerId} onReady={setReady} />
 }
