@@ -66,6 +66,9 @@ class RoomController {
 	record AnswerTributeRequest(String token, int warparty, boolean accept) {
 	}
 
+	record AnswerEncounterRequest(String token, int warparty, boolean fight) {
+	}
+
 	record AnswerDilemmaRequest(String token, String dilemma, String choice) {
 	}
 
@@ -247,6 +250,20 @@ class RoomController {
 	Rejection answerTribute(@DestinationVariable String code, AnswerTributeRequest request) {
 		ActionResult result = rooms.act(code, request.token(),
 				new Action.AnswerTribute(request.warparty(), request.accept()));
+		return result.accepted() ? null : new Rejection(result.reason());
+	}
+
+	/**
+	 * Chooses whether one of the Nation's Warparties fights the other Nation's
+	 * Warparty it met; both Players' changed views arrive on
+	 * {@code /user/queue/game}, or the reason it was rejected on
+	 * {@code /user/queue/rejections}.
+	 */
+	@MessageMapping("/rooms/{code}/encounters/answers")
+	@SendToUser(destinations = "/queue/rejections", broadcast = false)
+	Rejection answerEncounter(@DestinationVariable String code, AnswerEncounterRequest request) {
+		ActionResult result = rooms.act(code, request.token(),
+				new Action.AnswerEncounter(request.warparty(), request.fight()));
 		return result.accepted() ? null : new Rejection(result.reason());
 	}
 

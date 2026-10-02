@@ -59,6 +59,7 @@ function JoinedRoom({ code, membership }: { code: string; membership: Membership
     unlockTechnology,
     offerTribute,
     answerTribute,
+    answerEncounter,
     markDone,
   } = useRoom(code, membership.token)
   if (!room) return <p>Connecting to Room {code}…</p>
@@ -80,6 +81,7 @@ function JoinedRoom({ code, membership }: { code: string; membership: Membership
         onUnlockTechnology={unlockTechnology}
         onOfferTribute={offerTribute}
         onAnswerTribute={answerTribute}
+        onAnswerEncounter={answerEncounter}
         onDone={markDone}
       />
     )

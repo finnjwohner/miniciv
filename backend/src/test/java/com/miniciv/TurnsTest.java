@@ -207,6 +207,7 @@ class TurnsTest {
 		view.put("upkeep", 0);
 		view.put("arrivals", List.of());
 		view.put("tributes", List.of());
+		view.put("encounters", List.of());
 		view.put("techTree", List.of());
 		view.put("turnReport", turnReport);
 		view.put("dilemmas", List.of());

@@ -2,11 +2,14 @@ package com.miniciv.engine;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Comparator;
+import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Supplier;
 import java.util.random.RandomGenerator;
 import java.util.stream.IntStream;
@@ -91,6 +94,12 @@ public class Game {
 	 * other Nation's Spy still travelling.
 	 */
 	private static final double CATCH_CHANCE_PER_WARPARTY = 0.1;
+
+	/**
+	 * The chance, each Turn, of each pair of Warparties from different Nations
+	 * abroad meeting.
+	 */
+	private static final double ENCOUNTER_CHANCE = 0.15;
 
 	/**
 	 * What becomes of a caught Spy, each as likely as the others.
@@ -183,6 +192,12 @@ public class Game {
 	private final List<Tribute> tributes = new ArrayList<>();
 
 	/**
+	 * The Encounters Warparties had as the last Turn resolved, in the order
+	 * they met, to be fought or not as this Turn ends.
+	 */
+	private final List<Encounter> encounters = new ArrayList<>();
+
+	/**
 	 * The last Nation standing, or null while the Game goes on.
 	 */
 	private String winner;
@@ -243,6 +258,7 @@ public class Game {
 		nation.remove();
 		removed.add(name);
 		tributes.removeIf(tribute -> tribute.involves(name));
+		encounters.removeIf(encounter -> encounter.involves(name));
 		List<Nation> left = remaining();
 		for (Nation other : left) {
 			List<String> report = pendingReport(other);
@@ -309,6 +325,7 @@ public class Game {
 			}
 		}
 		tributes.clear();
+		settleEncounters(reports);
 		for (Nation nation : inPlay) {
 			List<String> report = reports.get(nation.name());
 			for (Nation.FacedDilemma faced : nation.settleDilemmas()) {
@@ -386,6 +403,7 @@ public class Game {
 		scout(reports);
 		catchSpies(reports);
 		spy(reports);
+		meet(reports);
 		List<Nation> left = remaining();
 		if (left.size() == 1) {
 			winner = left.getFirst().name();
@@ -808,6 +826,140 @@ public class Game {
 	}
 
 	/**
+	 * Has every pair of Warparties from different Nations travelling abroad,
+	 * outward or homeward, draw once from the seeded random source for whether
+	 * they meet, taking each Nation still in the Game in order and each of its
+	 * Warparties in the order sent, against each later Nation's Warparties in
+	 * the order sent. A Warparty that has met one already this Turn meets no
+	 * other, and a pair with such a Warparty draws nothing. Both Players are
+	 * told in their Turn Report, and choose during the next Turn whether to
+	 * fight.
+	 */
+	private void meet(Map<String, List<String>> reports) {
+		List<Nation> left = remaining();
+		Set<Warparty> met = Collections.newSetFromMap(new IdentityHashMap<>());
+		for (int i = 0; i < left.size(); i++) {
+			Nation nation = left.get(i);
+			for (Warparty warparty : nation.warparties()) {
+				for (Nation other : left.subList(i + 1, left.size())) {
+					for (Warparty otherWarparty : other.warparties()) {
+						if (warparty.awaitingBattle() || otherWarparty.awaitingBattle() || met.contains(warparty)
+								|| met.contains(otherWarparty) || random.nextDouble() >= ENCOUNTER_CHANCE) {
+							continue;
+						}
+						met.add(warparty);
+						met.add(otherWarparty);
+						encounters.add(new Encounter(
+								new Encounter.Side(nation.name(), warparty.id(), warparty.units(), Encounter.Choice.NONE),
+								new Encounter.Side(other.name(), otherWarparty.id(), otherWarparty.units(),
+										Encounter.Choice.NONE)));
+						reports.get(nation.name()).add(metLine(warparty, other.name(), otherWarparty));
+						reports.get(other.name()).add(metLine(otherWarparty, nation.name(), warparty));
+					}
+				}
+			}
+		}
+	}
+
+	/**
+	 * Such as "Your Warparty of Warrior ×2 heading to Carthage met Egypt's
+	 * Warparty of Archer ×3; choose whether to fight before this Turn ends."
+	 */
+	private static String metLine(Warparty own, String other, Warparty theirs) {
+		return yourWarparty(own) + " met " + other
+				+ "'s Warparty of " + listed(theirs.units()) + "; choose whether to fight before this Turn ends.";
+	}
+
+	/**
+	 * Settles each of last Turn's Encounters in the order met: if either
+	 * Player chose to fight, the Warparties fight by a Battle's rules, the first
+	 * as the attacking side, and each loses Units with no delay to its travel;
+	 * one wiped out is destroyed. Otherwise they go their separate ways. Both
+	 * Players are told in their Turn Report.
+	 */
+	private void settleEncounters(Map<String, List<String>> reports) {
+		for (Encounter encounter : encounters) {
+			Nation first = nation(encounter.first().nation());
+			Nation second = nation(encounter.second().nation());
+			Optional<Warparty> firstWarparty = first.warparty(encounter.first().warparty());
+			Optional<Warparty> secondWarparty = second.warparty(encounter.second().warparty());
+			if (firstWarparty.isEmpty() || secondWarparty.isEmpty()) {
+				continue;
+			}
+			Warparty firstBefore = firstWarparty.get();
+			Warparty secondBefore = secondWarparty.get();
+			if (!encounter.fought()) {
+				reports.get(first.name()).add(separateWays(firstBefore, second.name(), secondBefore));
+				reports.get(second.name()).add(separateWays(secondBefore, first.name(), firstBefore));
+				continue;
+			}
+			Battle battle = Battle.fight(List.of(firstBefore.units()), secondBefore.units(), ruleset, random);
+			Map<String, Integer> firstLost = battle.warpartiesLost().getFirst();
+			Map<String, Integer> secondLost = battle.armyLost();
+			first.foughtEncounter(firstBefore, battle.warpartySurvivors(0));
+			second.foughtEncounter(secondBefore, battle.armySurvivors());
+			reportEncounter(encounter.first(), encounter.second(), firstBefore, secondBefore, firstLost, secondLost,
+					reports);
+			reportEncounter(encounter.second(), encounter.first(), secondBefore, firstBefore, secondLost, firstLost,
+					reports);
+			if (battle.warpartySurvivors(0).isEmpty()) {
+				reportDestroyed(firstBefore, first.name(), second.name(), reports);
+			}
+			if (battle.armySurvivors().isEmpty()) {
+				reportDestroyed(secondBefore, second.name(), first.name(), reports);
+			}
+		}
+		encounters.clear();
+	}
+
+	/**
+	 * Such as "Your Warparty of Warrior ×2 heading to Carthage fought Egypt's
+	 * Warparty of Archer ×3, as Egypt chose to fight. You lost Warrior ×1 and
+	 * Egypt lost no Units."
+	 */
+	private static void reportEncounter(Encounter.Side own, Encounter.Side other, Warparty ownWarparty,
+			Warparty otherWarparty, Map<String, Integer> ownLost, Map<String, Integer> otherLost,
+			Map<String, List<String>> reports) {
+		String why = own.choice() == Encounter.Choice.FIGHT
+				? other.choice() == Encounter.Choice.FIGHT ? "you both chose" : "you chose"
+				: other.nation() + " chose";
+		reports.get(own.nation())
+			.add(yourWarparty(ownWarparty) + " fought "
+					+ other.nation() + "'s Warparty of " + listed(otherWarparty.units()) + ", as " + why
+					+ " to fight. You lost " + lost(ownLost) + " and " + other.nation() + " lost " + lost(otherLost)
+					+ ".");
+	}
+
+	/**
+	 * Such as "Your Warparty of Warrior ×2 heading to Carthage and Egypt's
+	 * Warparty of Archer ×3 went their separate ways, as neither of you chose
+	 * to fight."
+	 */
+	private static String separateWays(Warparty own, String other, Warparty theirs) {
+		return yourWarparty(own) + " and " + other
+				+ "'s Warparty of " + listed(theirs.units())
+				+ " went their separate ways, as neither of you chose to fight.";
+	}
+
+	/**
+	 * Tells both Nations that a Warparty was wiped out fighting in an
+	 * Encounter.
+	 */
+	private static void reportDestroyed(Warparty destroyed, String nation, String other,
+			Map<String, List<String>> reports) {
+		reports.get(nation).add("Your Warparty " + whereabouts(destroyed, null) + " was destroyed.");
+		reports.get(other).add(nation + "'s Warparty was destroyed.");
+	}
+
+	/**
+	 * Such as "Your Warparty of Warrior ×2 heading to Carthage", for the
+	 * Nation that sent it.
+	 */
+	private static String yourWarparty(Warparty warparty) {
+		return "Your Warparty of " + listed(warparty.units()) + " " + whereabouts(warparty, null);
+	}
+
+	/**
 	 * Has each Nation still in the Game in order watch, through each of its
 	 * Spies in place in the order sent, the Nation the Spy is at, drawing once
 	 * from the seeded random source for whether the Spy reports and, if it
@@ -1145,6 +1297,7 @@ public class Game {
 			case Action.RecallWarparty recall -> recall(actor, recall.warparty());
 			case Action.OfferTribute offer -> offer(actor, offer);
 			case Action.AnswerTribute answer -> answer(actor, answer);
+			case Action.AnswerEncounter answer -> answer(actor, answer);
 			case Action.AnswerDilemma answer -> answer(actor, answer);
 			case Action.UnlockTechnology unlock -> ruleset.technology(unlock.technology())
 				.map(actor::unlock)
@@ -1270,6 +1423,31 @@ public class Game {
 	}
 
 	/**
+	 * Records whether a Player chose to fight with one of their Nation's
+	 * Warparties in an Encounter, once; the other Player sees the choice at
+	 * once, and the Warparties fight, if either chose to, as the Turn ends.
+	 */
+	private ActionResult answer(Nation nation, Action.AnswerEncounter answer) {
+		Optional<Encounter> awaiting = encounters.stream()
+			.filter(encounter -> encounter.sideOf(nation.name(), answer.warparty()).isPresent())
+			.findFirst();
+		if (awaiting.isEmpty()) {
+			return ActionResult.rejected("No Encounter awaits your choice for that Warparty.");
+		}
+		Encounter encounter = awaiting.get();
+		Encounter.Side side = encounter.sideOf(nation.name(), answer.warparty()).orElseThrow();
+		Encounter.Side other = encounter.facing(side);
+		if (side.choice() != Encounter.Choice.NONE) {
+			return ActionResult.rejected("You have already chosen whether to fight " + other.nation() + "'s Warparty.");
+		}
+		encounters.set(encounters.indexOf(encounter),
+				encounter.chosen(side, answer.fight() ? Encounter.Choice.FIGHT : Encounter.Choice.PASS));
+		nation.changed();
+		nation(other.nation()).changed();
+		return ActionResult.ACCEPTED;
+	}
+
+	/**
 	 * Records the choice a Player made for one of their Nation's Dilemmas; it
 	 * applies as the Turn ends, when their Turn Report describes it.
 	 */
@@ -1344,7 +1522,8 @@ public class Game {
 				.forEach(warparty -> arrivals.add(new ArrivedWarparty(attacker.name(), warparty.id())));
 		}
 		List<Tribute> involved = tributes.stream().filter(tribute -> tribute.involves(nation)).toList();
-		return own.view(turn, map, TRAVEL_TURNS, arrivals, involved, ruleset, winner);
+		List<Encounter> met = encounters.stream().filter(encounter -> encounter.involves(nation)).toList();
+		return own.view(turn, map, TRAVEL_TURNS, arrivals, involved, met, ruleset, winner);
 	}
 
 	private Nation nation(String name) {
