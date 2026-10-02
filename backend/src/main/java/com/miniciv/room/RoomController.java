@@ -54,6 +54,9 @@ class RoomController {
 	record SendWarpartyRequest(String token, String target, Map<String, Integer> units) {
 	}
 
+	record AnswerDilemmaRequest(String token, String dilemma, String choice) {
+	}
+
 	/**
 	 * Why an Action was not accepted, for the Player who sent it.
 	 */
@@ -178,6 +181,19 @@ class RoomController {
 		Map<String, Integer> units = request.units() == null ? Map.of() : request.units();
 		ActionResult result = rooms.act(code, request.token(),
 				new Action.SendWarparty(String.valueOf(request.target()), units));
+		return result.accepted() ? null : new Rejection(result.reason());
+	}
+
+	/**
+	 * Makes a choice for one of the Nation's Dilemmas, applying it at once; the
+	 * Player's changed view arrives on {@code /user/queue/game}, or the reason
+	 * it was rejected on {@code /user/queue/rejections}.
+	 */
+	@MessageMapping("/rooms/{code}/dilemmas")
+	@SendToUser(destinations = "/queue/rejections", broadcast = false)
+	Rejection answerDilemma(@DestinationVariable String code, AnswerDilemmaRequest request) {
+		ActionResult result = rooms.act(code, request.token(),
+				new Action.AnswerDilemma(String.valueOf(request.dilemma()), String.valueOf(request.choice())));
 		return result.accepted() ? null : new Rejection(result.reason());
 	}
 

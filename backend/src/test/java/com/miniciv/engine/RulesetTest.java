@@ -134,4 +134,56 @@ class RulesetTest {
 			.withMessageContaining("Event Dust storm cannot need unitsAtLeast below 0");
 	}
 
+	static Event dilemma(String name, Event.Subject subject, Event.Effects effects, Event.Choice... choices) {
+		return new Event(name, subject, 0.1, null, effects, "Something happened", List.of(choices));
+	}
+
+	static Event.Choice choice(String name, boolean worst) {
+		return new Event.Choice(name, null, worst, "You chose");
+	}
+
+	@Test
+	void aDilemmaOffersTwoOrThreeChoicesOneOfThemTheWorst() {
+		Event single = dilemma("Flood", Event.Subject.NATION, null, choice("Flee", true));
+		Event crowded = dilemma("Fire", Event.Subject.NATION, null, choice("Flee", true), choice("Fight", false),
+				choice("Pray", false), choice("Wait", false));
+		Event noWorst = dilemma("Famine", Event.Subject.NATION, null, choice("Ration", false), choice("Import", false));
+		Event twoWorst = dilemma("Drought", Event.Subject.NATION, null, choice("Dig", true), choice("Pray", true));
+
+		assertThatExceptionOfType(InvalidRuleset.class)
+			.isThrownBy(() -> new Ruleset(List.of(), List.of(), List.of(), List.of(single, crowded, noWorst, twoWorst)))
+			.withMessageContaining("Event Flood must offer two or three choices")
+			.withMessageContaining("Event Fire must offer two or three choices")
+			.withMessageContaining("Event Famine must mark exactly one of its choices as the worst")
+			.withMessageContaining("Event Drought must mark exactly one of its choices as the worst");
+	}
+
+	@Test
+	void aDilemmasChoicesHaveUniqueNamesAndTextAndSuitANation() {
+		Event.Choice blank = new Event.Choice(" ", null, false, "You chose");
+		Event.Choice untold = new Event.Choice("Fight", new Event.Effects(0, 0, 0, -1, 2), false, "");
+		Event fire = dilemma("Fire", Event.Subject.NATION, null, choice("Flee", true), blank, untold);
+		Event twice = dilemma("Flood", Event.Subject.NATION, null, choice("Flee", true), choice("Flee", false));
+
+		assertThatExceptionOfType(InvalidRuleset.class)
+			.isThrownBy(() -> new Ruleset(List.of(), List.of(), List.of(), List.of(fire, twice)))
+			.withMessageContaining("Event Fire has a choice with no name")
+			.withMessageContaining("Event Fire's choice Fight has no text to describe it")
+			.withMessageContaining("Event Fire's choice Fight cannot change travelTurns")
+			.withMessageContaining("Event Fire's choice Fight cannot damage Defense by less than 0")
+			.withMessageContaining("Event Flood offers more than one choice called Flee");
+	}
+
+	@Test
+	void aDilemmaHappensToANationAndHasNoEffectsOfItsOwn() {
+		Event ambush = dilemma("Ambush", Event.Subject.WARPARTY, null, choice("Fight", true), choice("Flee", false));
+		Event flood = dilemma("Flood", Event.Subject.NATION, new Event.Effects(0, -2, 0, 0, 0), choice("Flee", true),
+				choice("Dig", false));
+
+		assertThatExceptionOfType(InvalidRuleset.class)
+			.isThrownBy(() -> new Ruleset(List.of(), List.of(), List.of(), List.of(ambush, flood)))
+			.withMessageContaining("Event Ambush offers choices, so it must happen to a Nation")
+			.withMessageContaining("Event Flood offers choices, so its effects belong to its choices");
+	}
+
 }

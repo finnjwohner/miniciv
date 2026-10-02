@@ -78,6 +78,12 @@ export type Warparty = {
   turnsLeft: number
   plunder: { gold: number; research: number }
 }
+/** What a Dilemma's choice changes; resources it would take below 0 stop at 0. */
+export type Effects = { gold: number; population: number; research: number; damageDefense: number; travelTurns: number }
+/** One choice a Dilemma offers; `worst` is the one that applies if the Player does not choose before the Turn ends. */
+export type Choice = { name: string; effects: Effects; worst: boolean; text: string }
+/** A Dilemma awaiting this Player's choice before the Turn ends, answered by its `name`. */
+export type Dilemma = { name: string; text: string; choices: Choice[] }
 /**
  * A Nation on the Map, as another Nation knows it: its name, and whether it is still in the Game,
  * was conquered, or was removed as its Player was disconnected for too long.
@@ -117,6 +123,8 @@ export type NationView = {
   /** The Gold the Nation's Units cost each Turn, at home and abroad. */
   upkeep: number
   turnReport: TurnReport | null
+  /** The Dilemmas awaiting this Player's choice before the Turn ends, in the order they happened. */
+  dilemmas: Dilemma[]
   /** The Nation or Nations that conquered this one, such as "Rome and Egypt", knocking this Player out, or null. */
   conqueredBy: string | null
   /** The Nation that won the Game, or null while it goes on. */

@@ -30,6 +30,8 @@ import java.util.Map;
  * @param warparties the Nation's Warparties abroad, in the order sent
  * @param travelTurns how many Turns a Warparty takes to reach another Nation
  * @param upkeep the Gold the Nation's Units cost each Turn, at home and abroad
+ * @param dilemmas the Dilemmas awaiting the Player's choice before this Turn
+ *        ends, in the order they happened
  * @param conqueredBy the Nation or Nations that conquered this one, such as
  *        "Rome and Egypt", knocking its Player out of the Game, or null if
  *        none has
@@ -40,7 +42,7 @@ public record NationView(int version, int turn, String nation, int gold, int pop
 		List<Construction> construction, List<Repair> repairs, int defense, List<BuildingDamage> damage, List<UnitType> availableUnits,
 		Map<String, Integer> army,
 		List<Training> training, List<Warparty> warparties, int travelTurns, int upkeep, TurnReport turnReport,
-		String conqueredBy, String winner) {
+		List<Dilemma> dilemmas, String conqueredBy, String winner) {
 
 	public NationView {
 		map = List.copyOf(map);
@@ -51,6 +53,7 @@ public record NationView(int version, int turn, String nation, int gold, int pop
 		availableUnits = List.copyOf(availableUnits);
 		training = List.copyOf(training);
 		warparties = List.copyOf(warparties);
+		dilemmas = List.copyOf(dilemmas);
 	}
 
 	/**
