@@ -39,11 +39,15 @@ _Avoid_: Board
 ## Nations
 
 **Nation**:
-The country a Player leads in a Game; what owns Gold, Population, Research, Buildings and Units. Every Nation starts the same; other Players initially know only its name.
+The country a Player leads in a Game; what owns Gold, Population, Research, Buildings and Units. Every Nation starts the same; other Players initially know only its name, Ruler, colour and emblem, each unique among the Nations in the Game.
 _Avoid_: Country, civ, empire, faction
 
+**Ruler**:
+The in-world leader of a Nation, named by its Player in the Room; Turn Reports name the Ruler alongside the Nation for what one Nation directly does to another, such as its Warparty arriving.
+_Avoid_: Leader, king, player
+
 **Gold**:
-A resource a Nation gains each Turn and spends on Buildings and Units.
+A resource a Nation gains each Turn, one for every one of its Population plus what Buildings such as banks add, and spends on Buildings and Units.
 _Avoid_: Money, coins
 
 **Population**:
@@ -79,12 +83,16 @@ A defensive Building that has lost all of its Defense; it raises no Defense and 
 _Avoid_: Ruined, razed, lost
 
 **Repair**:
-Restoring the Defense one Damaged Building lost, paying Gold upfront and taking some Turns, both in proportion to the Defense lost.
+Restoring the Defense one Damaged Building lost, paying Gold upfront and taking some Turns, both half of what constructing it would, in proportion to the Defense lost.
 _Avoid_: Fix, mend
 
 **Rebuild**:
-Restoring one Destroyed Building, paying the Gold upfront and taking the Turns that constructing it would.
+Restoring one Destroyed Building, paying Gold upfront and taking some Turns, both half of what constructing it would, rounded up.
 _Avoid_: Reconstruct, restore
+
+**Sell**:
+Giving up one standing Building at once in return for Gold: half its cost, or a quarter if it is Damaged. A Destroyed Building cannot be Sold.
+_Avoid_: Demolish, scrap, refund
 
 ## Warfare
 
@@ -101,7 +109,7 @@ The Units a Nation has at home in its own land; Units away in a Warparty are not
 _Avoid_: Garrison, defenders
 
 **Warparty**:
-A group of Units a Player sends from their Army toward another Nation; it travels for some Turns before arriving.
+A group of Units a Player sends from their Army toward another Nation; it travels for some Turns before arriving, more the greater its Strength, and on the way home more still the more Plunder it carries.
 _Avoid_: Attack, expedition, army
 
 **Scout**:
@@ -117,7 +125,7 @@ One piece of another Nation's hidden state a Spy reported or a caught Spy confes
 _Avoid_: Intel, knowledge, info
 
 **Recall**:
-Ordering a Warparty to turn back home; the trip home takes as long as it has travelled so far.
+Ordering a Warparty to turn back home; the trip home takes as long as it has travelled so far, less in proportion if it has since lost Strength.
 _Avoid_: Retreat, withdraw
 
 **Tribute**:
@@ -143,9 +151,9 @@ _Avoid_: Domination, elimination
 ## Events
 
 **Event**:
-Something that happens to a Nation or a Warparty outside the Players' direct actions, announced through the Turn Report (e.g. a plague, a good harvest, a dust storm delaying a Warparty, rumours of an approaching army).
+Something that happens to a Nation or a Warparty outside the Players' direct actions, announced through the Turn Report (e.g. a plague, a good harvest, a dust storm delaying a Warparty, rumours of an approaching army). How much it changes varies a little by luck.
 _Avoid_: Incident, occurrence
 
 **Dilemma**:
-An Event that offers its Player two or three choices; if the Player does not choose before the Turn ends, the worst choice applies.
+An Event that offers its Player two or three choices; if the Player does not choose before the Turn ends, the worst choice applies. What a choice leads to is partly luck, so even the best choice can turn out badly and the worst well; the Player is not told the odds.
 _Avoid_: Choice, decision, prompt
