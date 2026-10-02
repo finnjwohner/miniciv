@@ -92,6 +92,18 @@ export type Choice = { name: string; effects: Effects; worst: boolean; text: str
  */
 export type Dilemma = { name: string; text: string; choices: Choice[]; chosen: string | null }
 /**
+ * A Technology in the Tech Tree as this Nation stands with it: `UNLOCKED`, `AVAILABLE` once all its
+ * `prerequisites` are unlocked, otherwise `LOCKED`. Unlocking it costs `research` and gives access to the
+ * Unit and Building types it `unlocks`.
+ */
+export type TechTreeEntry = {
+  name: string
+  research: number
+  prerequisites: string[]
+  unlocks: string[]
+  standing: 'UNLOCKED' | 'AVAILABLE' | 'LOCKED'
+}
+/**
  * A Nation on the Map, as another Nation knows it: its name, and whether it is still in the Game,
  * was conquered, or was removed as its Player was disconnected for too long.
  */
@@ -109,6 +121,7 @@ export type NationView = {
   research: number
   /** Every Nation that took part in the Game, this one included, in the order they joined. */
   map: MapNation[]
+  /** The Building types the Nation may start: those needing no Technology, or one it has unlocked. */
   availableBuildings: BuildingType[]
   /** How many of each Building the Nation has completed. */
   buildings: Record<string, number>
@@ -119,6 +132,7 @@ export type NationView = {
   defense: number
   /** The defensive Buildings that have lost Defense, by type. */
   damage: BuildingDamage[]
+  /** The Unit types the Nation may train: those needing no Technology, or one it has unlocked. */
   availableUnits: UnitType[]
   /** How many of each Unit type the Nation has at home. */
   army: Record<string, number>
@@ -129,6 +143,8 @@ export type NationView = {
   travelTurns: number
   /** The Gold the Nation's Units cost each Turn, at home and abroad. */
   upkeep: number
+  /** Every Technology in the Tech Tree, in the ruleset's order. */
+  techTree: TechTreeEntry[]
   turnReport: TurnReport | null
   /** The Dilemmas awaiting this Player's choice before the Turn ends, in the order they happened. */
   dilemmas: Dilemma[]

@@ -14,7 +14,10 @@ class RulesetFilesTest {
 		assertThat(ruleset.units()).extracting(UnitType::name)
 			.contains("Warrior", "Archer", "Horseman", "Scout", "Spy");
 		assertThat(ruleset.buildings()).extracting(BuildingType::name).contains("Farm", "Granary", "Bank");
-		assertThat(ruleset.technologies()).isNotEmpty();
+		assertThat(ruleset.technologies()).extracting(Technology::name)
+			.contains("Bronze Working", "Masonry", "Iron Working", "Mathematics");
+		assertThat(ruleset.unlockedBy("Walls")).map(Technology::name).contains("Mathematics");
+		assertThat(ruleset.unlockedBy("Warrior")).isEmpty();
 		assertThat(ruleset.events()).extracting(Event::name)
 			.contains("Good harvest", "Plague", "Dust storm", "Rumours of war", "Outbreak");
 	}
@@ -23,6 +26,13 @@ class RulesetFilesTest {
 	void contentReferringToAnUnknownTypeFailsToLoad() {
 		assertThatExceptionOfType(InvalidRuleset.class).isThrownBy(() -> RulesetFiles.load("rulesets/unknown-counter"))
 			.withMessageContaining("Unit type Warrior counters Lancer, which is not a Unit type");
+	}
+
+	@Test
+	void aTechTreeWithAPrerequisiteThatIsNotATechnologyFailsToLoad() {
+		assertThatExceptionOfType(InvalidRuleset.class)
+			.isThrownBy(() -> RulesetFiles.load("rulesets/unknown-prerequisite"))
+			.withMessageContaining("Technology Iron Working requires Bronze Working, which is not a Technology");
 	}
 
 	@Test

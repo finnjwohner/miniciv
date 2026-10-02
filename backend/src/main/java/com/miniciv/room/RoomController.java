@@ -60,6 +60,9 @@ class RoomController {
 	record AnswerDilemmaRequest(String token, String dilemma, String choice) {
 	}
 
+	record UnlockTechnologyRequest(String token, String technology) {
+	}
+
 	/**
 	 * Why an Action was not accepted, for the Player who sent it.
 	 */
@@ -209,6 +212,19 @@ class RoomController {
 	Rejection answerDilemma(@DestinationVariable String code, AnswerDilemmaRequest request) {
 		ActionResult result = rooms.act(code, request.token(),
 				new Action.AnswerDilemma(String.valueOf(request.dilemma()), String.valueOf(request.choice())));
+		return result.accepted() ? null : new Rejection(result.reason());
+	}
+
+	/**
+	 * Unlocks a Technology, paying its Research at once; the Player's changed
+	 * view arrives on {@code /user/queue/game}, or the reason it was rejected
+	 * on {@code /user/queue/rejections}.
+	 */
+	@MessageMapping("/rooms/{code}/technologies")
+	@SendToUser(destinations = "/queue/rejections", broadcast = false)
+	Rejection unlockTechnology(@DestinationVariable String code, UnlockTechnologyRequest request) {
+		ActionResult result = rooms.act(code, request.token(),
+				new Action.UnlockTechnology(String.valueOf(request.technology())));
 		return result.accepted() ? null : new Rejection(result.reason());
 	}
 

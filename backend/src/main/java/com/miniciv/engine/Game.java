@@ -7,6 +7,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Supplier;
 import java.util.random.RandomGenerator;
 import java.util.stream.IntStream;
 
@@ -734,7 +735,7 @@ public class Game {
 		}
 		return switch (action) {
 			case Action.StartBuilding start -> ruleset.building(start.building())
-				.map(actor::startBuilding)
+				.map(building -> unlessLocked(actor, building.name(), () -> actor.startBuilding(building)))
 				.orElseGet(() -> noSuchBuilding(start.building()));
 			case Action.RepairBuilding repair -> ruleset.building(repair.building())
 				.map(actor::repair)
@@ -747,7 +748,7 @@ public class Game {
 					yield ActionResult.rejected("Train at least one Unit.");
 				}
 				yield ruleset.unit(train.unit())
-					.map(unit -> actor.trainUnits(unit, train.count(), turn))
+					.map(unit -> unlessLocked(actor, unit.name(), () -> actor.trainUnits(unit, train.count(), turn)))
 					.orElseGet(() -> ActionResult
 						.rejected("There is no Unit called " + train.unit() + " that you can train."));
 			}
@@ -772,6 +773,9 @@ public class Game {
 			}
 			case Action.RecallWarparty recall -> recall(actor, recall.warparty());
 			case Action.AnswerDilemma answer -> answer(actor, answer);
+			case Action.UnlockTechnology unlock -> ruleset.technology(unlock.technology())
+				.map(actor::unlock)
+				.orElseGet(() -> ActionResult.rejected("There is no Technology called " + unlock.technology() + "."));
 		};
 	}
 
@@ -816,6 +820,14 @@ public class Game {
 		}
 		nation.choose(faced.get(), choice.get());
 		return ActionResult.ACCEPTED;
+	}
+
+	/**
+	 * Starts a Unit or Building type, unless a Technology the Nation has not
+	 * unlocked is needed for it.
+	 */
+	private ActionResult unlessLocked(Nation nation, String unitOrBuilding, Supplier<ActionResult> start) {
+		return nation.locked(unitOrBuilding, ruleset).orElseGet(start);
 	}
 
 	private static ActionResult noSuchBuilding(String building) {

@@ -30,6 +30,9 @@ import java.util.Map;
  * @param warparties the Nation's Warparties abroad, in the order sent
  * @param travelTurns how many Turns a Warparty takes to reach another Nation
  * @param upkeep the Gold the Nation's Units cost each Turn, at home and abroad
+ * @param techTree every Technology in the Tech Tree, in the ruleset's order,
+ *        and whether the Nation has unlocked it, may unlock it or must first
+ *        unlock its prerequisites
  * @param dilemmas the Dilemmas awaiting the Player's choice before this Turn
  *        ends, in the order they happened
  * @param conqueredBy the Nation or Nations that conquered this one, such as
@@ -41,7 +44,8 @@ public record NationView(int version, int turn, String nation, int gold, int pop
 		List<MapNation> map, List<BuildingType> availableBuildings, Map<String, Integer> buildings,
 		List<Construction> construction, List<Repair> repairs, int defense, List<BuildingDamage> damage, List<UnitType> availableUnits,
 		Map<String, Integer> army,
-		List<Training> training, List<Warparty> warparties, int travelTurns, int upkeep, TurnReport turnReport,
+		List<Training> training, List<Warparty> warparties, int travelTurns, int upkeep, List<TechTreeEntry> techTree,
+		TurnReport turnReport,
 		List<Dilemma> dilemmas, String conqueredBy, String winner) {
 
 	public NationView {
@@ -53,6 +57,7 @@ public record NationView(int version, int turn, String nation, int gold, int pop
 		availableUnits = List.copyOf(availableUnits);
 		training = List.copyOf(training);
 		warparties = List.copyOf(warparties);
+		techTree = List.copyOf(techTree);
 		dilemmas = List.copyOf(dilemmas);
 	}
 

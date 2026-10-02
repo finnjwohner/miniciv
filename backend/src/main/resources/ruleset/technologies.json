@@ -1,6 +1,8 @@
 [
-  { "name": "Bronze Working", "research": 10 },
-  { "name": "Masonry", "research": 10 },
-  { "name": "Iron Working", "research": 25, "prerequisites": ["Bronze Working"] },
-  { "name": "Mathematics", "research": 25, "prerequisites": ["Masonry"] }
+  { "name": "Bronze Working", "research": 10, "unlocks": ["Archer"] },
+  { "name": "Masonry", "research": 10, "unlocks": ["Granary", "Moat"] },
+  { "name": "Writing", "research": 15, "unlocks": ["Spy"] },
+  { "name": "Iron Working", "research": 25, "prerequisites": ["Bronze Working"], "unlocks": ["Horseman"] },
+  { "name": "Mathematics", "research": 25, "prerequisites": ["Masonry"], "unlocks": ["Walls"] },
+  { "name": "Currency", "research": 30, "prerequisites": ["Writing", "Mathematics"], "unlocks": ["Bank"] }
 ]

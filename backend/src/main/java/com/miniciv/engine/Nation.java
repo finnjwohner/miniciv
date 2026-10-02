@@ -5,9 +5,11 @@ import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * A Nation's state inside the engine.
@@ -21,6 +23,11 @@ class Nation {
 	private int population;
 
 	private int research;
+
+	/**
+	 * The Technologies the Nation has unlocked, in the order unlocked.
+	 */
+	private final Set<String> technologies = new LinkedHashSet<>();
 
 	private final List<Construction> construction = new ArrayList<>();
 
@@ -103,11 +110,16 @@ class Nation {
 	}
 
 	NationView view(int turn, List<MapNation> map, int travelTurns, Ruleset ruleset, String winner) {
-		return new NationView(version, turn, name, gold, population, research, map, ruleset.buildings(),
+		List<BuildingType> availableBuildings = ruleset.buildings()
+			.stream()
+			.filter(building -> hasAccessTo(building.name(), ruleset))
+			.toList();
+		List<UnitType> availableUnits = ruleset.units().stream().filter(unit -> hasAccessTo(unit.name(), ruleset)).toList();
+		return new NationView(version, turn, name, gold, population, research, map, availableBuildings,
 				Collections.unmodifiableMap(new LinkedHashMap<>(buildings)), construction, repairs, defense(ruleset), damage(ruleset),
-				ruleset.units(),
+				availableUnits,
 				Collections.unmodifiableMap(new LinkedHashMap<>(army)), training, warparties, travelTurns, upkeep(ruleset),
-				turnReport, awaitingChoice(winner),
+				techTree(ruleset), turnReport, awaitingChoice(winner),
 				conqueredBy, winner);
 	}
 
@@ -335,6 +347,70 @@ class Nation {
 		this.gold += gold;
 		this.population += population;
 		this.research += research;
+	}
+
+	/**
+	 * Whether the Nation may start a Unit or Building type: either no
+	 * Technology is needed for it, or the Nation has unlocked the one that is.
+	 */
+	private boolean hasAccessTo(String unitOrBuilding, Ruleset ruleset) {
+		return lockedBehind(unitOrBuilding, ruleset).isEmpty();
+	}
+
+	/**
+	 * Why the Nation may not start a Unit or Building type yet, if a
+	 * Technology it has not unlocked is needed for it.
+	 */
+	Optional<ActionResult> locked(String unitOrBuilding, Ruleset ruleset) {
+		return lockedBehind(unitOrBuilding, ruleset)
+			.map(technology -> requiredFirst(unitOrBuilding, List.of(technology.name())));
+	}
+
+	private Optional<Technology> lockedBehind(String unitOrBuilding, Ruleset ruleset) {
+		return ruleset.unlockedBy(unitOrBuilding).filter(technology -> !technologies.contains(technology.name()));
+	}
+
+	private static ActionResult requiredFirst(String what, List<String> technologies) {
+		return ActionResult.rejected(what + " requires " + String.join(" and ", technologies) + " to be unlocked first.");
+	}
+
+	/**
+	 * Every Technology in the Tech Tree as the Nation stands with it.
+	 */
+	private List<TechTreeEntry> techTree(Ruleset ruleset) {
+		return ruleset.technologies()
+			.stream()
+			.map(technology -> new TechTreeEntry(technology.name(), technology.research(),
+					technology.prerequisites(), technology.unlocks(),
+					technologies.contains(technology.name()) ? TechTreeEntry.Standing.UNLOCKED
+							: technologies.containsAll(technology.prerequisites()) ? TechTreeEntry.Standing.AVAILABLE
+									: TechTreeEntry.Standing.LOCKED))
+			.toList();
+	}
+
+	/**
+	 * Pays a Technology's Research and unlocks it, once its prerequisites are
+	 * unlocked.
+	 */
+	ActionResult unlock(Technology technology) {
+		if (technologies.contains(technology.name())) {
+			return ActionResult.rejected("You have already unlocked " + technology.name() + ".");
+		}
+		List<String> missing = technology.prerequisites()
+			.stream()
+			.filter(prerequisite -> !technologies.contains(prerequisite))
+			.toList();
+		if (!missing.isEmpty()) {
+			return requiredFirst(technology.name(), missing);
+		}
+		if (technology.research() > research) {
+			return ActionResult.rejected(technology.name() + " costs " + technology.research()
+					+ " Research, but you have only " + research + ".");
+		}
+		research -= technology.research();
+		technologies.add(technology.name());
+		version++;
+		return ActionResult.ACCEPTED;
 	}
 
 	ActionResult startBuilding(BuildingType building) {
