@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { storedMembership, type Membership } from './api'
-import GameScreen from './GameScreen'
+import GameScreen from './game/GameScreen'
 import Home from './Home'
 import JoinRoom from './JoinRoom'
 import RoomScreen from './RoomScreen'
@@ -76,7 +76,7 @@ function JoinedRoom({ code, membership }: { code: string; membership: Membership
     )
   if (room.game)
     return (
-      <div className="screen">
+      <div className="screen screen--wide">
         <GameScreen
           room={room}
           nation={nation}

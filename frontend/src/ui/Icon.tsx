@@ -1,16 +1,53 @@
 import type { SVGProps } from 'react'
-import { Castle, Check, Flag, Link, Login, Play, Plus, Users } from 'pixelarticons/react'
+import {
+  BookOpen,
+  Building,
+  Castle,
+  Check,
+  Coins,
+  Eye,
+  Flag,
+  Hourglass,
+  Human,
+  Lightbulb,
+  Link,
+  Login,
+  Map as MapIcon,
+  Pause,
+  Play,
+  Plus,
+  Shield,
+  Skull,
+  Sword,
+  Trophy,
+  Users,
+  WarningDiamond,
+} from 'pixelarticons/react'
 
 // The pixelarticons (MIT) the app uses, by name; add one here to make it available.
 const icons = {
+  book: BookOpen,
+  building: Building,
   castle: Castle,
   check: Check,
+  coins: Coins,
+  eye: Eye,
   flag: Flag,
+  hourglass: Hourglass,
+  human: Human,
+  lightbulb: Lightbulb,
   link: Link,
   login: Login,
+  map: MapIcon,
+  pause: Pause,
   play: Play,
   plus: Plus,
+  shield: Shield,
+  skull: Skull,
+  sword: Sword,
+  trophy: Trophy,
   users: Users,
+  warning: WarningDiamond,
 } satisfies Record<string, (props: SVGProps<SVGSVGElement>) => unknown>
 
 export type IconName = keyof typeof icons
