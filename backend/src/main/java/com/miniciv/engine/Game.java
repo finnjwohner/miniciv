@@ -88,6 +88,11 @@ public class Game {
 	private final Map<String, List<String>> pendingReports = new LinkedHashMap<>();
 
 	/**
+	 * The Tribute offered this Turn, in the order offered.
+	 */
+	private final List<Tribute> tributes = new ArrayList<>();
+
+	/**
 	 * The last Nation standing, or null while the Game goes on.
 	 */
 	private String winner;
@@ -147,6 +152,7 @@ public class Game {
 		}
 		nation.remove();
 		removed.add(name);
+		tributes.removeIf(tribute -> tribute.involves(name));
 		List<Nation> left = remaining();
 		for (Nation other : left) {
 			List<String> report = pendingReport(other);
@@ -198,6 +204,18 @@ public class Game {
 		inPlay.forEach(nation -> reports.put(nation.name(),
 				new ArrayList<>(pendingReports.getOrDefault(nation.name(), List.of()))));
 		pendingReports.clear();
+		for (Tribute lapsed : tributes) {
+			if (lapsed.answer() == Tribute.Answer.NONE && nation(lapsed.to()).warparty(lapsed.warparty())
+				.filter(Warparty::awaitingBattle)
+				.isPresent()) {
+				reports.get(lapsed.to())
+					.add("You did not answer " + lapsed.from() + "'s Tribute of " + lapsed.described() + " in time.");
+				reports.get(lapsed.from())
+					.add(lapsed.to() + " did not answer your Tribute of " + lapsed.described()
+							+ " in time, so the Battle went ahead.");
+			}
+		}
+		tributes.clear();
 		for (Nation nation : inPlay) {
 			List<String> report = reports.get(nation.name());
 			for (Nation.FacedDilemma faced : nation.settleDilemmas()) {
@@ -772,6 +790,8 @@ public class Game {
 				yield actor.sendWarparty(send.target(), send.units(), TRAVEL_TURNS);
 			}
 			case Action.RecallWarparty recall -> recall(actor, recall.warparty());
+			case Action.OfferTribute offer -> offer(actor, offer);
+			case Action.AnswerTribute answer -> answer(actor, answer);
 			case Action.AnswerDilemma answer -> answer(actor, answer);
 			case Action.UnlockTechnology unlock -> ruleset.technology(unlock.technology())
 				.map(actor::unlock)
@@ -794,11 +814,83 @@ public class Game {
 			return ActionResult.rejected("That Warparty is already heading home.");
 		}
 		nation.recall(recalled);
+		tributes.removeIf(tribute -> tribute.isFor(nation.name(), id));
 		pendingReport(nation)
 			.add("You Recalled your Warparty of " + listed(recalled.units()) + " heading to " + recalled.target() + ".");
 		if (recalled.awaitingBattle()) {
 			pendingReport(nation(recalled.target())).add(nation.name() + "'s Warparty turned back home before the Battle.");
+			nation(recalled.target()).changed();
 		}
+		return ActionResult.ACCEPTED;
+	}
+
+	/**
+	 * Offers Tribute against another Nation's Warparty that arrived at this
+	 * one, once per Warparty. Nothing is paid until the offer is accepted.
+	 */
+	private ActionResult offer(Nation defender, Action.OfferTribute offer) {
+		Optional<Warparty> warparty = nations.containsKey(offer.nation())
+				? nation(offer.nation()).warparty(offer.warparty())
+					.filter(arrived -> arrived.awaitingBattle() && arrived.target().equals(defender.name()))
+				: Optional.empty();
+		if (warparty.isEmpty()) {
+			return ActionResult.rejected("No such Warparty from " + offer.nation() + " has arrived at your Nation.");
+		}
+		Nation attacker = nation(offer.nation());
+		if (offer.gold() < 0 || offer.population() < 0 || offer.gold() + offer.population() == 0) {
+			return ActionResult.rejected("Offer some Gold or Population as Tribute.");
+		}
+		if (!defender.canAfford(offer.gold(), offer.population())) {
+			return ActionResult.rejected("You have only " + defender.gold() + " Gold and " + defender.population()
+					+ " Population to offer.");
+		}
+		if (tributes.stream().anyMatch(tribute -> tribute.isFor(attacker.name(), offer.warparty()))) {
+			return ActionResult.rejected("You have already offered " + attacker.name() + " Tribute for that Warparty.");
+		}
+		tributes.add(new Tribute(defender.name(), attacker.name(), offer.warparty(), offer.gold(), offer.population(),
+				Tribute.Answer.NONE));
+		defender.changed();
+		attacker.changed();
+		return ActionResult.ACCEPTED;
+	}
+
+	/**
+	 * Accepts or refuses the Tribute offered for one of a Nation's Warparties
+	 * still awaiting its Battle. Accepting moves the Tribute across at once and
+	 * Recalls the Warparty. Both Players are told in their next Turn Report.
+	 */
+	private ActionResult answer(Nation attacker, Action.AnswerTribute answer) {
+		Optional<Tribute> offered = tributes.stream()
+			.filter(tribute -> tribute.isFor(attacker.name(), answer.warparty())
+					&& tribute.answer() == Tribute.Answer.NONE)
+			.findFirst();
+		Optional<Warparty> warparty = attacker.warparty(answer.warparty()).filter(Warparty::awaitingBattle);
+		if (offered.isEmpty() || warparty.isEmpty()) {
+			return ActionResult.rejected("No Tribute awaits your answer for that Warparty.");
+		}
+		Tribute tribute = offered.get();
+		Nation defender = nation(tribute.from());
+		if (!answer.accept()) {
+			tributes.set(tributes.indexOf(tribute), tribute.answered(Tribute.Answer.REFUSED));
+			attacker.changed();
+			defender.changed();
+			pendingReport(attacker).add("You refused " + defender.name() + "'s Tribute of " + tribute.described() + ".");
+			pendingReport(defender).add(attacker.name() + " refused your Tribute of " + tribute.described() + ".");
+			return ActionResult.ACCEPTED;
+		}
+		if (!defender.canAfford(tribute.gold(), tribute.population())) {
+			return ActionResult.rejected(
+					defender.name() + " can no longer afford its Tribute of " + tribute.described() + ".");
+		}
+		attacker.recall(warparty.get());
+		defender.gain(-tribute.gold(), -tribute.population(), 0);
+		attacker.gain(tribute.gold(), tribute.population(), 0);
+		defender.changed();
+		tributes.set(tributes.indexOf(tribute), tribute.answered(Tribute.Answer.ACCEPTED));
+		pendingReport(attacker).add("You accepted " + defender.name() + "'s Tribute of " + tribute.described()
+				+ ", and your Warparty of " + listed(warparty.get().units()) + " turned back home.");
+		pendingReport(defender).add(attacker.name() + " accepted your Tribute of " + tribute.described()
+				+ ", and its Warparty turned back home before the Battle.");
 		return ActionResult.ACCEPTED;
 	}
 
@@ -866,7 +958,15 @@ public class Game {
 	public NationView viewOf(String nation) {
 		Nation own = nation(nation);
 		List<MapNation> map = nations.values().stream().map(Nation::onMap).toList();
-		return own.view(turn, map, TRAVEL_TURNS, ruleset, winner);
+		List<ArrivedWarparty> arrivals = new ArrayList<>();
+		for (Nation attacker : remaining()) {
+			attacker.awaitingBattle()
+				.stream()
+				.filter(warparty -> warparty.target().equals(nation))
+				.forEach(warparty -> arrivals.add(new ArrivedWarparty(attacker.name(), warparty.id())));
+		}
+		List<Tribute> involved = tributes.stream().filter(tribute -> tribute.involves(nation)).toList();
+		return own.view(turn, map, TRAVEL_TURNS, arrivals, involved, ruleset, winner);
 	}
 
 	private Nation nation(String name) {

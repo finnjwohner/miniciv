@@ -57,6 +57,12 @@ class RoomController {
 	record RecallWarpartyRequest(String token, int warparty) {
 	}
 
+	record OfferTributeRequest(String token, String nation, int warparty, int gold, int population) {
+	}
+
+	record AnswerTributeRequest(String token, int warparty, boolean accept) {
+	}
+
 	record AnswerDilemmaRequest(String token, String dilemma, String choice) {
 	}
 
@@ -199,6 +205,33 @@ class RoomController {
 	@SendToUser(destinations = "/queue/rejections", broadcast = false)
 	Rejection recallWarparty(@DestinationVariable String code, RecallWarpartyRequest request) {
 		ActionResult result = rooms.act(code, request.token(), new Action.RecallWarparty(request.warparty()));
+		return result.accepted() ? null : new Rejection(result.reason());
+	}
+
+	/**
+	 * Offers Tribute against another Nation's Warparty that arrived at the
+	 * Nation; both Players' changed views arrive on {@code /user/queue/game},
+	 * or the reason it was rejected on {@code /user/queue/rejections}.
+	 */
+	@MessageMapping("/rooms/{code}/tributes")
+	@SendToUser(destinations = "/queue/rejections", broadcast = false)
+	Rejection offerTribute(@DestinationVariable String code, OfferTributeRequest request) {
+		ActionResult result = rooms.act(code, request.token(), new Action.OfferTribute(String.valueOf(request.nation()),
+				request.warparty(), request.gold(), request.population()));
+		return result.accepted() ? null : new Rejection(result.reason());
+	}
+
+	/**
+	 * Accepts or refuses the Tribute offered for one of the Nation's
+	 * Warparties; both Players' changed views arrive on
+	 * {@code /user/queue/game}, or the reason it was rejected on
+	 * {@code /user/queue/rejections}.
+	 */
+	@MessageMapping("/rooms/{code}/tributes/answers")
+	@SendToUser(destinations = "/queue/rejections", broadcast = false)
+	Rejection answerTribute(@DestinationVariable String code, AnswerTributeRequest request) {
+		ActionResult result = rooms.act(code, request.token(),
+				new Action.AnswerTribute(request.warparty(), request.accept()));
 		return result.accepted() ? null : new Rejection(result.reason());
 	}
 
