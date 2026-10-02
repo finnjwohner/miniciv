@@ -122,6 +122,11 @@ class TurnsTest {
 		player.stomp().send("/app/rooms/" + code + "/units", Map.of("token", player.token(), "unit", unit, "count", count));
 	}
 
+	void sendWarparty(Connected player, String target, Map<String, Integer> units) {
+		player.stomp()
+			.send("/app/rooms/" + code + "/warparties", Map.of("token", player.token(), "target", target, "units", units));
+	}
+
 	void done(Connected player, int turn) {
 		player.stomp().send("/app/rooms/" + code + "/done", Map.of("token", player.token(), "turn", turn));
 	}
@@ -159,6 +164,8 @@ class TurnsTest {
 				"strength", 3, "counters", List.of())));
 		view.put("army", Map.of());
 		view.put("training", training);
+		view.put("warparties", List.of());
+		view.put("travelTurns", 3);
 		view.put("upkeep", 0);
 		view.put("turnReport", turnReport);
 		return view;
@@ -326,6 +333,39 @@ class TurnsTest {
 		trainUnits(rome, "Warrior", 3);
 
 		assertThat(romeRejections.next()).isEqualTo(Map.of("reason", "Warrior ×3 costs 60 Gold, but you have only 50."));
+		rome.privately().expectNone();
+	}
+
+	@Test
+	void aPlayerWhoSendsAWarpartyReceivesTheirUpdatedViewAtOnceAndTheTargetIsNotTold() throws Exception {
+		startGame();
+		rome.privately().next();
+		carthage.privately().next();
+		trainUnits(rome, "Warrior", 2);
+		rome.privately().next();
+		done(rome, 1);
+		done(carthage, 1);
+		assertThat(rome.privately().next().get("army")).isEqualTo(Map.of("Warrior", 2));
+		carthage.privately().next();
+
+		sendWarparty(rome, "Carthage", Map.of("Warrior", 2));
+
+		Map<?, ?> view = rome.privately().next();
+		assertThat(view.get("army")).isEqualTo(Map.of());
+		assertThat(view.get("warparties")).isEqualTo(List.of(
+				Map.of("target", "Carthage", "units", Map.of("Warrior", 2), "homeward", false, "turnsLeft", 3)));
+		carthage.privately().expectNone();
+	}
+
+	@Test
+	void aPlayerWhoseWarpartyIsRejectedIsToldWhyPrivately() throws Exception {
+		startGame();
+		rome.privately().next();
+		StompConnection.Messages romeRejections = rome.stomp().subscribe("/user/queue/rejections");
+
+		sendWarparty(rome, "Carthage", Map.of("Warrior", 1));
+
+		assertThat(romeRejections.next()).isEqualTo(Map.of("reason", "Your Army has no Warrior."));
 		rome.privately().expectNone();
 	}
 

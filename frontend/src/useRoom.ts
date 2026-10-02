@@ -66,6 +66,15 @@ export function useRoom(code: string, token: string) {
     })
   }
 
+  /** Sends Units from the Army to another Nation; a rejection's reason arrives in `rejection`. */
+  const sendWarparty = (target: string, units: Record<string, number>) => {
+    setRejection(null)
+    client.current?.publish({
+      destination: `/app/rooms/${code}/warparties`,
+      body: JSON.stringify({ token, target, units }),
+    })
+  }
+
   /** Marks the Player done with the given Turn; ignored if that Turn has already ended. */
   const markDone = (turn: number) =>
     client.current?.publish({
@@ -73,5 +82,5 @@ export function useRoom(code: string, token: string) {
       body: JSON.stringify({ token, turn }),
     })
 
-  return { room, nation, rejection, setReady, startBuilding, trainUnits, markDone }
+  return { room, nation, rejection, setReady, startBuilding, trainUnits, sendWarparty, markDone }
 }

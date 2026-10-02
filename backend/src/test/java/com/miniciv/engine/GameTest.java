@@ -29,6 +29,8 @@ class GameTest {
 	static final Ruleset RULESET = new Ruleset(List.of(WARRIOR, ARCHER, HORSEMAN, SCOUT), List.of(FARM, GRANARY, BANK),
 			List.of());
 
+	static final String BASE_INCOME_REPORT = "Your Nation gained 10 Gold, 2 Population and 3 Research.";
+
 	Game game = new Game(RULESET, List.of("Rome", "Carthage", "Egypt"), new Random(42));
 
 	@Test
@@ -75,7 +77,8 @@ class GameTest {
 		game.endTurn();
 
 		assertThat(game.viewOf("Carthage")).isEqualTo(new NationView(2, 2, "Carthage", 60, 12, 3, List.of("Rome", "Egypt"),
-				List.of(FARM, GRANARY, BANK), Map.of(), List.of(), List.of(WARRIOR, ARCHER, HORSEMAN), Map.of(), List.of(), 0,
+				List.of(FARM, GRANARY, BANK), Map.of(), List.of(), List.of(WARRIOR, ARCHER, HORSEMAN), Map.of(), List.of(),
+				List.of(), 3, 0,
 				new TurnReport(1, List.of("Your Nation gained 10 Gold, 2 Population and 3 Research."))));
 	}
 
@@ -313,7 +316,7 @@ class GameTest {
 		assertThat(rome.gold()).isEqualTo(30 + 10 - 2);
 		assertThat(rome.upkeep()).isEqualTo(2);
 		assertThat(rome.turnReport().lines()).containsExactly("Warrior ×2 finished training and joined your Army.",
-				"Your Nation gained 10 Gold, 2 Population and 3 Research.", "Your Army's upkeep cost 2 Gold.");
+				"Your Nation gained 10 Gold, 2 Population and 3 Research.", "Your Units' upkeep cost 2 Gold.");
 
 		game.endTurn();
 		assertThat(game.viewOf("Rome").gold()).isEqualTo(38 + 10 - 2);
@@ -348,12 +351,141 @@ class GameTest {
 		assertThat(rome.upkeep()).isEqualTo(7);
 		assertThat(rome.turnReport().lines()).containsExactly(
 				"Your Nation gained 10 Gold, 2 Population and 3 Research.",
-				"You could not pay your Army's upkeep, so Horseman ×1 deserted.", "Your Army's upkeep cost 7 Gold.");
+				"You could not pay your Units' upkeep, so Horseman ×1 deserted from your Army.", "Your Units' upkeep cost 7 Gold.");
 	}
 
 	@Test
 	void aNationsViewListsTheUnitsItCanTrainWithTheirStrengthCostsTrainingTimeUpkeepAndCounters() {
 		assertThat(game.viewOf("Rome").availableUnits()).containsExactly(WARRIOR, ARCHER, HORSEMAN);
+	}
+
+	/**
+	 * Trains Units for a Nation and ends Turns until they have joined its Army.
+	 */
+	void armyOf(String nation, String unit, int count) {
+		assertThat(game.act(nation, new Action.TrainUnits(unit, count))).isEqualTo(ActionResult.ACCEPTED);
+		while (game.viewOf(nation).army().getOrDefault(unit, 0) < count) {
+			game.endTurn();
+		}
+	}
+
+	@Test
+	void sendingAWarpartyTakesItsUnitsOutOfTheArmyAndSetsThemTravellingForTheBaseTravelTime() {
+		armyOf("Rome", "Warrior", 3);
+
+		ActionResult result = game.act("Rome", new Action.SendWarparty("Carthage", Map.of("Warrior", 2)));
+
+		assertThat(result).isEqualTo(ActionResult.ACCEPTED);
+		NationView rome = game.viewOf("Rome");
+		assertThat(rome.army()).containsExactly(entry("Warrior", 1));
+		assertThat(rome.warparties()).containsExactly(new Warparty("Carthage", Map.of("Warrior", 2), false, 3));
+		assertThat(rome.travelTurns()).isEqualTo(3);
+	}
+
+	@Test
+	void aWarpartyMustGoToAnotherNationInTheGame() {
+		armyOf("Rome", "Warrior", 1);
+
+		assertThat(game.act("Rome", new Action.SendWarparty("Rome", Map.of("Warrior", 1))))
+			.isEqualTo(ActionResult.rejected("A Warparty must be sent to another Nation."));
+		assertThat(game.act("Rome", new Action.SendWarparty("Persia", Map.of("Warrior", 1))))
+			.isEqualTo(ActionResult.rejected("There is no Nation called Persia."));
+		assertThat(game.viewOf("Rome").army()).containsExactly(entry("Warrior", 1));
+		assertThat(game.viewOf("Rome").warparties()).isEmpty();
+	}
+
+	@Test
+	void aWarpartyCanOnlyBeMadeOfUnitsTheArmyHas() {
+		armyOf("Rome", "Warrior", 2);
+
+		assertThat(game.act("Rome", new Action.SendWarparty("Carthage", Map.of())))
+			.isEqualTo(ActionResult.rejected("Choose at least one Unit to send."));
+		assertThat(game.act("Rome", new Action.SendWarparty("Carthage", Map.of("Warrior", 0))))
+			.isEqualTo(ActionResult.rejected("Choose at least one Unit to send."));
+		assertThat(game.act("Rome", new Action.SendWarparty("Carthage", Map.of("Warrior", -1))))
+			.isEqualTo(ActionResult.rejected("Choose at least one Unit to send."));
+		assertThat(game.act("Rome", new Action.SendWarparty("Carthage", Map.of("Warrior", 3))))
+			.isEqualTo(ActionResult.rejected("Your Army has only 2 Warrior."));
+		assertThat(game.act("Rome", new Action.SendWarparty("Carthage", Map.of("Warrior", 1, "Archer", 1))))
+			.isEqualTo(ActionResult.rejected("Your Army has no Archer."));
+		assertThat(game.viewOf("Rome").army()).containsExactly(entry("Warrior", 2));
+		assertThat(game.viewOf("Rome").warparties()).isEmpty();
+	}
+
+	@Test
+	void aWarpartyCountsDownItsTravelAndOnArrivalBothSidesAreToldButTheDefenderLearnsNothingEarlier() {
+		armyOf("Rome", "Warrior", 2);
+		game.act("Rome", new Action.SendWarparty("Carthage", Map.of("Warrior", 2)));
+
+		game.endTurn();
+		assertThat(game.viewOf("Rome").warparties()).containsExactly(new Warparty("Carthage", Map.of("Warrior", 2), false, 2));
+		assertThat(game.viewOf("Carthage").turnReport().lines()).containsExactly(BASE_INCOME_REPORT);
+
+		game.endTurn();
+		assertThat(game.viewOf("Rome").warparties()).containsExactly(new Warparty("Carthage", Map.of("Warrior", 2), false, 1));
+		assertThat(game.viewOf("Carthage").turnReport().lines()).containsExactly(BASE_INCOME_REPORT);
+
+		game.endTurn();
+		NationView rome = game.viewOf("Rome");
+		assertThat(rome.warparties()).containsExactly(new Warparty("Carthage", Map.of("Warrior", 2), true, 3));
+		assertThat(rome.turnReport().lines())
+			.contains("Your Warparty of Warrior ×2 arrived at Carthage and is heading home.");
+		assertThat(game.viewOf("Carthage").turnReport().lines()).containsExactly(
+				"A Warparty from Rome arrived at your Nation.", BASE_INCOME_REPORT);
+		assertThat(game.viewOf("Egypt").turnReport().lines()).containsExactly(BASE_INCOME_REPORT);
+	}
+
+	@Test
+	void anArrivedWarpartyComesHomeOverTheSameTravelTimeAndRejoinsTheArmy() {
+		armyOf("Rome", "Warrior", 3);
+		game.act("Rome", new Action.SendWarparty("Carthage", Map.of("Warrior", 2)));
+		for (int turn = 1; turn <= 5; turn++) {
+			game.endTurn();
+		}
+		assertThat(game.viewOf("Rome").warparties()).containsExactly(new Warparty("Carthage", Map.of("Warrior", 2), true, 1));
+		assertThat(game.viewOf("Rome").army()).containsExactly(entry("Warrior", 1));
+
+		game.endTurn();
+
+		NationView rome = game.viewOf("Rome");
+		assertThat(rome.warparties()).isEmpty();
+		assertThat(rome.army()).containsExactly(entry("Warrior", 3));
+		assertThat(rome.turnReport().lines())
+			.contains("Your Warparty came home from Carthage and Warrior ×2 rejoined your Army.");
+		assertThat(game.viewOf("Carthage").turnReport().lines()).containsExactly(BASE_INCOME_REPORT);
+	}
+
+	@Test
+	void unitsAbroadInAWarpartyStillCostUpkeep() {
+		armyOf("Rome", "Warrior", 2);
+		game.act("Rome", new Action.SendWarparty("Carthage", Map.of("Warrior", 2)));
+		assertThat(game.viewOf("Rome").upkeep()).isEqualTo(2);
+
+		game.endTurn();
+
+		assertThat(game.viewOf("Rome").gold()).isEqualTo(38 + 10 - 2);
+		assertThat(game.viewOf("Rome").turnReport().lines()).contains("Your Units' upkeep cost 2 Gold.");
+	}
+
+	@Test
+	void unitsCanDesertFromAWarpartyAbroadWhichDisappearsOnceItHasNoUnitsLeft() {
+		game.act("Rome", new Action.TrainUnits("Warrior", 1));
+		game.act("Rome", new Action.TrainUnits("Horseman", 2));
+		game.endTurn();
+		game.endTurn();
+		game.act("Rome", new Action.SendWarparty("Carthage", Map.of("Horseman", 1)));
+		game.endTurn();
+		game.endTurn();
+		assertThat(game.viewOf("Rome").gold()).isZero();
+
+		game.endTurn();
+
+		NationView rome = game.viewOf("Rome");
+		assertThat(rome.army()).containsExactly(entry("Warrior", 1), entry("Horseman", 1));
+		assertThat(rome.warparties()).isEmpty();
+		assertThat(rome.gold()).isEqualTo(10 - 7);
+		assertThat(rome.turnReport().lines())
+			.contains("You could not pay your Units' upkeep, so Horseman ×1 deserted from your Warparty sent to Carthage.");
 	}
 
 	@Test

@@ -1,5 +1,7 @@
 package com.miniciv.engine;
 
+import java.util.Map;
+
 /**
  * Something a Player decides for their Nation during a Turn. It applies at
  * once, so the Player sees straight away what they can still afford.
@@ -17,6 +19,14 @@ public sealed interface Action {
 	 * starts training them.
 	 */
 	record TrainUnits(String unit, int count) implements Action {
+	}
+
+	/**
+	 * Sends Units from the Army to another Nation as a Warparty.
+	 *
+	 * @param units how many of each Unit type to send
+	 */
+	record SendWarparty(String target, Map<String, Integer> units) implements Action {
 	}
 
 }

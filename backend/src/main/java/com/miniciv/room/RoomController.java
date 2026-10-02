@@ -1,6 +1,7 @@
 package com.miniciv.room;
 
 import java.security.Principal;
+import java.util.Map;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
@@ -42,6 +43,9 @@ class RoomController {
 	}
 
 	record TrainUnitsRequest(String token, String unit, int count) {
+	}
+
+	record SendWarpartyRequest(String token, String target, Map<String, Integer> units) {
 	}
 
 	/**
@@ -130,6 +134,20 @@ class RoomController {
 	@SendToUser(destinations = "/queue/rejections", broadcast = false)
 	Rejection trainUnits(@DestinationVariable String code, TrainUnitsRequest request) {
 		ActionResult result = rooms.act(code, request.token(), new Action.TrainUnits(request.unit(), request.count()));
+		return result.accepted() ? null : new Rejection(result.reason());
+	}
+
+	/**
+	 * Sends Units from the Army to another Nation as a Warparty; the Player's
+	 * changed view arrives on {@code /user/queue/game}, or the reason it was
+	 * rejected on {@code /user/queue/rejections}.
+	 */
+	@MessageMapping("/rooms/{code}/warparties")
+	@SendToUser(destinations = "/queue/rejections", broadcast = false)
+	Rejection sendWarparty(@DestinationVariable String code, SendWarpartyRequest request) {
+		Map<String, Integer> units = request.units() == null ? Map.of() : request.units();
+		ActionResult result = rooms.act(code, request.token(),
+				new Action.SendWarparty(String.valueOf(request.target()), units));
 		return result.accepted() ? null : new Rejection(result.reason());
 	}
 

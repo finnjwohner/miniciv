@@ -26,6 +26,12 @@ public class Game {
 
 	private static final int RESEARCH_PER_TURN = 3;
 
+	/**
+	 * How many Turns a Warparty takes to reach another Nation, and to come
+	 * back.
+	 */
+	private static final int TRAVEL_TURNS = 3;
+
 	private final Ruleset ruleset;
 
 	private final Map<String, Nation> nations = new LinkedHashMap<>();
@@ -54,8 +60,10 @@ public class Game {
 	 * Resolves the Turn for every Nation at once, then starts the next Turn.
 	 */
 	public void endTurn() {
+		Map<String, List<String>> reports = new LinkedHashMap<>();
+		nations.keySet().forEach(name -> reports.put(name, new ArrayList<>()));
 		for (Nation nation : nations.values()) {
-			List<String> report = new ArrayList<>();
+			List<String> report = reports.get(nation.name());
 			for (String completed : nation.progressConstruction()) {
 				report.add("Your " + completed + " has been built.");
 			}
@@ -63,19 +71,38 @@ public class Game {
 			if (!trained.isEmpty()) {
 				report.add(listed(trained) + " finished training and joined your Army.");
 			}
+		}
+		for (Nation nation : nations.values()) {
+			Nation.Travelled travelled = nation.travel(TRAVEL_TURNS);
+			for (Warparty arrived : travelled.arrived()) {
+				reports.get(nation.name())
+					.add("Your Warparty of " + listed(arrived.units()) + " arrived at " + arrived.target()
+							+ " and is heading home.");
+				reports.get(arrived.target()).add("A Warparty from " + nation.name() + " arrived at your Nation.");
+			}
+			for (Warparty returned : travelled.returned()) {
+				reports.get(nation.name())
+					.add("Your Warparty came home from " + returned.target() + " and " + listed(returned.units())
+							+ " rejoined your Army.");
+			}
+		}
+		for (Nation nation : nations.values()) {
+			List<String> report = reports.get(nation.name());
 			int buildingPopulation = nation.populationFromBuildings(ruleset);
 			int buildingGold = nation.goldFromBuildings(ruleset);
 			nation.gain(GOLD_PER_TURN + buildingGold, POPULATION_PER_TURN + buildingPopulation, RESEARCH_PER_TURN);
 			report.add("Your Nation gained " + GOLD_PER_TURN + " Gold, " + POPULATION_PER_TURN + " Population and "
 					+ RESEARCH_PER_TURN + " Research.");
 			buildingsAddedLine(buildingPopulation, buildingGold).ifPresent(report::add);
-			Map<String, Integer> deserted = nation.desertUntilUpkeepIsAffordable(ruleset);
-			if (!deserted.isEmpty()) {
-				report.add("You could not pay your Army's upkeep, so " + listed(deserted) + " deserted.");
+			for (Nation.Desertion desertion : nation.desertUntilUpkeepIsAffordable(ruleset)) {
+				String from = desertion.warparty() == null ? "your Army"
+						: "your Warparty sent to " + desertion.warparty().target();
+				report.add("You could not pay your Units' upkeep, so " + listed(desertion.units()) + " deserted from "
+						+ from + ".");
 			}
 			int upkeep = nation.payUpkeep(ruleset);
 			if (upkeep > 0) {
-				report.add("Your Army's upkeep cost " + upkeep + " Gold.");
+				report.add("Your Units' upkeep cost " + upkeep + " Gold.");
 			}
 			nation.turnReport(new TurnReport(turn, report));
 		}
@@ -100,6 +127,19 @@ public class Game {
 					.map(unit -> actor.trainUnits(unit, train.count(), turn))
 					.orElseGet(() -> ActionResult
 						.rejected("There is no Unit called " + train.unit() + " that you can train."));
+			}
+			case Action.SendWarparty send -> {
+				if (send.target().equals(nation)) {
+					yield ActionResult.rejected("A Warparty must be sent to another Nation.");
+				}
+				if (!nations.containsKey(send.target())) {
+					yield ActionResult.rejected("There is no Nation called " + send.target() + ".");
+				}
+				if (send.units().isEmpty()
+						|| send.units().values().stream().anyMatch(count -> count == null || count < 1)) {
+					yield ActionResult.rejected("Choose at least one Unit to send.");
+				}
+				yield actor.sendWarparty(send.target(), send.units(), TRAVEL_TURNS);
 			}
 		};
 	}
@@ -130,7 +170,7 @@ public class Game {
 	public NationView viewOf(String nation) {
 		Nation own = nation(nation);
 		List<String> others = nations.keySet().stream().filter(name -> !name.equals(nation)).toList();
-		return own.view(turn, others, ruleset);
+		return own.view(turn, others, TRAVEL_TURNS, ruleset);
 	}
 
 	private Nation nation(String name) {

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import type { BuildingType, NationView, UnitType } from './api'
+import type { BuildingType, NationView, UnitType, Warparty } from './api'
 import type { ReceivedRoom } from './useRoom'
 
 /** The time now, updated a few times a second. */
@@ -127,13 +127,98 @@ function Army({ nation, onTrain }: { nation: NationView; onTrain: (unit: string,
           ))}
         </ul>
       )}
-      <p>Upkeep: {nation.upkeep} Gold per Turn</p>
+      <p>Upkeep, at home and abroad: {nation.upkeep} Gold per Turn</p>
       <h4>Train</h4>
       <ul>
         {nation.availableUnits.map((u) => (
           <TrainUnit key={u.name} unit={u} nation={nation} onTrain={onTrain} />
         ))}
       </ul>
+    </>
+  )
+}
+
+/** Units counted by type, such as "Warrior ×2, Archer ×1". */
+function listUnits(units: Record<string, number>) {
+  return Object.entries(units)
+    .map(([name, count]) => `${name} ×${count}`)
+    .join(', ')
+}
+
+function describeWarparty(warparty: Warparty) {
+  const where = warparty.homeward ? `heading home from ${warparty.target}` : `travelling to ${warparty.target}`
+  return `${listUnits(warparty.units)} — ${where}, ${plural(warparty.turnsLeft, 'Turn')} left`
+}
+
+/** The Nation's Warparties abroad, and a form to send Units from the Army to another Nation. */
+function Warparties({
+  nation,
+  onSend,
+}: {
+  nation: NationView
+  onSend: (target: string, units: Record<string, number>) => void
+}) {
+  const [target, setTarget] = useState(nation.otherNations[0] ?? '')
+  const [chosen, setChosen] = useState<Record<string, number>>({})
+  const army = Object.entries(nation.army)
+  const units: Record<string, number> = {}
+  for (const [name, owned] of army) {
+    const count = Math.min(chosen[name] ?? 0, owned)
+    if (count > 0) units[name] = count
+  }
+  const send = () => {
+    onSend(target, units)
+    setChosen({})
+  }
+  return (
+    <>
+      <h3>Warparties</h3>
+      {nation.warparties.length === 0 ? (
+        <p>No Warparties abroad.</p>
+      ) : (
+        <ul>
+          {nation.warparties.map((w, i) => (
+            <li key={i}>{describeWarparty(w)}</li>
+          ))}
+        </ul>
+      )}
+      <h4>Send a Warparty</h4>
+      {army.length === 0 ? (
+        <p>Your Army has no Units to send.</p>
+      ) : (
+        <>
+          <ul>
+            {army.map(([name, owned]) => (
+              <li key={name}>
+                <input
+                  type="number"
+                  min={0}
+                  max={owned}
+                  value={chosen[name] ?? 0}
+                  onChange={(e) => setChosen({ ...chosen, [name]: Math.floor(Number(e.target.value)) })}
+                  aria-label={`How many ${name} to send`}
+                  style={{ width: '4em' }}
+                />{' '}
+                {name} (of {owned})
+              </li>
+            ))}
+          </ul>
+          <label>
+            To{' '}
+            <select value={target} onChange={(e) => setTarget(e.target.value)}>
+              {nation.otherNations.map((n) => (
+                <option key={n} value={n}>
+                  {n}
+                </option>
+              ))}
+            </select>
+          </label>{' '}
+          <button onClick={send} disabled={!target || Object.keys(units).length === 0}>
+            Send Warparty
+          </button>{' '}
+          Takes {plural(nation.travelTurns, 'Turn')} to arrive, and as long to come home.
+        </>
+      )}
     </>
   )
 }
@@ -146,6 +231,7 @@ function GameScreen({
   rejection,
   onStartBuilding,
   onTrainUnits,
+  onSendWarparty,
   onDone,
 }: {
   room: ReceivedRoom
@@ -154,6 +240,7 @@ function GameScreen({
   rejection: string | null
   onStartBuilding: (building: string) => void
   onTrainUnits: (unit: string, count: number) => void
+  onSendWarparty: (target: string, units: Record<string, number>) => void
   onDone: (turn: number) => void
 }) {
   const now = useNow()
@@ -176,6 +263,7 @@ function GameScreen({
           {rejection && <p role="alert">{rejection}</p>}
           <Buildings nation={nation} onStart={onStartBuilding} />
           <Army nation={nation} onTrain={onTrainUnits} />
+          <Warparties nation={nation} onSend={onSendWarparty} />
         </>
       )}
       <button onClick={() => onDone(game.turn)} disabled={!me || me.done}>
