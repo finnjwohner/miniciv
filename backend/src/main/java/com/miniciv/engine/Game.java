@@ -75,6 +75,56 @@ public class Game {
 	private static final double SPY_REPORT_CHANCE = 0.4;
 
 	/**
+	 * The chance each Spy at home gives its Nation, each Turn, of catching each
+	 * other Nation's Spy in place there.
+	 */
+	private static final double CATCH_CHANCE_PER_SPY_AT_HOME = 0.2;
+
+	/**
+	 * The chance each Scout at home gives its Nation, each Turn, of catching
+	 * each other Nation's Spy still travelling.
+	 */
+	private static final double CATCH_CHANCE_PER_SCOUT = 0.1;
+
+	/**
+	 * The chance each travelling Warparty has, each Turn, of catching each
+	 * other Nation's Spy still travelling.
+	 */
+	private static final double CATCH_CHANCE_PER_WARPARTY = 0.1;
+
+	/**
+	 * What becomes of a caught Spy, each as likely as the others.
+	 */
+	private enum Captured {
+		DIES(", and it died before saying who sent it", ", and it died"),
+		SILENT(", and it would not say who sent it", ", and it stayed silent"),
+		CONFESSES(null, ", and it confessed");
+
+		/**
+		 * How the Nation that caught it is told, or null if it is told the
+		 * sender.
+		 */
+		private final String toCatcher;
+
+		/**
+		 * How the sender is told, when another of its Spies reports it.
+		 */
+		private final String toSender;
+
+		Captured(String toCatcher, String toSender) {
+			this.toCatcher = toCatcher;
+			this.toSender = toSender;
+		}
+
+		/**
+		 * The outcome a draw between 0 and 1 picks.
+		 */
+		static Captured picked(double draw) {
+			return values()[Math.min(values().length - 1, (int) (draw * values().length))];
+		}
+	}
+
+	/**
 	 * The facts a Spy may report, each as likely as its weight: Buildings,
 	 * which reveal Defense, only occasionally.
 	 */
@@ -334,6 +384,7 @@ public class Game {
 		}
 		rollEvents(reports);
 		scout(reports);
+		catchSpies(reports);
 		spy(reports);
 		List<Nation> left = remaining();
 		if (left.size() == 1) {
@@ -788,21 +839,155 @@ public class Game {
 					}
 					case ARMY -> {
 						facts = facts.withArmy(target.army(), turn);
-						yield target.army().isEmpty() ? name + " has no Army"
-								: name + "'s Army is " + listed(target.army());
+						yield armyFact(target);
 					}
 					case BUILDINGS -> {
-						int defense = target.defense(ruleset);
-						facts = facts.withBuildings(target.buildings(), defense, turn);
-						yield name + " has built "
-								+ (target.buildings().isEmpty() ? "nothing" : listed(target.buildings()))
-								+ ", and its Defense is " + defense;
+						facts = facts.withBuildings(target.buildings(), target.defense(ruleset), turn);
+						yield buildingsFact(target);
 					}
 				};
 				spying.learn(name, facts);
 				reports.get(spying.name()).add("Your Spy in " + name + " reported that " + reported + ".");
 			}
 		}
+	}
+
+	/**
+	 * Such as "Egypt's Army is Warrior ×2" or "Egypt has no Army".
+	 */
+	private static String armyFact(Nation nation) {
+		return nation.army().isEmpty() ? nation.name() + " has no Army"
+				: nation.name() + "'s Army is " + listed(nation.army());
+	}
+
+	/**
+	 * Such as "Egypt has built Walls ×1, and its Defense is 10".
+	 */
+	private String buildingsFact(Nation nation) {
+		return nation.name() + " has built "
+				+ (nation.buildings().isEmpty() ? "nothing" : listed(nation.buildings())) + ", and its Defense is "
+				+ nation.defense(ruleset);
+	}
+
+	/**
+	 * Has each Nation still in the Game in order try to catch other Nations'
+	 * Spies: with its Spies at home, those in place at it; then with its
+	 * Scouts at home, and then with each of its travelling Warparties in the
+	 * order sent, those still travelling anywhere. Each try takes the other
+	 * Nations in order and each one's Spies in the order sent, drawing once
+	 * from the seeded random source for each Spy not yet caught; a Spy caught
+	 * draws once more for what becomes of it. See {@link #caught}. Once every
+	 * Nation has tried, each capture is reported to its sender if one of the
+	 * sender's Spies is still in place at the Nation that caught it.
+	 */
+	private void catchSpies(Map<String, List<String>> reports) {
+		List<Witnessed> witnessed = new ArrayList<>();
+		for (Nation catching : remaining()) {
+			int spies = catching.spiesAtHome(ruleset);
+			if (spies > 0) {
+				double chance = 1 - Math.pow(1 - CATCH_CHANCE_PER_SPY_AT_HOME, spies);
+				for (Nation other : others(catching)) {
+					for (Spy spy : other.spiesInPlace()) {
+						if (spy.target().equals(catching.name()) && random.nextDouble() < chance) {
+							caught(spy, other, catching, "Your Spies", reports, witnessed);
+						}
+					}
+				}
+			}
+			int scouts = catching.scouts(ruleset);
+			if (scouts > 0) {
+				double chance = 1 - Math.pow(1 - CATCH_CHANCE_PER_SCOUT, scouts);
+				for (Nation other : others(catching)) {
+					for (Spy spy : other.spiesTravelling()) {
+						if (random.nextDouble() < chance) {
+							caught(spy, other, catching, "Your Scouts", reports, witnessed);
+						}
+					}
+				}
+			}
+			for (Warparty warparty : catching.warparties()) {
+				if (warparty.awaitingBattle()) {
+					continue;
+				}
+				for (Nation other : others(catching)) {
+					for (Spy spy : other.spiesTravelling()) {
+						if (random.nextDouble() < CATCH_CHANCE_PER_WARPARTY) {
+							caught(spy, other, catching, "Your Warparty of " + listed(warparty.units()) + " "
+									+ whereabouts(warparty, catching.name()), reports, witnessed);
+						}
+					}
+				}
+			}
+		}
+		for (Witnessed capture : witnessed) {
+			if (capture.sender().spiesInPlace().stream().anyMatch(spy -> spy.target().equals(capture.at()))) {
+				reports.get(capture.sender().name()).add(capture.line());
+			}
+		}
+	}
+
+	/**
+	 * A capture of a Spy its sender is told of, if one of its Spies is still
+	 * in place at the Nation that caught it once all catching is done.
+	 *
+	 * @param at the Nation that caught it
+	 * @param line what the sender's Turn Report would say
+	 */
+	private record Witnessed(Nation sender, String at, String line) {
+	}
+
+	/**
+	 * The Nations still in the Game other than the one given, in order.
+	 */
+	private List<Nation> others(Nation nation) {
+		return remaining().stream().filter(other -> other != nation).toList();
+	}
+
+	/**
+	 * A Spy caught by another Nation: it is lost to its sender, and then dies,
+	 * stays silent or confesses, which reveals its sender and what the sender
+	 * has as the Turn resolved. The Nation that caught it is told in its Turn
+	 * Report; what the sender may be told is added to those witnessed.
+	 *
+	 * @param caughtBy what caught it, such as "Your Scouts"
+	 */
+	private void caught(Spy spy, Nation sender, Nation catching, String caughtBy, Map<String, List<String>> reports,
+			List<Witnessed> witnessed) {
+		sender.loseSpy(spy);
+		Captured captured = Captured.picked(random.nextDouble());
+		List<String> report = reports.get(catching.name());
+		String caught = caughtBy + " caught a Spy " + whereabouts(spy, catching.name());
+		if (captured == Captured.CONFESSES) {
+			report.add(caught + ", and it confessed that " + sender.name() + " sent it.");
+			catching.learn(sender.name(), catching.learnedOf(sender.name())
+				.withGold(sender.gold(), turn)
+				.withPopulation(sender.population(), turn)
+				.withResearch(sender.research(), turn)
+				.withArmy(sender.army(), turn)
+				.withBuildings(sender.buildings(), sender.defense(ruleset), turn));
+			report.add("From its confession, " + sender.name() + " has " + sender.gold() + " Gold, "
+					+ sender.population() + " Population and " + sender.research() + " Research; "
+					+ armyFact(sender) + "; " + buildingsFact(sender) + ".");
+		}
+		else {
+			report.add(caught + captured.toCatcher + ".");
+		}
+		witnessed.add(new Witnessed(sender, catching.name(),
+				"Your Spy in " + catching.name() + " reported that " + catching.name() + " caught "
+						+ (spy.inPlace() ? "your other Spy there" : "your Spy " + whereabouts(spy, sender.name()))
+						+ captured.toSender + "."));
+	}
+
+	/**
+	 * Such as "in your Nation", "heading to Egypt" or "heading home from your
+	 * Nation", for the Nation that sees it.
+	 */
+	private static String whereabouts(Spy spy, String seenBy) {
+		String target = spy.target().equals(seenBy) ? "your Nation" : spy.target();
+		if (spy.homeward()) {
+			return "heading home from " + target;
+		}
+		return spy.inPlace() ? "in " + target : "heading to " + target;
 	}
 
 	/**
