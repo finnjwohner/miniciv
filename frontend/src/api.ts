@@ -135,6 +135,18 @@ export type Tribute = {
   population: number
   answer: 'NONE' | 'ACCEPTED' | 'REFUSED'
 }
+/** One of the Warparties in an Encounter, as it was when they met, and what its Player chose so far. */
+export type EncounterSide = {
+  nation: string
+  warparty: number
+  units: Record<string, number>
+  choice: 'NONE' | 'FIGHT' | 'PASS'
+}
+/**
+ * Two Warparties from different Nations that met by chance abroad as the last Turn resolved; if either
+ * Player chooses to fight before this Turn ends, they fight as it ends.
+ */
+export type Encounter = { first: EncounterSide; second: EncounterSide }
 /** Something learned of another Nation's hidden state, on the Turn whose resolution it was learned in. */
 export type Fact<T> = { value: T; turn: number }
 /**
@@ -197,6 +209,8 @@ export type NationView = {
   arrivals: ArrivedWarparty[]
   /** The Tribute this Nation offered or was offered this Turn, in the order offered. */
   tributes: Tribute[]
+  /** The Encounters this Nation's Warparties had as the last Turn resolved, in the order they met. */
+  encounters: Encounter[]
   /** Every Technology in the Tech Tree, in the ruleset's order. */
   techTree: TechTreeEntry[]
   turnReport: TurnReport | null

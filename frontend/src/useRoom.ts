@@ -158,6 +158,18 @@ export function useRoom(code: string, token: string) {
     })
   }
 
+  /**
+   * Chooses whether one of the Nation's Warparties fights the other Nation's Warparty it met; the other
+   * Player sees the choice at once. A rejection's reason arrives in `rejection`.
+   */
+  const answerEncounter = (warparty: number, fight: boolean) => {
+    setRejection(null)
+    client.current?.publish({
+      destination: `/app/rooms/${code}/encounters/answers`,
+      body: JSON.stringify({ token, warparty, fight }),
+    })
+  }
+
   /** Marks the Player done with the given Turn; ignored if that Turn has already ended. */
   const markDone = (turn: number) =>
     client.current?.publish({
@@ -181,6 +193,7 @@ export function useRoom(code: string, token: string) {
     unlockTechnology,
     offerTribute,
     answerTribute,
+    answerEncounter,
     markDone,
   }
 }

@@ -4,6 +4,7 @@ import type {
   BuildingDamage,
   BuildingType,
   Effects,
+  Encounter,
   Fact,
   MapNation,
   NationView,
@@ -492,6 +493,51 @@ function Tributes({
   )
 }
 
+/**
+ * This Turn's Encounters: each enemy Warparty one of the Nation's Warparties met, with buttons to choose
+ * whether to fight it, and what each Player has chosen so far.
+ */
+function Encounters({
+  nation,
+  onAnswer,
+}: {
+  nation: NationView
+  onAnswer: (warparty: number, fight: boolean) => void
+}) {
+  if (nation.encounters.length === 0) return null
+  const sides = (e: Encounter) => (e.first.nation === nation.nation ? [e.first, e.second] : [e.second, e.first])
+  return (
+    <>
+      <h3>Encounters</h3>
+      <ul>
+        {nation.encounters.map((e) => {
+          const [own, other] = sides(e)
+          return (
+            <li key={own.warparty}>
+              Your Warparty of {listCounts(own.units)} met {other.nation}'s Warparty of {listCounts(other.units)}.{' '}
+              {own.choice === 'NONE' ? (
+                <>
+                  <button onClick={() => onAnswer(own.warparty, true)}>Fight</button>{' '}
+                  <button onClick={() => onAnswer(own.warparty, false)}>Let it pass</button>
+                </>
+              ) : own.choice === 'FIGHT' ? (
+                'You chose to fight.'
+              ) : (
+                'You chose not to fight.'
+              )}{' '}
+              {other.choice === 'FIGHT'
+                ? `${other.nation} chose to fight, so they will fight as this Turn ends.`
+                : other.choice === 'PASS'
+                  ? `${other.nation} chose not to fight.`
+                  : `${other.nation} has not chosen yet.`}
+            </li>
+          )
+        })}
+      </ul>
+    </>
+  )
+}
+
 /** How the Map marks a Nation no longer in the Game. */
 function describeStanding(standing: MapNation['standing']) {
   if (standing === 'CONQUERED') return ' — knocked out'
@@ -690,6 +736,7 @@ function GameScreen({
   onUnlockTechnology,
   onOfferTribute,
   onAnswerTribute,
+  onAnswerEncounter,
   onDone,
 }: {
   room: ReceivedRoom
@@ -707,6 +754,7 @@ function GameScreen({
   onUnlockTechnology: (technology: string) => void
   onOfferTribute: (nation: string, warparty: number, gold: number, population: number) => void
   onAnswerTribute: (warparty: number, accept: boolean) => void
+  onAnswerEncounter: (warparty: number, fight: boolean) => void
   onDone: (turn: number) => void
 }) {
   const now = useNow()
@@ -773,6 +821,7 @@ function GameScreen({
           {rejection && <p role="alert">{rejection}</p>}
           <Dilemmas nation={nation} onAnswer={onAnswerDilemma} />
           <Tributes nation={nation} onOffer={onOfferTribute} onAnswer={onAnswerTribute} />
+          <Encounters nation={nation} onAnswer={onAnswerEncounter} />
           <Buildings
             nation={nation}
             onStart={onStartBuilding}

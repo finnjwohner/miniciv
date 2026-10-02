@@ -80,6 +80,16 @@ public sealed interface Action {
 	}
 
 	/**
+	 * Chooses whether one of the Nation's Warparties fights the other Nation's
+	 * Warparty it met; if either Player chooses to, they fight as the Turn
+	 * ends.
+	 *
+	 * @param warparty the Warparty's id
+	 */
+	record AnswerEncounter(int warparty, boolean fight) implements Action {
+	}
+
+	/**
 	 * Makes a choice for one of the Nation's Dilemmas, which applies as the
 	 * Turn ends.
 	 *

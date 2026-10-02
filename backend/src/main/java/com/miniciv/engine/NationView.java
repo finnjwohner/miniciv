@@ -36,6 +36,9 @@ import java.util.Map;
  *        and each one's Warparties in the order sent
  * @param tributes the Tribute this Nation offered or was offered this Turn,
  *        in the order offered
+ * @param encounters the Encounters this Nation's Warparties had as the last
+ *        Turn resolved, with what each Player chose so far, in the order they
+ *        met
  * @param techTree every Technology in the Tech Tree, in the ruleset's order,
  *        and whether the Nation has unlocked it, may unlock it or must first
  *        unlock its prerequisites
@@ -51,7 +54,7 @@ public record NationView(int version, int turn, String nation, int gold, int pop
 		List<Construction> construction, List<Repair> repairs, int defense, List<BuildingDamage> damage, List<UnitType> availableUnits,
 		Map<String, Integer> army,
 		List<Training> training, List<Warparty> warparties, List<Spy> spies, int travelTurns, int upkeep, List<ArrivedWarparty> arrivals,
-		List<Tribute> tributes, List<TechTreeEntry> techTree,
+		List<Tribute> tributes, List<Encounter> encounters, List<TechTreeEntry> techTree,
 		TurnReport turnReport,
 		List<Dilemma> dilemmas, String conqueredBy, String winner) {
 
@@ -67,6 +70,7 @@ public record NationView(int version, int turn, String nation, int gold, int pop
 		spies = List.copyOf(spies);
 		arrivals = List.copyOf(arrivals);
 		tributes = List.copyOf(tributes);
+		encounters = List.copyOf(encounters);
 		techTree = List.copyOf(techTree);
 		dilemmas = List.copyOf(dilemmas);
 	}

@@ -127,7 +127,7 @@ class Nation {
 	}
 
 	NationView view(int turn, List<MapNation> map, int travelTurns, List<ArrivedWarparty> arrivals,
-			List<Tribute> tributes, Ruleset ruleset, String winner) {
+			List<Tribute> tributes, List<Encounter> encounters, Ruleset ruleset, String winner) {
 		List<BuildingType> availableBuildings = ruleset.buildings()
 			.stream()
 			.filter(building -> hasAccessTo(building.name(), ruleset))
@@ -137,7 +137,7 @@ class Nation {
 				Collections.unmodifiableMap(new LinkedHashMap<>(buildings)), construction, repairs, defense(ruleset), damage(ruleset),
 				availableUnits,
 				Collections.unmodifiableMap(new LinkedHashMap<>(army)), training, warparties, spies, travelTurns, upkeep(ruleset),
-				arrivals, tributes, techTree(ruleset), turnReport, awaitingChoice(winner),
+				arrivals, tributes, encounters, techTree(ruleset), turnReport, awaitingChoice(winner),
 				conqueredBy, winner);
 	}
 
@@ -780,6 +780,24 @@ class Nation {
 			}
 		}
 		throw new IllegalArgumentException("Not a Warparty of " + name);
+	}
+
+	/**
+	 * Leaves one of the Warparties abroad with the Units that survived
+	 * fighting in an Encounter, travelling on as before; one with no survivors
+	 * disappears.
+	 *
+	 * @param warparty the Warparty, as {@link #warparty(int)} gave it
+	 */
+	void foughtEncounter(Warparty warparty, Map<String, Integer> survivors) {
+		int at = warparties.indexOf(warparty);
+		if (survivors.isEmpty()) {
+			warparties.remove(at);
+		}
+		else {
+			warparties.set(at, warparty.with(survivors));
+		}
+		version++;
 	}
 
 	Map<String, Integer> army() {
