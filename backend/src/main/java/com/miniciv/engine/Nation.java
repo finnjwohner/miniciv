@@ -534,8 +534,9 @@ class Nation {
 	}
 
 	/**
-	 * Pays upfront to repair a defensive Building type's damaged Building: Gold
-	 * and Turns in proportion to the Defense it lost, rounded up.
+	 * Pays upfront to repair a defensive Building type's damaged Building: half
+	 * the Gold and Turns constructing it costs, in proportion to the Defense it
+	 * lost, rounded up.
 	 */
 	ActionResult repair(BuildingType building) {
 		int damaged = unrepaired(building) % Math.max(1, building.defense());
@@ -547,7 +548,7 @@ class Nation {
 
 	/**
 	 * Pays upfront to rebuild one of a defensive Building type's destroyed
-	 * Buildings, for the Gold and Turns constructing it costs.
+	 * Buildings, for half the Gold and Turns constructing it costs, rounded up.
 	 */
 	ActionResult rebuild(BuildingType building) {
 		if (building.defense() == 0 || unrepaired(building) < building.defense()) {
@@ -557,23 +558,30 @@ class Nation {
 	}
 
 	private ActionResult startRepair(BuildingType building, boolean rebuild, int defense, String doing) {
-		int cost = proportion(building.gold(), defense, building);
+		int cost = halfInProportion(building.gold(), defense, building);
 		if (cost > gold) {
 			return ActionResult
 				.rejected(doing + building.name() + " costs " + cost + " Gold, but you have only " + gold + ".");
 		}
 		gold -= cost;
-		repairs.add(new Repair(building.name(), rebuild, defense, proportion(building.turns(), defense, building)));
+		repairs.add(new Repair(building.name(), rebuild, defense, halfInProportion(building.turns(), defense, building)));
 		version++;
 		return ActionResult.ACCEPTED;
 	}
 
 	/**
-	 * A Building's Gold or Turns in proportion to the share of its Defense
-	 * given, rounded up.
+	 * A Building's Rebuild Gold or Turns, half its construction's, in
+	 * proportion to the share of its Defense given, rounded up.
 	 */
-	private static int proportion(int whole, int defense, BuildingType building) {
-		return (int) Math.ceilDiv((long) whole * defense, building.defense());
+	private static int halfInProportion(int whole, int defense, BuildingType building) {
+		return (int) Math.ceilDiv((long) half(whole) * defense, building.defense());
+	}
+
+	/**
+	 * Half a Building's Gold or Turns, rounded up.
+	 */
+	private static int half(int whole) {
+		return Math.ceilDiv(whole, 2);
 	}
 
 	/**
@@ -863,7 +871,8 @@ class Nation {
 			if (unrepaired > 0) {
 				int damaged = unrepaired % type.defense();
 				damage.add(new BuildingDamage(building, unrepaired / type.defense(), damaged,
-						proportion(type.gold(), damaged, type), proportion(type.turns(), damaged, type)));
+						halfInProportion(type.gold(), damaged, type), halfInProportion(type.turns(), damaged, type),
+						half(type.gold()), half(type.turns())));
 			}
 		}
 		return damage;

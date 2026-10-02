@@ -40,8 +40,8 @@ export type BuildingType = {
 /**
  * The Defense a Nation's defensive Buildings of one type have lost and are not yet being repaired or
  * rebuilt for: `destroyed` of them are destroyed, and one more has lost `damaged` Defense (0 if none has).
- * Repairing that one costs `repairGold` and takes `repairTurns`; rebuilding a destroyed one costs what
- * constructing it does.
+ * Repairing that one costs `repairGold` and takes `repairTurns`; rebuilding a destroyed one costs
+ * `rebuildGold` and takes `rebuildTurns`.
  */
 export type BuildingDamage = {
   building: string
@@ -49,6 +49,8 @@ export type BuildingDamage = {
   damaged: number
   repairGold: number
   repairTurns: number
+  rebuildGold: number
+  rebuildTurns: number
 }
 /** A defensive Building being repaired, or rebuilt if `rebuild`, restoring `defense` once done. */
 export type Repair = { building: string; rebuild: boolean; defense: number; turnsLeft: number }
