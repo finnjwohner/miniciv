@@ -124,15 +124,18 @@ class RulesetTest {
 
 	@Test
 	void anEventsConditionsAndEffectsMustSuitWhatItHappensTo() {
-		Event storm = event("Dust storm", Event.Subject.WARPARTY, 0.1, new Event.Conditions(null, 10, 8, null),
+		Event storm = event("Dust storm", Event.Subject.WARPARTY, 0.1, new Event.Conditions(null, 10, 8, null, 30, 5, 2),
 				new Event.Effects(5, -1, 2, 3, 1));
-		Event harvest = event("Good harvest", Event.Subject.NATION, 0.1, new Event.Conditions(null, null, null, 4),
+		Event harvest = event("Good harvest", Event.Subject.NATION, 0.1, new Event.Conditions(null, null, null, 4, null, null, null),
 				new Event.Effects(0, 4, 0, 0, 2));
 
 		assertThatExceptionOfType(InvalidRuleset.class)
 			.isThrownBy(() -> new Ruleset(List.of(), List.of(), List.of(), List.of(storm, harvest)))
 			.withMessageContaining("Event Dust storm happens to a Warparty, so it cannot need populationAtLeast")
 			.withMessageContaining("Event Dust storm happens to a Warparty, so it cannot need approachingUnitsAtLeast")
+			.withMessageContaining("Event Dust storm happens to a Warparty, so it cannot need goldAtLeast")
+			.withMessageContaining("Event Dust storm happens to a Warparty, so it cannot need researchAtLeast")
+			.withMessageContaining("Event Dust storm happens to a Warparty, so it cannot need defenseAtLeast")
 			.withMessageContaining("Event Dust storm happens to a Warparty, so it cannot change gold")
 			.withMessageContaining("Event Dust storm happens to a Warparty, so it cannot change population")
 			.withMessageContaining("Event Dust storm happens to a Warparty, so it cannot change research")
@@ -143,9 +146,9 @@ class RulesetTest {
 
 	@Test
 	void anEventCannotNeedLessThanZeroOrDamageDefenseByLessThanZero() {
-		Event quake = event("Earthquake", Event.Subject.NATION, 0.1, new Event.Conditions(-1, -2, -3, null),
+		Event quake = event("Earthquake", Event.Subject.NATION, 0.1, new Event.Conditions(-1, -2, -3, null, -4, -5, -6),
 				new Event.Effects(0, 0, 0, -4, 0));
-		Event storm = event("Dust storm", Event.Subject.WARPARTY, 0.1, new Event.Conditions(null, null, null, -1),
+		Event storm = event("Dust storm", Event.Subject.WARPARTY, 0.1, new Event.Conditions(null, null, null, -1, null, null, null),
 				new Event.Effects(0, 0, 0, 0, 1));
 
 		assertThatExceptionOfType(InvalidRuleset.class)
@@ -153,6 +156,9 @@ class RulesetTest {
 			.withMessageContaining("Event Earthquake cannot need turnAtLeast below 0")
 			.withMessageContaining("Event Earthquake cannot need populationAtLeast below 0")
 			.withMessageContaining("Event Earthquake cannot need approachingUnitsAtLeast below 0")
+			.withMessageContaining("Event Earthquake cannot need goldAtLeast below 0")
+			.withMessageContaining("Event Earthquake cannot need researchAtLeast below 0")
+			.withMessageContaining("Event Earthquake cannot need defenseAtLeast below 0")
 			.withMessageContaining("Event Earthquake cannot damage Defense by less than 0")
 			.withMessageContaining("Event Dust storm cannot need unitsAtLeast below 0");
 	}

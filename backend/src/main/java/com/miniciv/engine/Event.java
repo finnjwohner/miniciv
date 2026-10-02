@@ -108,15 +108,19 @@ public record Event(String name, Subject subject, double chance, Conditions when
 	 * @param approachingUnitsAtLeast a Warparty of at least this many Units is
 	 *        travelling to the Nation
 	 * @param unitsAtLeast the Warparty has at least this many Units
+	 * @param goldAtLeast the Nation has at least this much Gold
+	 * @param researchAtLeast the Nation has at least this much Research
+	 * @param defenseAtLeast the Nation's Defense is at least this much
 	 */
 	public record Conditions(Integer turnAtLeast, Integer populationAtLeast, Integer approachingUnitsAtLeast,
-			Integer unitsAtLeast) {
+			Integer unitsAtLeast, Integer goldAtLeast, Integer researchAtLeast, Integer defenseAtLeast) {
 
-		static final Conditions NONE = new Conditions(null, null, null, null);
+		static final Conditions NONE = new Conditions(null, null, null, null, null, null, null);
 
-		boolean holdForNation(int turn, int population, int largestApproaching) {
-			return atLeast(turn, turnAtLeast) && atLeast(population, populationAtLeast)
-					&& atLeast(largestApproaching, approachingUnitsAtLeast);
+		boolean holdForNation(int turn, Nation nation, int defense, int largestApproaching) {
+			return atLeast(turn, turnAtLeast) && atLeast(nation.population(), populationAtLeast)
+					&& atLeast(largestApproaching, approachingUnitsAtLeast) && atLeast(nation.gold(), goldAtLeast)
+					&& atLeast(nation.research(), researchAtLeast) && atLeast(defense, defenseAtLeast);
 		}
 
 		boolean holdForWarparty(int turn, Warparty warparty) {
@@ -166,6 +170,9 @@ public record Event(String name, Subject subject, double chance, Conditions when
 		notBelowZero(problems, subjectName, "populationAtLeast", when.populationAtLeast());
 		notBelowZero(problems, subjectName, "approachingUnitsAtLeast", when.approachingUnitsAtLeast());
 		notBelowZero(problems, subjectName, "unitsAtLeast", when.unitsAtLeast());
+		notBelowZero(problems, subjectName, "goldAtLeast", when.goldAtLeast());
+		notBelowZero(problems, subjectName, "researchAtLeast", when.researchAtLeast());
+		notBelowZero(problems, subjectName, "defenseAtLeast", when.defenseAtLeast());
 		if (effects.damageDefense() < 0) {
 			problems.add(subjectName + " cannot damage Defense by less than 0.");
 		}
@@ -173,6 +180,9 @@ public record Event(String name, Subject subject, double chance, Conditions when
 			String unsuited = subjectName + " happens to a Warparty, so it cannot ";
 			unsuited(problems, unsuited + "need populationAtLeast.", when.populationAtLeast() != null);
 			unsuited(problems, unsuited + "need approachingUnitsAtLeast.", when.approachingUnitsAtLeast() != null);
+			unsuited(problems, unsuited + "need goldAtLeast.", when.goldAtLeast() != null);
+			unsuited(problems, unsuited + "need researchAtLeast.", when.researchAtLeast() != null);
+			unsuited(problems, unsuited + "need defenseAtLeast.", when.defenseAtLeast() != null);
 			unsuited(problems, unsuited + "change gold.", effects.gold() != 0);
 			unsuited(problems, unsuited + "change population.", effects.population() != 0);
 			unsuited(problems, unsuited + "change research.", effects.research() != 0);

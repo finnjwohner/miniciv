@@ -766,7 +766,7 @@ public class Game {
 				List<String> report = reports.get(nation.name());
 				switch (event.subject()) {
 					case NATION -> {
-						if (event.when().holdForNation(turn, nation.population(), largestApproaching(nation))
+						if (event.when().holdForNation(turn, nation, nation.defense(ruleset), largestApproaching(nation))
 								&& happens(event)) {
 							if (event.dilemma()) {
 								nation.faceDilemma(event);
