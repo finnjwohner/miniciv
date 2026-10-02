@@ -38,6 +38,29 @@ class RulesetTest {
 	}
 
 	@Test
+	void onlyOneTechnologyCanUnlockAUnitOrBuildingType() {
+		Technology bronze = new Technology("Bronze Working", 10, List.of(), List.of("Warrior"));
+		Technology iron = new Technology("Iron Working", 20, List.of(), List.of("Warrior"));
+
+		assertThatExceptionOfType(InvalidRuleset.class)
+			.isThrownBy(() -> new Ruleset(List.of(unit("Warrior")), List.of(), List.of(bronze, iron)))
+			.withMessageContaining("Warrior is unlocked by more than one Technology");
+	}
+
+	@Test
+	void aTechnologyCannotRequireItselfEvenThroughOthers() {
+		Technology writing = new Technology("Writing", 10, List.of("Philosophy"), List.of());
+		Technology philosophy = new Technology("Philosophy", 20, List.of("Writing"), List.of());
+		Technology mysticism = new Technology("Mysticism", 20, List.of("Mysticism"), List.of());
+
+		assertThatExceptionOfType(InvalidRuleset.class)
+			.isThrownBy(() -> new Ruleset(List.of(), List.of(), List.of(writing, philosophy, mysticism)))
+			.withMessageContaining("Technology Writing can never be unlocked, as it requires itself")
+			.withMessageContaining("Technology Philosophy can never be unlocked, as it requires itself")
+			.withMessageContaining("Technology Mysticism can never be unlocked, as it requires itself");
+	}
+
+	@Test
 	void twoUnitOrBuildingTypesCannotShareAName() {
 		BuildingType farm = new BuildingType("Farm", 30, 2, 1, 0, 0);
 

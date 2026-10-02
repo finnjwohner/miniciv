@@ -42,6 +42,17 @@ public record Ruleset(List<UnitType> units, List<BuildingType> buildings, List<T
 		return units.stream().filter(u -> u.name().equals(name)).findFirst();
 	}
 
+	public Optional<Technology> technology(String name) {
+		return technologies.stream().filter(t -> t.name().equals(name)).findFirst();
+	}
+
+	/**
+	 * The Technology needed to start a Unit or Building type, if one is.
+	 */
+	public Optional<Technology> unlockedBy(String unitOrBuilding) {
+		return technologies.stream().filter(t -> t.unlocks().contains(unitOrBuilding)).findFirst();
+	}
+
 	private static List<String> problems(List<UnitType> units, List<BuildingType> buildings,
 			List<Technology> technologies, List<Event> events) {
 		List<String> problems = new ArrayList<>();
@@ -107,8 +118,37 @@ public record Ruleset(List<UnitType> units, List<BuildingType> buildings, List<T
 				}
 			}
 		}
+		for (Technology technology : technologies) {
+			if (requires(technology, technology.name(), technologies, new HashSet<>())) {
+				problems.add("Technology " + technology.name() + " can never be unlocked, as it requires itself.");
+			}
+		}
+		duplicates(technologies.stream().flatMap(technology -> technology.unlocks().stream()))
+			.forEach(name -> problems.add(name + " is unlocked by more than one Technology."));
 		events.forEach(event -> problems.addAll(event.problems()));
 		return problems;
+	}
+
+	/**
+	 * Whether a Technology requires another, directly or through its
+	 * prerequisites' prerequisites.
+	 *
+	 * @param visited the Technologies already looked through
+	 */
+	private static boolean requires(Technology technology, String required, List<Technology> technologies,
+			Set<String> visited) {
+		for (String prerequisite : technology.prerequisites()) {
+			if (prerequisite.equals(required)) {
+				return true;
+			}
+			if (visited.add(prerequisite)) {
+				Optional<Technology> next = technologies.stream().filter(t -> t.name().equals(prerequisite)).findFirst();
+				if (next.isPresent() && requires(next.get(), required, technologies, visited)) {
+					return true;
+				}
+			}
+		}
+		return false;
 	}
 
 	private static Set<String> names(Stream<String> names) {

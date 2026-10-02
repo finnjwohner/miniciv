@@ -62,4 +62,11 @@ public sealed interface Action {
 	record AnswerDilemma(String dilemma, String choice) implements Action {
 	}
 
+	/**
+	 * Pays a Technology's Research now and unlocks it, once its prerequisites
+	 * are unlocked.
+	 */
+	record UnlockTechnology(String technology) implements Action {
+	}
+
 }

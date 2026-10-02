@@ -1,6 +1,15 @@
 import { useEffect, useState } from 'react'
 import { otherNations } from './api'
-import type { BuildingDamage, BuildingType, Effects, MapNation, NationView, UnitType, Warparty } from './api'
+import type {
+  BuildingDamage,
+  BuildingType,
+  Effects,
+  MapNation,
+  NationView,
+  TechTreeEntry,
+  UnitType,
+  Warparty,
+} from './api'
 import type { ReceivedRoom } from './useRoom'
 
 /** The time now, updated a few times a second. */
@@ -428,6 +437,44 @@ function Dilemmas({
   )
 }
 
+/** How a Technology stands, such as "unlocked" or "locked — requires Masonry". */
+function describeTechnologyStanding(technology: TechTreeEntry, nation: NationView) {
+  if (technology.standing === 'UNLOCKED') return 'unlocked'
+  if (technology.standing === 'AVAILABLE') return 'available'
+  const unlocked = new Set(nation.techTree.filter((t) => t.standing === 'UNLOCKED').map((t) => t.name))
+  const missing = technology.prerequisites.filter((p) => !unlocked.has(p))
+  return `locked — requires ${missing.join(', ')}`
+}
+
+/**
+ * The Tech Tree: every Technology, whether it is unlocked, available or locked, what it costs and what it
+ * unlocks, with a button to unlock each available one.
+ */
+function TechTree({ nation, onUnlock }: { nation: NationView; onUnlock: (technology: string) => void }) {
+  if (nation.techTree.length === 0) return null
+  return (
+    <>
+      <h3>Tech Tree</h3>
+      <ul>
+        {nation.techTree.map((t) => (
+          <li key={t.name}>
+            {t.standing === 'AVAILABLE' ? (
+              <button onClick={() => onUnlock(t.name)} disabled={t.research > nation.research}>
+                Unlock {t.name}
+              </button>
+            ) : (
+              <strong>{t.name}</strong>
+            )}{' '}
+            ({describeTechnologyStanding(t, nation)}) — {t.research} Research
+            {t.unlocks.length > 0 && `, unlocks ${t.unlocks.join(', ')}`}
+            {t.prerequisites.length > 0 && t.standing !== 'LOCKED' && `; requires ${t.prerequisites.join(', ')}`}
+          </li>
+        ))}
+      </ul>
+    </>
+  )
+}
+
 /** One Turn of the Game as this Player sees it; they mark themselves done once they have decided. */
 function GameScreen({
   room,
@@ -441,6 +488,7 @@ function GameScreen({
   onSendWarparty,
   onRecallWarparty,
   onAnswerDilemma,
+  onUnlockTechnology,
   onDone,
 }: {
   room: ReceivedRoom
@@ -454,6 +502,7 @@ function GameScreen({
   onSendWarparty: (target: string, units: Record<string, number>) => void
   onRecallWarparty: (warparty: number) => void
   onAnswerDilemma: (dilemma: string, choice: string) => void
+  onUnlockTechnology: (technology: string) => void
   onDone: (turn: number) => void
 }) {
   const now = useNow()
@@ -526,6 +575,7 @@ function GameScreen({
             onRebuild={onRebuildBuilding}
           />
           <Army nation={nation} onTrain={onTrainUnits} />
+          <TechTree nation={nation} onUnlock={onUnlockTechnology} />
           <Warparties nation={nation} onSend={onSendWarparty} onRecall={onRecallWarparty} />
         </>
       )}

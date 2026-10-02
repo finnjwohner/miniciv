@@ -116,6 +116,15 @@ export function useRoom(code: string, token: string) {
     })
   }
 
+  /** Unlocks a Technology, paying its Research at once; a rejection's reason arrives in `rejection`. */
+  const unlockTechnology = (technology: string) => {
+    setRejection(null)
+    client.current?.publish({
+      destination: `/app/rooms/${code}/technologies`,
+      body: JSON.stringify({ token, technology }),
+    })
+  }
+
   /** Marks the Player done with the given Turn; ignored if that Turn has already ended. */
   const markDone = (turn: number) =>
     client.current?.publish({
@@ -135,6 +144,7 @@ export function useRoom(code: string, token: string) {
     sendWarparty,
     recallWarparty,
     answerDilemma,
+    unlockTechnology,
     markDone,
   }
 }
