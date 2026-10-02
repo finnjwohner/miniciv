@@ -17,7 +17,12 @@ export function useRoom(code: string, token: string) {
 
   useEffect(() => {
     const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws'
-    const stomp = new Client({ brokerURL: `${protocol}://${window.location.host}/ws`, connectHeaders: { token } })
+    // A dropped connection pauses the Game for everyone and counts against this Player, so retry quickly.
+    const stomp = new Client({
+      brokerURL: `${protocol}://${window.location.host}/ws`,
+      connectHeaders: { token },
+      reconnectDelay: 1000,
+    })
     stomp.onConnect = () => {
       // Current-state replies and later updates can arrive in either order; keep the newest.
       const updateRoom = (message: { body: string }) => {

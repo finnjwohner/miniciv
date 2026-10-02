@@ -74,9 +74,14 @@ class StompConnection implements AutoCloseable {
 		session.send(destination, payload);
 	}
 
+	/**
+	 * Disconnects, unless already disconnected.
+	 */
 	@Override
 	public void close() {
-		session.disconnect();
+		if (session.isConnected()) {
+			session.disconnect();
+		}
 	}
 
 	static class Messages {

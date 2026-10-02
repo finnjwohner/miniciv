@@ -76,6 +76,17 @@ public class Game {
 	private final List<String> conquered = new ArrayList<>();
 
 	/**
+	 * The Nations removed so far, in the order they were removed.
+	 */
+	private final List<String> removed = new ArrayList<>();
+
+	/**
+	 * What each Nation still in the Game is to be told of removals in its next
+	 * Turn Report.
+	 */
+	private final Map<String, List<String>> removalReports = new LinkedHashMap<>();
+
+	/**
 	 * The last Nation standing, or null while the Game goes on.
 	 */
 	private String winner;
@@ -107,6 +118,51 @@ public class Game {
 	}
 
 	/**
+	 * The Nations removed so far, in the order they were removed.
+	 */
+	public List<String> removed() {
+		return List.copyOf(removed);
+	}
+
+	/**
+	 * Whether a Nation is still in the Game, neither conquered nor removed.
+	 */
+	public boolean inGame(String nation) {
+		return nation(nation).inGame();
+	}
+
+	/**
+	 * Takes a Nation out of the Game at once, its Player having been
+	 * disconnected for too long. Unlike Conquest, nobody seizes anything: its
+	 * Warparties abroad are gone and every Warparty heading to it turns back
+	 * home. The other Nations are told in their next Turn Report, and if only
+	 * one is left it wins the Game. Has no effect on a Nation no longer in the
+	 * Game, or once the Game is won.
+	 */
+	public void remove(String name) {
+		Nation nation = nation(name);
+		if (winner != null || !nation.inGame()) {
+			return;
+		}
+		nation.remove();
+		removed.add(name);
+		List<Nation> left = remaining();
+		for (Nation other : left) {
+			List<String> report = removalReports.computeIfAbsent(other.name(), n -> new ArrayList<>());
+			report.add(name + " was removed from the Game, as its Player was disconnected for too long.");
+			for (Warparty back : other.turnBackFrom(name, TRAVEL_TURNS)) {
+				report.add("Your Warparty of " + listed(back.units()) + " heading to " + name
+						+ " turned back home, as " + name + " was removed from the Game.");
+			}
+			other.changed();
+		}
+		if (left.size() == 1) {
+			winner = left.getFirst().name();
+			removalReports.clear();
+		}
+	}
+
+	/**
 	 * The Nation that won the Game, once it is the only one left.
 	 */
 	public Optional<String> winner() {
@@ -117,7 +173,7 @@ public class Game {
 	 * The Nations still in the Game.
 	 */
 	private List<Nation> remaining() {
-		return nations.values().stream().filter(nation -> !nation.conquered()).toList();
+		return nations.values().stream().filter(Nation::inGame).toList();
 	}
 
 	/**
@@ -130,7 +186,9 @@ public class Game {
 		}
 		List<Nation> inPlay = remaining();
 		Map<String, List<String>> reports = new LinkedHashMap<>();
-		inPlay.forEach(nation -> reports.put(nation.name(), new ArrayList<>()));
+		inPlay.forEach(nation -> reports.put(nation.name(),
+				new ArrayList<>(removalReports.getOrDefault(nation.name(), List.of()))));
+		removalReports.clear();
 		for (Nation nation : inPlay) {
 			List<String> report = reports.get(nation.name());
 			for (String completed : nation.progressConstruction()) {
@@ -535,6 +593,9 @@ public class Game {
 		if (actor.conquered()) {
 			return ActionResult.rejected("Your Nation has been conquered.");
 		}
+		if (actor.removed()) {
+			return ActionResult.rejected("Your Nation has been removed from the Game.");
+		}
 		if (winner != null) {
 			return ActionResult.rejected("The Game is over.");
 		}
@@ -566,6 +627,9 @@ public class Game {
 				}
 				if (nation(send.target()).conquered()) {
 					yield ActionResult.rejected(send.target() + " has been conquered.");
+				}
+				if (nation(send.target()).removed()) {
+					yield ActionResult.rejected(send.target() + " has been removed from the Game.");
 				}
 				if (send.units().isEmpty()
 						|| send.units().values().stream().anyMatch(count -> count == null || count < 1)) {

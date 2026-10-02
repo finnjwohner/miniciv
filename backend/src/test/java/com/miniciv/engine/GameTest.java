@@ -1306,6 +1306,107 @@ class GameTest {
 	}
 
 	@Test
+	void aRemovedNationTakesNoFurtherPartAndCannotBeAttacked() {
+		game.endTurn();
+		NationView removed = game.viewOf("Carthage");
+
+		game.remove("Carthage");
+		game.endTurn();
+
+		NationView carthage = game.viewOf("Carthage");
+		assertThat(carthage.version()).isEqualTo(removed.version());
+		assertThat(carthage.gold()).isEqualTo(removed.gold());
+		assertThat(game.nations()).containsExactly("Rome", "Carthage", "Egypt");
+		assertThat(game.removed()).containsExactly("Carthage");
+		assertThat(game.conquered()).isEmpty();
+		assertThat(game.winner()).isEmpty();
+		assertThat(game.viewOf("Rome").otherNations()).containsExactly("Egypt");
+		assertThat(game.act("Carthage", new Action.TrainUnits("Warrior", 1)))
+			.isEqualTo(ActionResult.rejected("Your Nation has been removed from the Game."));
+		assertThat(game.act("Rome", new Action.SendWarparty("Carthage", Map.of("Warrior", 1))))
+			.isEqualTo(ActionResult.rejected("Carthage has been removed from the Game."));
+	}
+
+	@Test
+	void theOtherNationsSeeARemovalAtOnceAndAreToldInTheirNextTurnReport() {
+		int romeVersion = game.viewOf("Rome").version();
+
+		game.remove("Carthage");
+
+		assertThat(game.viewOf("Rome").version()).isGreaterThan(romeVersion);
+		game.endTurn();
+		assertThat(game.viewOf("Rome").turnReport().lines()).containsExactly(
+				"Carthage was removed from the Game, as its Player was disconnected for too long.", BASE_INCOME_REPORT);
+		assertThat(game.viewOf("Egypt").turnReport().lines()).containsExactly(
+				"Carthage was removed from the Game, as its Player was disconnected for too long.", BASE_INCOME_REPORT);
+		game.endTurn();
+		assertThat(game.viewOf("Rome").turnReport().lines()).containsExactly(BASE_INCOME_REPORT);
+	}
+
+	@Test
+	void nothingIsSeizedFromARemovedNationAndWarpartiesHeadingToItTurnBackHome() {
+		armyOf("Rome", "Warrior", 2);
+		game.act("Rome", new Action.SendWarparty("Carthage", Map.of("Warrior", 1)));
+		game.endTurn();
+		game.endTurn();
+		game.act("Rome", new Action.SendWarparty("Carthage", Map.of("Warrior", 1)));
+		game.endTurn();
+		int romeGold = game.viewOf("Rome").gold();
+		int romeResearch = game.viewOf("Rome").research();
+
+		game.remove("Carthage");
+
+		NationView rome = game.viewOf("Rome");
+		assertThat(rome.gold()).isEqualTo(romeGold);
+		assertThat(rome.research()).isEqualTo(romeResearch);
+		assertThat(rome.warparties()).containsExactly(new Warparty("Carthage", Map.of("Warrior", 1), true, 3),
+				new Warparty("Carthage", Map.of("Warrior", 1), true, 1));
+		game.endTurn();
+		assertThat(game.viewOf("Rome").turnReport().lines()).startsWith(
+				"Carthage was removed from the Game, as its Player was disconnected for too long.",
+				"Your Warparty of Warrior ×1 heading to Carthage turned back home, as Carthage was removed from the Game.",
+				"Your Warparty of Warrior ×1 heading to Carthage turned back home, as Carthage was removed from the Game.");
+	}
+
+	@Test
+	void aRemovedNationsWarpartiesAreGone() {
+		armyOf("Carthage", "Warrior", 1);
+		game.act("Carthage", new Action.SendWarparty("Rome", Map.of("Warrior", 1)));
+
+		game.remove("Carthage");
+		for (int turn = 1; turn <= 4; turn++) {
+			game.endTurn();
+		}
+
+		assertThat(game.viewOf("Rome").turnReport().lines()).containsExactly(BASE_INCOME_REPORT);
+		assertThat(game.viewOf("Carthage").warparties()).isEmpty();
+	}
+
+	@Test
+	void whenARemovalLeavesOneNationItWinsAtOnce() {
+		game.remove("Carthage");
+		int romeVersion = game.viewOf("Rome").version();
+
+		game.remove("Egypt");
+
+		assertThat(game.winner()).contains("Rome");
+		assertThat(game.removed()).containsExactly("Carthage", "Egypt");
+		assertThat(game.viewOf("Rome").winner()).isEqualTo("Rome");
+		assertThat(game.viewOf("Rome").version()).isGreaterThan(romeVersion);
+	}
+
+	@Test
+	void removingANationNoLongerInTheGameChangesNothing() {
+		game.remove("Carthage");
+		int romeVersion = game.viewOf("Rome").version();
+
+		game.remove("Carthage");
+
+		assertThat(game.removed()).containsExactly("Carthage");
+		assertThat(game.viewOf("Rome").version()).isEqualTo(romeVersion);
+	}
+
+	@Test
 	void thereIsNoViewOfANationNotInTheGame() {
 		assertThatIllegalArgumentException().isThrownBy(() -> game.viewOf("Persia"));
 	}

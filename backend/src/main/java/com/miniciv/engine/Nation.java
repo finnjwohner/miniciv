@@ -64,6 +64,12 @@ class Nation {
 	 */
 	private String conqueredBy;
 
+	/**
+	 * Whether the Nation was removed from the Game, its Player having been
+	 * disconnected for too long.
+	 */
+	private boolean removed;
+
 	private int version = 1;
 
 	Nation(String name, int gold, int population, int research) {
@@ -103,6 +109,26 @@ class Nation {
 
 	boolean conquered() {
 		return conqueredBy != null;
+	}
+
+	boolean removed() {
+		return removed;
+	}
+
+	/**
+	 * Takes the Nation out of the Game without it being conquered; its
+	 * Warparties abroad are gone.
+	 */
+	void remove() {
+		removed = true;
+		warparties.clear();
+	}
+
+	/**
+	 * Whether the Nation is still in the Game, neither conquered nor removed.
+	 */
+	boolean inGame() {
+		return !conquered() && !removed;
 	}
 
 	/**
