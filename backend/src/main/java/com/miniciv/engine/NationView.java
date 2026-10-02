@@ -15,12 +15,14 @@ import java.util.Map;
  * @param availableUnits the Unit types the Nation may train
  * @param army how many of each Unit type the Nation has at home
  * @param training the Units in training, in the order started
- * @param upkeep the Gold the Army costs each Turn
+ * @param warparties the Nation's Warparties abroad, in the order sent
+ * @param travelTurns how many Turns a Warparty takes to reach another Nation
+ * @param upkeep the Gold the Nation's Units cost each Turn, at home and abroad
  */
 public record NationView(int version, int turn, String nation, int gold, int population, int research,
 		List<String> otherNations, List<BuildingType> availableBuildings, Map<String, Integer> buildings,
 		List<Construction> construction, List<UnitType> availableUnits, Map<String, Integer> army,
-		List<Training> training, int upkeep, TurnReport turnReport) {
+		List<Training> training, List<Warparty> warparties, int travelTurns, int upkeep, TurnReport turnReport) {
 
 	public NationView {
 		otherNations = List.copyOf(otherNations);
@@ -28,6 +30,7 @@ public record NationView(int version, int turn, String nation, int gold, int pop
 		construction = List.copyOf(construction);
 		availableUnits = List.copyOf(availableUnits);
 		training = List.copyOf(training);
+		warparties = List.copyOf(warparties);
 	}
 
 }

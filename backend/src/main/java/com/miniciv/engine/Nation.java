@@ -40,6 +40,11 @@ class Nation {
 	 */
 	private final Map<String, Integer> army = new LinkedHashMap<>();
 
+	/**
+	 * The Nation's Warparties abroad, in the order sent.
+	 */
+	private final List<Warparty> warparties = new ArrayList<>();
+
 	private TurnReport turnReport;
 
 	private int version = 1;
@@ -51,6 +56,10 @@ class Nation {
 		this.research = research;
 	}
 
+	String name() {
+		return name;
+	}
+
 	/**
 	 * Gives the Nation the report of the Turn that just resolved.
 	 */
@@ -59,10 +68,11 @@ class Nation {
 		version++;
 	}
 
-	NationView view(int turn, List<String> otherNations, Ruleset ruleset) {
+	NationView view(int turn, List<String> otherNations, int travelTurns, Ruleset ruleset) {
 		return new NationView(version, turn, name, gold, population, research, otherNations, ruleset.buildings(),
 				Collections.unmodifiableMap(new LinkedHashMap<>(buildings)), construction, ruleset.trainableUnits(),
-				Collections.unmodifiableMap(new LinkedHashMap<>(army)), training, upkeep(ruleset), turnReport);
+				Collections.unmodifiableMap(new LinkedHashMap<>(army)), training, warparties, travelTurns, upkeep(ruleset),
+				turnReport);
 	}
 
 	void gain(int gold, int population, int research) {
@@ -101,6 +111,69 @@ class Nation {
 	}
 
 	/**
+	 * Takes Units out of the Army and sets them travelling to another Nation.
+	 *
+	 * @param units how many of each Unit type to send
+	 */
+	ActionResult sendWarparty(String target, Map<String, Integer> units, int travelTurns) {
+		for (Map.Entry<String, Integer> chosen : units.entrySet()) {
+			int owned = army.getOrDefault(chosen.getKey(), 0);
+			if (owned == 0) {
+				return ActionResult.rejected("Your Army has no " + chosen.getKey() + ".");
+			}
+			if (chosen.getValue() > owned) {
+				return ActionResult.rejected("Your Army has only " + owned + " " + chosen.getKey() + ".");
+			}
+		}
+		Map<String, Integer> sent = new LinkedHashMap<>();
+		for (Map.Entry<String, Integer> owned : army.entrySet()) {
+			int count = units.getOrDefault(owned.getKey(), 0);
+			if (count > 0) {
+				sent.put(owned.getKey(), count);
+			}
+		}
+		sent.forEach((unit, count) -> army.computeIfPresent(unit, (u, owned) -> owned == count ? null : owned - count));
+		warparties.add(new Warparty(target, sent, false, travelTurns));
+		version++;
+		return ActionResult.ACCEPTED;
+	}
+
+	/**
+	 * Warparties that reached where they were heading as a Turn resolved, as
+	 * they were when they got there.
+	 *
+	 * @param arrived those that reached their target and turned for home
+	 * @param returned those that came home and rejoined the Army
+	 */
+	record Travelled(List<Warparty> arrived, List<Warparty> returned) {
+	}
+
+	/**
+	 * Moves every Warparty one Turn on. One reaching its target turns for home
+	 * over the same travel time; one reaching home rejoins the Army.
+	 */
+	Travelled travel(int travelTurns) {
+		List<Warparty> arrived = new ArrayList<>();
+		List<Warparty> returned = new ArrayList<>();
+		for (var it = warparties.listIterator(); it.hasNext();) {
+			Warparty current = it.next();
+			if (current.turnsLeft() > 1) {
+				it.set(current.travelled());
+			}
+			else if (!current.homeward()) {
+				it.set(current.headingHome(travelTurns));
+				arrived.add(current);
+			}
+			else {
+				it.remove();
+				current.units().forEach((unit, count) -> army.merge(unit, count, Integer::sum));
+				returned.add(current);
+			}
+		}
+		return new Travelled(arrived, returned);
+	}
+
+	/**
 	 * Moves the Units ready by the start of a Turn from training into the Army.
 	 *
 	 * @return how many of each Unit type joined, in the order started
@@ -119,43 +192,85 @@ class Nation {
 	}
 
 	/**
-	 * The Gold the Army costs each Turn.
+	 * The Gold the Nation's Units cost each Turn, at home and abroad.
 	 */
 	int upkeep(Ruleset ruleset) {
-		return army.entrySet()
+		return upkeepOf(army, ruleset) + warparties.stream().mapToInt(w -> upkeepOf(w.units(), ruleset)).sum();
+	}
+
+	private static int upkeepOf(Map<String, Integer> units, Ruleset ruleset) {
+		return units.entrySet()
 			.stream()
 			.mapToInt(owned -> ruleset.unit(owned.getKey()).orElseThrow().upkeep() * owned.getValue())
 			.sum();
 	}
 
 	/**
-	 * Lets Units desert, one at a time, until the Nation's Gold covers the
-	 * Army's upkeep. The Unit costing the most upkeep deserts first; between
-	 * equally costly types, the type listed last in the Army, that is, the one
-	 * first trained most recently.
+	 * Units that deserted as a Turn resolved, from the Army or from one
+	 * Warparty.
 	 *
-	 * @return how many of each Unit type deserted, in the order they deserted
+	 * @param warparty the Warparty they left, as it was before, or null if they
+	 * left the Army
+	 * @param units how many of each Unit type deserted, in the order they
+	 * deserted
 	 */
-	Map<String, Integer> desertUntilUpkeepIsAffordable(Ruleset ruleset) {
-		Map<String, Integer> deserted = new LinkedHashMap<>();
-		while (upkeep(ruleset) > gold) {
-			String deserter = null;
-			int highest = -1;
-			for (String unit : army.keySet()) {
-				int upkeep = ruleset.unit(unit).orElseThrow().upkeep();
-				if (upkeep >= highest) {
-					deserter = unit;
-					highest = upkeep;
-				}
-			}
-			army.computeIfPresent(deserter, (unit, count) -> count == 1 ? null : count - 1);
-			deserted.merge(deserter, 1, Integer::sum);
-		}
-		return deserted;
+	record Desertion(Warparty warparty, Map<String, Integer> units) {
 	}
 
 	/**
-	 * Pays the Army's upkeep, which the Nation must be able to afford.
+	 * Lets Units desert, one at a time, until the Nation's Gold covers its
+	 * Units' upkeep. They desert from the Army and from Warparties abroad
+	 * alike. The Unit costing the most upkeep deserts first; between equally
+	 * costly ones, the one listed last, taking the Army's types in the order
+	 * first trained and then each Warparty's in the order sent. A Warparty left
+	 * with no Units disappears.
+	 *
+	 * @return the desertions from the Army first, then from each Warparty in
+	 * the order sent
+	 */
+	List<Desertion> desertUntilUpkeepIsAffordable(Ruleset ruleset) {
+		List<Map<String, Integer>> groups = new ArrayList<>();
+		groups.add(army);
+		warparties.forEach(w -> groups.add(new LinkedHashMap<>(w.units())));
+		List<Map<String, Integer>> deserted = new ArrayList<>();
+		groups.forEach(g -> deserted.add(new LinkedHashMap<>()));
+		while (groups.stream().mapToInt(g -> upkeepOf(g, ruleset)).sum() > gold) {
+			int group = -1;
+			String deserter = null;
+			int highest = -1;
+			for (int i = 0; i < groups.size(); i++) {
+				for (String unit : groups.get(i).keySet()) {
+					int upkeep = ruleset.unit(unit).orElseThrow().upkeep();
+					if (upkeep >= highest) {
+						group = i;
+						deserter = unit;
+						highest = upkeep;
+					}
+				}
+			}
+			groups.get(group).computeIfPresent(deserter, (unit, count) -> count == 1 ? null : count - 1);
+			deserted.get(group).merge(deserter, 1, Integer::sum);
+		}
+		List<Desertion> desertions = new ArrayList<>();
+		if (!deserted.getFirst().isEmpty()) {
+			desertions.add(new Desertion(null, deserted.getFirst()));
+		}
+		List<Warparty> before = List.copyOf(warparties);
+		warparties.clear();
+		for (int i = 0; i < before.size(); i++) {
+			Warparty warparty = before.get(i);
+			if (!deserted.get(i + 1).isEmpty()) {
+				desertions.add(new Desertion(warparty, deserted.get(i + 1)));
+			}
+			if (!groups.get(i + 1).isEmpty()) {
+				warparties.add(warparty.with(groups.get(i + 1)));
+			}
+		}
+		return desertions;
+	}
+
+	/**
+	 * Pays its Units' upkeep, which the Nation must be able to afford.
 	 *
 	 * @return the Gold paid
 	 */

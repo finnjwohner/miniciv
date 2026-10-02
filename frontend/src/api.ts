@@ -32,6 +32,11 @@ export type UnitType = {
 /** Units of one type in training; they join the Army at the start of `readyOnTurn`. */
 export type Training = { unit: string; count: number; readyOnTurn: number }
 /**
+ * Units sent abroad; `homeward` once it has been to its target and is heading back.
+ * `turnsLeft` is how many more Turns must resolve before it gets where it is heading.
+ */
+export type Warparty = { target: string; units: Record<string, number>; homeward: boolean; turnsLeft: number }
+/**
  * What only this Player sees: their own Nation, and just the names of the others.
  * `version` rises with every change to the Nation.
  */
@@ -51,7 +56,11 @@ export type NationView = {
   /** How many of each Unit type the Nation has at home. */
   army: Record<string, number>
   training: Training[]
-  /** The Gold the Army costs each Turn. */
+  /** The Nation's Warparties abroad, in the order sent. */
+  warparties: Warparty[]
+  /** How many Turns a Warparty takes to reach another Nation. */
+  travelTurns: number
+  /** The Gold the Nation's Units cost each Turn, at home and abroad. */
   upkeep: number
   turnReport: TurnReport | null
 }
