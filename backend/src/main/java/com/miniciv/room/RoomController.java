@@ -54,6 +54,9 @@ class RoomController {
 	record SendWarpartyRequest(String token, String target, Map<String, Integer> units) {
 	}
 
+	record SendSpyRequest(String token, String target) {
+	}
+
 	record RecallWarpartyRequest(String token, int warparty) {
 	}
 
@@ -193,6 +196,18 @@ class RoomController {
 		Map<String, Integer> units = request.units() == null ? Map.of() : request.units();
 		ActionResult result = rooms.act(code, request.token(),
 				new Action.SendWarparty(String.valueOf(request.target()), units));
+		return result.accepted() ? null : new Rejection(result.reason());
+	}
+
+	/**
+	 * Sends a Spy from the Army to another Nation; the Player's changed view
+	 * arrives on {@code /user/queue/game}, or the reason it was rejected on
+	 * {@code /user/queue/rejections}.
+	 */
+	@MessageMapping("/rooms/{code}/spies")
+	@SendToUser(destinations = "/queue/rejections", broadcast = false)
+	Rejection sendSpy(@DestinationVariable String code, SendSpyRequest request) {
+		ActionResult result = rooms.act(code, request.token(), new Action.SendSpy(String.valueOf(request.target())));
 		return result.accepted() ? null : new Rejection(result.reason());
 	}
 

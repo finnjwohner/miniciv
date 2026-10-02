@@ -268,8 +268,8 @@ class DisconnectionsTest {
 		assertThat(game.get("waitingFor")).isEqualTo(List.of());
 		assertThat(game.get("winner")).isNull();
 		Map<?, ?> carthageView = carthage.privately().next();
-		assertThat(carthageView.get("map")).isEqualTo(List.of(Map.of("name", "Rome", "standing", "REMOVED"),
-				Map.of("name", "Carthage", "standing", "IN_GAME"), Map.of("name", "Egypt", "standing", "IN_GAME")));
+		assertThat(carthageView.get("map")).isEqualTo(List.of(TurnsTest.onMap("Rome", "REMOVED"),
+				TurnsTest.onMap("Carthage", "IN_GAME"), TurnsTest.onMap("Egypt", "IN_GAME")));
 		assertThat(egypt.privately().next().get("map")).isEqualTo(carthageView.get("map"));
 		done(carthage, 1);
 		done(egypt, 1);

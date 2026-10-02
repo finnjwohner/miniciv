@@ -44,6 +44,13 @@ public sealed interface Action {
 	}
 
 	/**
+	 * Sends a Spy from the Army to another Nation, where it stays and now and
+	 * then reports its hidden state.
+	 */
+	record SendSpy(String target) implements Action {
+	}
+
+	/**
 	 * Recalls one of the Nation's Warparties not yet heading home: it turns back
 	 * at once, taking as long to get home as it has travelled.
 	 *

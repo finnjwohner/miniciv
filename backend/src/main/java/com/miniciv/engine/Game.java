@@ -69,6 +69,40 @@ public class Game {
 	 */
 	private static final double DISCOVERY_CHANCE_PER_SCOUT = 0.2;
 
+	/**
+	 * The chance each Spy in place gives its Nation, each Turn, of a report.
+	 */
+	private static final double SPY_REPORT_CHANCE = 0.4;
+
+	/**
+	 * The facts a Spy may report, each as likely as its weight: Buildings,
+	 * which reveal Defense, only occasionally.
+	 */
+	private enum SpiedFact {
+		GOLD(2), POPULATION(2), RESEARCH(2), ARMY(2), BUILDINGS(1);
+
+		private final int weight;
+
+		SpiedFact(int weight) {
+			this.weight = weight;
+		}
+
+		/**
+		 * The fact a draw between 0 and 1 picks, by weight in the order listed.
+		 */
+		static SpiedFact picked(double draw) {
+			double total = Arrays.stream(values()).mapToInt(fact -> fact.weight).sum();
+			double at = draw * total;
+			for (SpiedFact fact : values()) {
+				if (at < fact.weight) {
+					return fact;
+				}
+				at -= fact.weight;
+			}
+			return values()[values().length - 1];
+		}
+	}
+
 	private final Ruleset ruleset;
 
 	private final Map<String, Nation> nations = new LinkedHashMap<>();
@@ -146,10 +180,10 @@ public class Game {
 	/**
 	 * Takes a Nation out of the Game at once, its Player having been
 	 * disconnected for too long. Unlike Conquest, nobody seizes anything: its
-	 * Warparties abroad are gone and every Warparty heading to it turns back
-	 * home. The other Nations are told in their next Turn Report, and if only
-	 * one is left it wins the Game. Has no effect on a Nation no longer in the
-	 * Game, or once the Game is won.
+	 * Warparties and Spies abroad are gone and every Warparty heading to it,
+	 * and Spy at it or heading to it, turns back home. The other Nations are
+	 * told in their next Turn Report, and if only one is left it wins the Game.
+	 * Has no effect on a Nation no longer in the Game, or once the Game is won.
 	 */
 	public void remove(String name) {
 		Nation nation = nation(name);
@@ -166,6 +200,9 @@ public class Game {
 			for (Warparty back : other.turnBackFrom(name)) {
 				report.add("Your Warparty of " + listed(back.units()) + " heading to " + name
 						+ " turned back home, as " + name + " was removed from the Game.");
+			}
+			for (Spy back : other.turnSpiesBackFrom(name)) {
+				report.add(spyTurnedBack(back, name + " was removed from the Game"));
 			}
 			other.changed();
 		}
@@ -249,6 +286,9 @@ public class Game {
 					.add("Your Warparty came home from " + returned.target() + plunder + " and "
 							+ listed(returned.units()) + " rejoined your Army.");
 			}
+			for (Spy returned : nation.spiesTravelHome()) {
+				reports.get(nation.name()).add("Your Spy came home from " + returned.target() + " and rejoined your Army.");
+			}
 		}
 		// A Nation conquered earlier in this Turn no longer fights, and its
 		// Warparties are gone.
@@ -264,6 +304,9 @@ public class Game {
 					.add("A Warparty from " + nation.name()
 							+ " arrived at your Nation; the Battle will be fought as this Turn ends.");
 			}
+			for (Spy arrived : nation.spiesTravelOut()) {
+				reports.get(nation.name()).add("Your Spy arrived at " + arrived.target() + ".");
+			}
 		}
 		for (Nation nation : remaining()) {
 			List<String> report = reports.get(nation.name());
@@ -274,6 +317,11 @@ public class Game {
 					+ RESEARCH_PER_TURN + " Research.");
 			buildingsAddedLine(buildingPopulation, buildingGold).ifPresent(report::add);
 			for (Nation.Desertion desertion : nation.desertUntilUpkeepIsAffordable(ruleset)) {
+				if (desertion.spy() != null) {
+					report.add("You could not pay your Units' upkeep, so your Spy sent to " + desertion.spy().target()
+							+ " deserted.");
+					continue;
+				}
 				String from = desertion.warparty() == null ? "your Army"
 						: "your Warparty sent to " + desertion.warparty().target();
 				report.add("You could not pay your Units' upkeep, so " + listed(desertion.units()) + " deserted from "
@@ -286,6 +334,7 @@ public class Game {
 		}
 		rollEvents(reports);
 		scout(reports);
+		spy(reports);
 		List<Nation> left = remaining();
 		if (left.size() == 1) {
 			winner = left.getFirst().name();
@@ -454,13 +503,18 @@ public class Game {
 	private Nation.Conquest turnBackFrom(Nation conquered, Plunder seized) {
 		this.conquered.add(conquered.name());
 		Map<String, List<Warparty>> turnedBack = new LinkedHashMap<>();
+		Map<String, List<Spy>> spiesTurnedBack = new LinkedHashMap<>();
 		for (Nation nation : remaining()) {
 			List<Warparty> turned = nation.turnBackFrom(conquered.name());
 			if (!turned.isEmpty()) {
 				turnedBack.put(nation.name(), turned);
 			}
+			List<Spy> spies = nation.turnSpiesBackFrom(conquered.name());
+			if (!spies.isEmpty()) {
+				spiesTurnedBack.put(nation.name(), spies);
+			}
 		}
-		return new Nation.Conquest(seized, turnedBack);
+		return new Nation.Conquest(seized, turnedBack, spiesTurnedBack);
 	}
 
 	private void reportBattle(BattleFought fought, Map<String, List<String>> reports) {
@@ -562,6 +616,9 @@ public class Game {
 				.forEach((nation, turned) -> turned.forEach(back -> reports.get(nation)
 					.add("Your Warparty of " + listed(back.units()) + " heading to " + defender
 							+ " turned back home, as " + defender + " was conquered.")));
+			conquest.spiesTurnedBack()
+				.forEach((nation, turned) -> turned
+					.forEach(back -> reports.get(nation).add(spyTurnedBack(back, defender + " was conquered"))));
 			return;
 		}
 		String share = survivors.size() > 1 ? " as its share" : "";
@@ -700,6 +757,64 @@ public class Game {
 	}
 
 	/**
+	 * Has each Nation still in the Game in order watch, through each of its
+	 * Spies in place in the order sent, the Nation the Spy is at, drawing once
+	 * from the seeded random source for whether the Spy reports and, if it
+	 * does, once more for which fact. The fact, as it stands once the Turn has
+	 * resolved, is announced in the Turn Report and shown on the Map, tagged
+	 * with this Turn.
+	 */
+	private void spy(Map<String, List<String>> reports) {
+		for (Nation spying : remaining()) {
+			for (Spy spy : spying.spiesInPlace()) {
+				if (random.nextDouble() >= SPY_REPORT_CHANCE) {
+					continue;
+				}
+				Nation target = nation(spy.target());
+				String name = target.name();
+				Facts facts = spying.learnedOf(name);
+				String reported = switch (SpiedFact.picked(random.nextDouble())) {
+					case GOLD -> {
+						facts = facts.withGold(target.gold(), turn);
+						yield name + " has " + target.gold() + " Gold";
+					}
+					case POPULATION -> {
+						facts = facts.withPopulation(target.population(), turn);
+						yield name + " has " + target.population() + " Population";
+					}
+					case RESEARCH -> {
+						facts = facts.withResearch(target.research(), turn);
+						yield name + " has " + target.research() + " Research";
+					}
+					case ARMY -> {
+						facts = facts.withArmy(target.army(), turn);
+						yield target.army().isEmpty() ? name + " has no Army"
+								: name + "'s Army is " + listed(target.army());
+					}
+					case BUILDINGS -> {
+						int defense = target.defense(ruleset);
+						facts = facts.withBuildings(target.buildings(), defense, turn);
+						yield name + " has built "
+								+ (target.buildings().isEmpty() ? "nothing" : listed(target.buildings()))
+								+ ", and its Defense is " + defense;
+					}
+				};
+				spying.learn(name, facts);
+				reports.get(spying.name()).add("Your Spy in " + name + " reported that " + reported + ".");
+			}
+		}
+	}
+
+	/**
+	 * Such as "Your Spy in Egypt is heading home, as Egypt was conquered", for
+	 * a Spy as it was before it turned back.
+	 */
+	private static String spyTurnedBack(Spy spy, String reason) {
+		return (spy.inPlace() ? "Your Spy in " + spy.target() + " is heading home"
+				: "Your Spy heading to " + spy.target() + " turned back home") + ", as " + reason + ".";
+	}
+
+	/**
 	 * Such as "heading to Egypt", "waiting at Egypt for the Battle" or
 	 * "heading home from your Nation", for the Nation that sees it.
 	 */
@@ -824,17 +939,9 @@ public class Game {
 						.rejected("There is no Unit called " + train.unit() + " that you can train."));
 			}
 			case Action.SendWarparty send -> {
-				if (send.target().equals(nation)) {
-					yield ActionResult.rejected("A Warparty must be sent to another Nation.");
-				}
-				if (!nations.containsKey(send.target())) {
-					yield ActionResult.rejected("There is no Nation called " + send.target() + ".");
-				}
-				if (nation(send.target()).conquered()) {
-					yield ActionResult.rejected(send.target() + " has been conquered.");
-				}
-				if (nation(send.target()).removed()) {
-					yield ActionResult.rejected(send.target() + " has been removed from the Game.");
+				Optional<ActionResult> unreachable = unreachable(nation, send.target(), "A Warparty");
+				if (unreachable.isPresent()) {
+					yield unreachable.get();
 				}
 				if (send.units().isEmpty()
 						|| send.units().values().stream().anyMatch(count -> count == null || count < 1)) {
@@ -843,8 +950,13 @@ public class Game {
 				if (send.units().keySet().stream().anyMatch(unit -> ruleset.unit(unit).filter(UnitType::scout).isPresent())) {
 					yield ActionResult.rejected("Scouts stay at home and cannot be sent in a Warparty.");
 				}
+				if (send.units().keySet().stream().anyMatch(unit -> ruleset.unit(unit).filter(UnitType::spy).isPresent())) {
+					yield ActionResult.rejected("Spies are sent on their own, not in a Warparty.");
+				}
 				yield actor.sendWarparty(send.target(), send.units(), TRAVEL_TURNS);
 			}
+			case Action.SendSpy send -> unreachable(nation, send.target(), "A Spy")
+				.orElseGet(() -> actor.sendSpy(send.target(), ruleset, TRAVEL_TURNS));
 			case Action.RecallWarparty recall -> recall(actor, recall.warparty());
 			case Action.OfferTribute offer -> offer(actor, offer);
 			case Action.AnswerTribute answer -> answer(actor, answer);
@@ -853,6 +965,28 @@ public class Game {
 				.map(actor::unlock)
 				.orElseGet(() -> ActionResult.rejected("There is no Technology called " + unlock.technology() + "."));
 		};
+	}
+
+	/**
+	 * Why a Warparty or Spy cannot be sent from a Nation to a target, if it
+	 * cannot: the target must be another Nation still in the Game.
+	 *
+	 * @param sent what is being sent, such as "A Spy"
+	 */
+	private Optional<ActionResult> unreachable(String nation, String target, String sent) {
+		if (target.equals(nation)) {
+			return Optional.of(ActionResult.rejected(sent + " must be sent to another Nation."));
+		}
+		if (!nations.containsKey(target)) {
+			return Optional.of(ActionResult.rejected("There is no Nation called " + target + "."));
+		}
+		if (nation(target).conquered()) {
+			return Optional.of(ActionResult.rejected(target + " has been conquered."));
+		}
+		if (nation(target).removed()) {
+			return Optional.of(ActionResult.rejected(target + " has been removed from the Game."));
+		}
+		return Optional.empty();
 	}
 
 	/**
@@ -1013,7 +1147,10 @@ public class Game {
 
 	public NationView viewOf(String nation) {
 		Nation own = nation(nation);
-		List<MapNation> map = nations.values().stream().map(Nation::onMap).toList();
+		List<MapNation> map = nations.values()
+			.stream()
+			.map(other -> other.onMap(own.learnedOf(other.name())))
+			.toList();
 		List<ArrivedWarparty> arrivals = new ArrayList<>();
 		for (Nation attacker : remaining()) {
 			attacker.awaitingBattle()

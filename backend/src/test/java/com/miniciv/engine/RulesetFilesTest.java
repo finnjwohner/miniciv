@@ -14,6 +14,7 @@ class RulesetFilesTest {
 		assertThat(ruleset.units()).extracting(UnitType::name)
 			.contains("Warrior", "Archer", "Horseman", "Scout", "Spy");
 		assertThat(ruleset.units()).filteredOn(UnitType::scout).extracting(UnitType::name).containsExactly("Scout");
+		assertThat(ruleset.units()).filteredOn(UnitType::spy).extracting(UnitType::name).containsExactly("Spy");
 		assertThat(ruleset.buildings()).extracting(BuildingType::name).contains("Farm", "Granary", "Bank");
 		assertThat(ruleset.technologies()).extracting(Technology::name)
 			.contains("Bronze Working", "Masonry", "Iron Working", "Mathematics");

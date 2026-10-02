@@ -98,6 +98,15 @@ export function useRoom(code: string, token: string) {
     })
   }
 
+  /** Sends a Spy from the Army to another Nation; a rejection's reason arrives in `rejection`. */
+  const sendSpy = (target: string) => {
+    setRejection(null)
+    client.current?.publish({
+      destination: `/app/rooms/${code}/spies`,
+      body: JSON.stringify({ token, target }),
+    })
+  }
+
   /** Recalls one of the Nation's Warparties, turning it back home; a rejection's reason arrives in `rejection`. */
   const recallWarparty = (warparty: number) => {
     setRejection(null)
@@ -167,6 +176,7 @@ export function useRoom(code: string, token: string) {
     trainUnits,
     sendWarparty,
     recallWarparty,
+    sendSpy,
     answerDilemma,
     unlockTechnology,
     offerTribute,

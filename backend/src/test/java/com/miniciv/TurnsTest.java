@@ -158,6 +158,17 @@ class TurnsTest {
 	}
 
 	/**
+	 * A Nation on the Map as a Player receives it, with nothing learned of it.
+	 */
+	static Map<String, Object> onMap(String nation, String standing) {
+		Map<String, Object> facts = new HashMap<>();
+		for (String fact : List.of("gold", "population", "research", "army", "buildings", "defense")) {
+			facts.put(fact, null);
+		}
+		return Map.of("name", nation, "standing", standing, "facts", facts);
+	}
+
+	/**
 	 * A Nation's view as its Player receives it.
 	 */
 	static Map<String, Object> view(int version, int turn, String nation, int gold, int population, int research,
@@ -175,8 +186,7 @@ class TurnsTest {
 		view.put("gold", gold);
 		view.put("population", population);
 		view.put("research", research);
-		view.put("map", List.of(Map.of("name", "Rome", "standing", "IN_GAME"),
-				Map.of("name", "Carthage", "standing", "IN_GAME")));
+		view.put("map", List.of(onMap("Rome", "IN_GAME"), onMap("Carthage", "IN_GAME")));
 		view.put("availableBuildings", List.of(Map.of("name", "Farm", "gold", 30, "turns", 2, "populationPerTurn", 1,
 				"goldPerPopulation", 0.0, "defense", 0)));
 		view.put("buildings", Map.of());
@@ -186,12 +196,13 @@ class TurnsTest {
 		view.put("damage", List.of());
 		view.put("availableUnits",
 				List.of(Map.of("name", "Warrior", "gold", 20, "population", 2, "turns", 1, "upkeep", 1, "strength", 3.0,
-						"counters", List.of(), "scout", false),
+						"counters", List.of(), "scout", false, "spy", false),
 						Map.of("name", "Catapult", "gold", 50, "population", 1, "turns", 1, "upkeep", 1, "strength", 20.0,
-								"counters", List.of(), "scout", false)));
+								"counters", List.of(), "scout", false, "spy", false)));
 		view.put("army", Map.of());
 		view.put("training", training);
 		view.put("warparties", List.of());
+		view.put("spies", List.of());
 		view.put("travelTurns", 3);
 		view.put("upkeep", 0);
 		view.put("arrivals", List.of());
