@@ -66,16 +66,20 @@ export type UnitType = {
 /** Units of one type in training; they join the Army at the start of `readyOnTurn`. */
 export type Training = { unit: string; count: number; readyOnTurn: number }
 /**
- * Units sent abroad; `homeward` once it has fought at its target and is heading back.
+ * Units sent abroad, told apart by `id`; `homeward` once it has fought at its target, or turned back
+ * before it, and is heading back.
  * `turnsLeft` is how many more Turns must resolve before it gets where it is heading;
  * 0 once it has arrived at its target and waits for the Battle at the end of this Turn.
+ * `turnsTravelled` is how many Turns it travelled toward its target, which a Recall takes to get home.
  * `plunder` is the Gold and Research it took from its target and is carrying home.
  */
 export type Warparty = {
+  id: number
   target: string
   units: Record<string, number>
   homeward: boolean
   turnsLeft: number
+  turnsTravelled: number
   plunder: { gold: number; research: number }
 }
 /** What a Dilemma's choice changes; resources it would take below 0 stop at 0. */

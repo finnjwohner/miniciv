@@ -8,15 +8,19 @@ import java.util.Map;
  * Units a Nation has sent abroad: travelling to their target, waiting there
  * for the Battle, or heading home from it.
  *
+ * @param id the number telling it apart from the Nation's other Warparties,
+ * counting up in the order sent
  * @param target the Nation the Warparty was sent to
  * @param units how many of each Unit type it holds
  * @param homeward whether it has fought at its target and is heading home
  * @param turnsLeft how many more Turns must resolve before it arrives where it
  * is heading; 0 once it has arrived at its target and waits for the Battle
+ * @param turnsTravelled how many Turns it travelled toward its target, delays
+ * included
  * @param plunder what it took from its target and is carrying home
  */
-public record Warparty(String target, Map<String, Integer> units, boolean homeward, int turnsLeft,
-		Plunder plunder) {
+public record Warparty(int id, String target, Map<String, Integer> units, boolean homeward, int turnsLeft,
+		int turnsTravelled, Plunder plunder) {
 
 	public Warparty {
 		units = Collections.unmodifiableMap(new LinkedHashMap<>(units));
@@ -25,8 +29,9 @@ public record Warparty(String target, Map<String, Integer> units, boolean homewa
 	/**
 	 * A Warparty carrying no plunder.
 	 */
-	public Warparty(String target, Map<String, Integer> units, boolean homeward, int turnsLeft) {
-		this(target, units, homeward, turnsLeft, Plunder.NONE);
+	public Warparty(int id, String target, Map<String, Integer> units, boolean homeward, int turnsLeft,
+			int turnsTravelled) {
+		this(id, target, units, homeward, turnsLeft, turnsTravelled, Plunder.NONE);
 	}
 
 	/**
@@ -47,7 +52,7 @@ public record Warparty(String target, Map<String, Integer> units, boolean homewa
 	 * This Warparty one Turn closer to where it is heading.
 	 */
 	Warparty travelled() {
-		return new Warparty(target, units, homeward, turnsLeft - 1, plunder);
+		return new Warparty(id, target, units, homeward, turnsLeft - 1, homeward ? turnsTravelled : turnsTravelled + 1, plunder);
 	}
 
 	/**
@@ -55,7 +60,7 @@ public record Warparty(String target, Map<String, Integer> units, boolean homewa
 	 * surviving Units and its plunder.
 	 */
 	Warparty headingHome(Map<String, Integer> survivors, Plunder plunder, int travelTurns) {
-		return new Warparty(target, survivors, true, travelTurns, plunder);
+		return new Warparty(id, target, survivors, true, travelTurns, turnsTravelled, plunder);
 	}
 
 	/**
@@ -63,8 +68,8 @@ public record Warparty(String target, Map<String, Integer> units, boolean homewa
 	 * trip home takes as long as it has travelled so far, and at least one
 	 * Turn.
 	 */
-	Warparty turnedBack(int travelTurns) {
-		return new Warparty(target, units, true, Math.max(1, travelTurns - turnsLeft), plunder);
+	Warparty turnedBack() {
+		return new Warparty(id, target, units, true, Math.max(1, turnsTravelled), turnsTravelled, plunder);
 	}
 
 	/**
@@ -79,14 +84,14 @@ public record Warparty(String target, Map<String, Integer> units, boolean homewa
 	 * taking at least one more.
 	 */
 	Warparty delayed(int turns) {
-		return new Warparty(target, units, homeward, Math.max(1, turnsLeft + turns), plunder);
+		return new Warparty(id, target, units, homeward, Math.max(1, turnsLeft + turns), turnsTravelled, plunder);
 	}
 
 	/**
 	 * This Warparty holding only the given Units.
 	 */
 	Warparty with(Map<String, Integer> units) {
-		return new Warparty(target, units, homeward, turnsLeft, plunder);
+		return new Warparty(id, target, units, homeward, turnsLeft, turnsTravelled, plunder);
 	}
 
 }

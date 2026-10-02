@@ -98,6 +98,15 @@ export function useRoom(code: string, token: string) {
     })
   }
 
+  /** Recalls one of the Nation's Warparties, turning it back home; a rejection's reason arrives in `rejection`. */
+  const recallWarparty = (warparty: number) => {
+    setRejection(null)
+    client.current?.publish({
+      destination: `/app/rooms/${code}/recalls`,
+      body: JSON.stringify({ token, warparty }),
+    })
+  }
+
   /** Makes a choice for one of the Nation's Dilemmas, applying as the Turn ends; a rejection's reason arrives in `rejection`. */
   const answerDilemma = (dilemma: string, choice: string) => {
     setRejection(null)
@@ -124,6 +133,7 @@ export function useRoom(code: string, token: string) {
     rebuildBuilding,
     trainUnits,
     sendWarparty,
+    recallWarparty,
     answerDilemma,
     markDone,
   }

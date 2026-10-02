@@ -142,6 +142,11 @@ class TurnsTest {
 			.send("/app/rooms/" + code + "/warparties", Map.of("token", player.token(), "target", target, "units", units));
 	}
 
+	void recallWarparty(Connected player, int warparty) {
+		player.stomp()
+			.send("/app/rooms/" + code + "/recalls", Map.of("token", player.token(), "warparty", warparty));
+	}
+
 	void done(Connected player, int turn) {
 		player.stomp().send("/app/rooms/" + code + "/done", Map.of("token", player.token(), "turn", turn));
 	}
@@ -417,9 +422,37 @@ class TurnsTest {
 		Map<?, ?> view = rome.privately().next();
 		assertThat(view.get("army")).isEqualTo(Map.of());
 		assertThat(view.get("warparties")).isEqualTo(List.of(
-				Map.of("target", "Carthage", "units", Map.of("Warrior", 2), "homeward", false, "turnsLeft", 3, "plunder",
-						Map.of("gold", 0, "research", 0))));
+				Map.of("id", 1, "target", "Carthage", "units", Map.of("Warrior", 2), "homeward", false, "turnsLeft", 3,
+						"turnsTravelled", 0, "plunder", Map.of("gold", 0, "research", 0))));
 		carthage.privately().expectNone();
+	}
+
+	@Test
+	void aPlayerWhoRecallsAWarpartyReceivesTheirUpdatedViewAtOnceOrIsToldWhyNot() throws Exception {
+		startGame();
+		rome.privately().next();
+		carthage.privately().next();
+		StompConnection.Messages romeRejections = rome.stomp().subscribe("/user/queue/rejections");
+		trainUnits(rome, "Warrior", 2);
+		rome.privately().next();
+		done(rome, 1);
+		done(carthage, 1);
+		rome.privately().next();
+		carthage.privately().next();
+		sendWarparty(rome, "Carthage", Map.of("Warrior", 2));
+		rome.privately().next();
+
+		recallWarparty(rome, 1);
+
+		Map<?, ?> view = rome.privately().next();
+		assertThat(view.get("warparties")).isEqualTo(List.of(
+				Map.of("id", 1, "target", "Carthage", "units", Map.of("Warrior", 2), "homeward", true, "turnsLeft", 1,
+						"turnsTravelled", 0, "plunder", Map.of("gold", 0, "research", 0))));
+		carthage.privately().expectNone();
+
+		recallWarparty(rome, 1);
+
+		assertThat(romeRejections.next()).isEqualTo(Map.of("reason", "That Warparty is already heading home."));
 	}
 
 	@Test

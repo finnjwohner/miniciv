@@ -44,6 +44,15 @@ public sealed interface Action {
 	}
 
 	/**
+	 * Recalls one of the Nation's Warparties not yet heading home: it turns back
+	 * at once, taking as long to get home as it has travelled.
+	 *
+	 * @param warparty the Warparty's id
+	 */
+	record RecallWarparty(int warparty) implements Action {
+	}
+
+	/**
 	 * Makes a choice for one of the Nation's Dilemmas, which applies as the
 	 * Turn ends.
 	 *

@@ -81,10 +81,10 @@ public class Game {
 	private final List<String> removed = new ArrayList<>();
 
 	/**
-	 * What each Nation still in the Game is to be told of removals in its next
-	 * Turn Report.
+	 * What each Nation still in the Game is to be told in its next Turn Report
+	 * of what happened during the Turn: removals and Recalls.
 	 */
-	private final Map<String, List<String>> removalReports = new LinkedHashMap<>();
+	private final Map<String, List<String>> pendingReports = new LinkedHashMap<>();
 
 	/**
 	 * The last Nation standing, or null while the Game goes on.
@@ -148,9 +148,9 @@ public class Game {
 		removed.add(name);
 		List<Nation> left = remaining();
 		for (Nation other : left) {
-			List<String> report = removalReports.computeIfAbsent(other.name(), n -> new ArrayList<>());
+			List<String> report = pendingReport(other);
 			report.add(name + " was removed from the Game, as its Player was disconnected for too long.");
-			for (Warparty back : other.turnBackFrom(name, TRAVEL_TURNS)) {
+			for (Warparty back : other.turnBackFrom(name)) {
 				report.add("Your Warparty of " + listed(back.units()) + " heading to " + name
 						+ " turned back home, as " + name + " was removed from the Game.");
 			}
@@ -158,8 +158,16 @@ public class Game {
 		}
 		if (left.size() == 1) {
 			winner = left.getFirst().name();
-			removalReports.clear();
+			pendingReports.clear();
 		}
+	}
+
+	/**
+	 * What a Nation is to be told in its next Turn Report of what happened
+	 * during the Turn.
+	 */
+	private List<String> pendingReport(Nation nation) {
+		return pendingReports.computeIfAbsent(nation.name(), n -> new ArrayList<>());
 	}
 
 	/**
@@ -187,8 +195,8 @@ public class Game {
 		List<Nation> inPlay = remaining();
 		Map<String, List<String>> reports = new LinkedHashMap<>();
 		inPlay.forEach(nation -> reports.put(nation.name(),
-				new ArrayList<>(removalReports.getOrDefault(nation.name(), List.of()))));
-		removalReports.clear();
+				new ArrayList<>(pendingReports.getOrDefault(nation.name(), List.of()))));
+		pendingReports.clear();
 		for (Nation nation : inPlay) {
 			List<String> report = reports.get(nation.name());
 			for (Nation.FacedDilemma faced : nation.settleDilemmas()) {
@@ -421,7 +429,7 @@ public class Game {
 		this.conquered.add(conquered.name());
 		Map<String, List<Warparty>> turnedBack = new LinkedHashMap<>();
 		for (Nation nation : remaining()) {
-			List<Warparty> turned = nation.turnBackFrom(conquered.name(), TRAVEL_TURNS);
+			List<Warparty> turned = nation.turnBackFrom(conquered.name());
 			if (!turned.isEmpty()) {
 				turnedBack.put(nation.name(), turned);
 			}
@@ -762,8 +770,32 @@ public class Game {
 				}
 				yield actor.sendWarparty(send.target(), send.units(), TRAVEL_TURNS);
 			}
+			case Action.RecallWarparty recall -> recall(actor, recall.warparty());
 			case Action.AnswerDilemma answer -> answer(actor, answer);
 		};
+	}
+
+	/**
+	 * Recalls one of a Nation's Warparties not yet heading home. Its Player is
+	 * told in their next Turn Report, and so is its target's if it had arrived
+	 * there, as then there will be no Battle.
+	 */
+	private ActionResult recall(Nation nation, int id) {
+		Optional<Warparty> warparty = nation.warparty(id);
+		if (warparty.isEmpty()) {
+			return ActionResult.rejected("You have no such Warparty abroad.");
+		}
+		Warparty recalled = warparty.get();
+		if (recalled.homeward()) {
+			return ActionResult.rejected("That Warparty is already heading home.");
+		}
+		nation.recall(recalled);
+		pendingReport(nation)
+			.add("You Recalled your Warparty of " + listed(recalled.units()) + " heading to " + recalled.target() + ".");
+		if (recalled.awaitingBattle()) {
+			pendingReport(nation(recalled.target())).add(nation.name() + "'s Warparty turned back home before the Battle.");
+		}
+		return ActionResult.ACCEPTED;
 	}
 
 	/**

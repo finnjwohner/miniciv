@@ -226,13 +226,18 @@ function describeWarparty(warparty: Warparty) {
   return `${units} — heading home from ${warparty.target}${plunder}, ${plural(warparty.turnsLeft, 'Turn')} left`
 }
 
-/** The Nation's Warparties abroad, and a form to send Units from the Army to another Nation. */
+/**
+ * The Nation's Warparties abroad, each not yet heading home with a button to Recall it, and a form to
+ * send Units from the Army to another Nation.
+ */
 function Warparties({
   nation,
   onSend,
+  onRecall,
 }: {
   nation: NationView
   onSend: (target: string, units: Record<string, number>) => void
+  onRecall: (warparty: number) => void
 }) {
   const targets = otherNations(nation)
   const [target, setTarget] = useState(targets[0] ?? '')
@@ -254,8 +259,18 @@ function Warparties({
         <p>No Warparties abroad.</p>
       ) : (
         <ul>
-          {nation.warparties.map((w, i) => (
-            <li key={i}>{describeWarparty(w)}</li>
+          {nation.warparties.map((w) => (
+            <li key={w.id}>
+              {describeWarparty(w)}
+              {!w.homeward && (
+                <>
+                  {' '}
+                  <button onClick={() => onRecall(w.id)}>
+                    Recall (home in {plural(Math.max(1, w.turnsTravelled), 'Turn')})
+                  </button>
+                </>
+              )}
+            </li>
           ))}
         </ul>
       )}
@@ -424,6 +439,7 @@ function GameScreen({
   onRebuildBuilding,
   onTrainUnits,
   onSendWarparty,
+  onRecallWarparty,
   onAnswerDilemma,
   onDone,
 }: {
@@ -436,6 +452,7 @@ function GameScreen({
   onRebuildBuilding: (building: string) => void
   onTrainUnits: (unit: string, count: number) => void
   onSendWarparty: (target: string, units: Record<string, number>) => void
+  onRecallWarparty: (warparty: number) => void
   onAnswerDilemma: (dilemma: string, choice: string) => void
   onDone: (turn: number) => void
 }) {
@@ -509,7 +526,7 @@ function GameScreen({
             onRebuild={onRebuildBuilding}
           />
           <Army nation={nation} onTrain={onTrainUnits} />
-          <Warparties nation={nation} onSend={onSendWarparty} />
+          <Warparties nation={nation} onSend={onSendWarparty} onRecall={onRecallWarparty} />
         </>
       )}
       {playing && (

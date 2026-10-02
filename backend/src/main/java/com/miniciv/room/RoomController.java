@@ -54,6 +54,9 @@ class RoomController {
 	record SendWarpartyRequest(String token, String target, Map<String, Integer> units) {
 	}
 
+	record RecallWarpartyRequest(String token, int warparty) {
+	}
+
 	record AnswerDilemmaRequest(String token, String dilemma, String choice) {
 	}
 
@@ -181,6 +184,18 @@ class RoomController {
 		Map<String, Integer> units = request.units() == null ? Map.of() : request.units();
 		ActionResult result = rooms.act(code, request.token(),
 				new Action.SendWarparty(String.valueOf(request.target()), units));
+		return result.accepted() ? null : new Rejection(result.reason());
+	}
+
+	/**
+	 * Recalls one of the Nation's Warparties, turning it back home at once; the
+	 * Player's changed view arrives on {@code /user/queue/game}, or the reason
+	 * it was rejected on {@code /user/queue/rejections}.
+	 */
+	@MessageMapping("/rooms/{code}/recalls")
+	@SendToUser(destinations = "/queue/rejections", broadcast = false)
+	Rejection recallWarparty(@DestinationVariable String code, RecallWarpartyRequest request) {
+		ActionResult result = rooms.act(code, request.token(), new Action.RecallWarparty(request.warparty()));
 		return result.accepted() ? null : new Rejection(result.reason());
 	}
 
