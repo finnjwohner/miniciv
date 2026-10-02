@@ -1000,6 +1000,32 @@ class GameTest {
 	}
 
 	@Test
+	void aWarpartyWipedOutInTheBattleCannotConquerEvenANationLeftWithNoPopulationAndNoArmy() {
+		UnitType warrior = new UnitType("Warrior", 10, 3, 1, 1, 3, List.of());
+		UnitType recruit = new UnitType("Recruit", 0, 1, 20, 0, 1, List.of());
+		game = new Game(new Ruleset(List.of(warrior, recruit), List.of(), List.of()), List.of("Rome", "Carthage", "Egypt"),
+				EVEN_LUCK);
+		game.act("Rome", new Action.TrainUnits("Warrior", 1));
+		game.act("Carthage", new Action.TrainUnits("Warrior", 1));
+		game.endTurn();
+		arrived("Rome", "Carthage", Map.of("Warrior", 1));
+		game.act("Carthage", new Action.TrainUnits("Recruit", game.viewOf("Carthage").population()));
+		assertThat(game.viewOf("Carthage").population()).isZero();
+
+		game.endTurn();
+
+		NationView carthage = game.viewOf("Carthage");
+		assertThat(carthage.army()).isEmpty();
+		assertThat(carthage.conqueredBy()).isNull();
+		assertThat(game.conquered()).isEmpty();
+		assertThat(carthage.turnReport().lines()).containsExactly(
+				"Your Army of Warrior ×1 fought Rome's Warparty of Warrior ×1. You lost Warrior ×1 and Rome lost Warrior ×1.",
+				"Rome's Warparty was destroyed.", BASE_INCOME_REPORT);
+		assertThat(game.viewOf("Rome").warparties()).isEmpty();
+		assertThat(game.viewOf("Rome").otherNations()).containsExactly("Carthage", "Egypt");
+	}
+
+	@Test
 	void warpartiesHeadingToAConqueredNationTurnBackHomeTakingAsLongAsTheyHaveTravelled() {
 		gameWithGiants("Rome", "Carthage", "Egypt");
 		game.act("Rome", new Action.TrainUnits("Giant", 1));
