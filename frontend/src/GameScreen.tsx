@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { otherNations } from './api'
 import type { BuildingDamage, BuildingType, MapNation, NationView, UnitType, Warparty } from './api'
 import type { ReceivedRoom } from './useRoom'
 
@@ -233,7 +234,8 @@ function Warparties({
   nation: NationView
   onSend: (target: string, units: Record<string, number>) => void
 }) {
-  const [target, setTarget] = useState(nation.otherNations[0] ?? '')
+  const targets = otherNations(nation)
+  const [target, setTarget] = useState(targets[0] ?? '')
   const [chosen, setChosen] = useState<Record<string, number>>({})
   const army = Object.entries(nation.army)
   const units: Record<string, number> = {}
@@ -281,7 +283,7 @@ function Warparties({
           <label>
             To{' '}
             <select value={target} onChange={(e) => setTarget(e.target.value)}>
-              {nation.otherNations.map((n) => (
+              {targets.map((n) => (
                 <option key={n} value={n}>
                   {n}
                 </option>

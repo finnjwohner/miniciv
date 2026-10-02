@@ -156,12 +156,12 @@ class TurnsTest {
 	 * A Nation's view as its Player receives it.
 	 */
 	static Map<String, Object> view(int version, int turn, String nation, int gold, int population, int research,
-			List<String> otherNations, List<Map<String, Object>> construction, Map<String, Object> turnReport) {
-		return view(version, turn, nation, gold, population, research, otherNations, construction, List.of(), turnReport);
+			List<Map<String, Object>> construction, Map<String, Object> turnReport) {
+		return view(version, turn, nation, gold, population, research, construction, List.of(), turnReport);
 	}
 
 	static Map<String, Object> view(int version, int turn, String nation, int gold, int population, int research,
-			List<String> otherNations, List<Map<String, Object>> construction, List<Map<String, Object>> training,
+			List<Map<String, Object>> construction, List<Map<String, Object>> training,
 			Map<String, Object> turnReport) {
 		Map<String, Object> view = new HashMap<>();
 		view.put("version", version);
@@ -170,7 +170,6 @@ class TurnsTest {
 		view.put("gold", gold);
 		view.put("population", population);
 		view.put("research", research);
-		view.put("otherNations", otherNations);
 		view.put("map", List.of(Map.of("name", "Rome", "standing", "IN_GAME"),
 				Map.of("name", "Carthage", "standing", "IN_GAME")));
 		view.put("availableBuildings", List.of(Map.of("name", "Farm", "gold", 30, "turns", 2, "populationPerTurn", 1,
@@ -237,8 +236,8 @@ class TurnsTest {
 	void eachPlayerReceivesTheirOwnViewPrivatelyWhenTheGameStarts() throws Exception {
 		startGame();
 
-		assertThat(rome.privately().next()).isEqualTo(view(1, 1, "Rome", 50, 10, 0, List.of("Carthage"), List.of(), null));
-		assertThat(carthage.privately().next()).isEqualTo(view(1, 1, "Carthage", 50, 10, 0, List.of("Rome"), List.of(), null));
+		assertThat(rome.privately().next()).isEqualTo(view(1, 1, "Rome", 50, 10, 0, List.of(), null));
+		assertThat(carthage.privately().next()).isEqualTo(view(1, 1, "Carthage", 50, 10, 0, List.of(), null));
 	}
 
 	@Test
@@ -251,8 +250,8 @@ class TurnsTest {
 		done(carthage, 1);
 
 		Map<String, Object> report = Map.of("turn", 1, "lines", List.of(BASE_INCOME_REPORT));
-		assertThat(rome.privately().next()).isEqualTo(view(2, 2, "Rome", 60, 12, 3, List.of("Carthage"), List.of(), report));
-		assertThat(carthage.privately().next()).isEqualTo(view(2, 2, "Carthage", 60, 12, 3, List.of("Rome"), List.of(), report));
+		assertThat(rome.privately().next()).isEqualTo(view(2, 2, "Rome", 60, 12, 3, List.of(), report));
+		assertThat(carthage.privately().next()).isEqualTo(view(2, 2, "Carthage", 60, 12, 3, List.of(), report));
 		rome.privately().expectNone();
 		carthage.privately().expectNone();
 	}
@@ -304,7 +303,7 @@ class TurnsTest {
 
 		try (StompConnection reconnected = new StompConnection(port, rome.token())) {
 			assertThat(reconnected.subscribe("/app/rooms/" + code + "/nation").next())
-				.isEqualTo(view(1, 1, "Rome", 50, 10, 0, List.of("Carthage"), List.of(), null));
+				.isEqualTo(view(1, 1, "Rome", 50, 10, 0, List.of(), null));
 		}
 	}
 
@@ -353,7 +352,7 @@ class TurnsTest {
 
 		startBuilding(rome, "Farm");
 
-		assertThat(rome.privately().next()).isEqualTo(view(2, 1, "Rome", 20, 10, 0, List.of("Carthage"),
+		assertThat(rome.privately().next()).isEqualTo(view(2, 1, "Rome", 20, 10, 0,
 				List.of(Map.of("building", "Farm", "turnsLeft", 2)), null));
 		carthage.privately().expectNone();
 	}
@@ -383,7 +382,7 @@ class TurnsTest {
 
 		trainUnits(rome, "Warrior", 2);
 
-		assertThat(rome.privately().next()).isEqualTo(view(2, 1, "Rome", 10, 6, 0, List.of("Carthage"), List.of(),
+		assertThat(rome.privately().next()).isEqualTo(view(2, 1, "Rome", 10, 6, 0, List.of(),
 				List.of(Map.of("unit", "Warrior", "count", 2, "readyOnTurn", 2)), null));
 		carthage.privately().expectNone();
 	}

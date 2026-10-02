@@ -4,9 +4,9 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * What one Nation's Player may see on a Turn: their own state, the names of the
- * other Nations still in the Game and nothing more about them, the Map of
- * every Nation that took part and whether it is still in it, and the Turn
+ * What one Nation's Player may see on a Turn: their own state, the Map of
+ * every Nation that took part, by name and whether it is still in the Game,
+ * and nothing more about the others, and the Turn
  * Report of the Turn before, which is null on the first Turn. A conquered
  * Nation's Player keeps the Turn Report of the Turn it was conquered. The
  * version rises with every change to the Nation, so a browser can ignore a view
@@ -36,14 +36,13 @@ import java.util.Map;
  * @param winner the Nation that won the Game, or null while it goes on
  */
 public record NationView(int version, int turn, String nation, int gold, int population, int research,
-		List<String> otherNations, List<MapNation> map, List<BuildingType> availableBuildings, Map<String, Integer> buildings,
+		List<MapNation> map, List<BuildingType> availableBuildings, Map<String, Integer> buildings,
 		List<Construction> construction, List<Repair> repairs, int defense, List<BuildingDamage> damage, List<UnitType> availableUnits,
 		Map<String, Integer> army,
 		List<Training> training, List<Warparty> warparties, int travelTurns, int upkeep, TurnReport turnReport,
 		String conqueredBy, String winner) {
 
 	public NationView {
-		otherNations = List.copyOf(otherNations);
 		map = List.copyOf(map);
 		availableBuildings = List.copyOf(availableBuildings);
 		construction = List.copyOf(construction);
@@ -52,6 +51,16 @@ public record NationView(int version, int turn, String nation, int gold, int pop
 		availableUnits = List.copyOf(availableUnits);
 		training = List.copyOf(training);
 		warparties = List.copyOf(warparties);
+	}
+
+	/**
+	 * The other Nations still in the Game, in the order they joined.
+	 */
+	public List<String> otherNations() {
+		return map.stream()
+			.filter(other -> other.standing() == MapNation.Standing.IN_GAME && !other.name().equals(nation))
+			.map(MapNation::name)
+			.toList();
 	}
 
 }
