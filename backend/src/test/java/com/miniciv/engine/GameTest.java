@@ -65,6 +65,15 @@ class GameTest {
 	}
 
 	@Test
+	void everyNationsMapListsEveryNationInTheGameAsStillInIt() {
+		for (String nation : List.of("Rome", "Carthage", "Egypt")) {
+			assertThat(game.viewOf(nation).map()).containsExactly(new MapNation("Rome", MapNation.Standing.IN_GAME),
+					new MapNation("Carthage", MapNation.Standing.IN_GAME),
+					new MapNation("Egypt", MapNation.Standing.IN_GAME));
+		}
+	}
+
+	@Test
 	void endingATurnGivesEveryNationTheFlatBaseIncome() {
 		game.endTurn();
 		game.endTurn();
@@ -97,6 +106,8 @@ class GameTest {
 		game.endTurn();
 
 		assertThat(game.viewOf("Carthage")).isEqualTo(new NationView(2, 2, "Carthage", 60, 12, 3, List.of("Rome", "Egypt"),
+				List.of(new MapNation("Rome", MapNation.Standing.IN_GAME), new MapNation("Carthage", MapNation.Standing.IN_GAME),
+						new MapNation("Egypt", MapNation.Standing.IN_GAME)),
 				List.of(FARM, GRANARY, BANK, WALLS, MOAT), Map.of(), List.of(), List.of(), 0, List.of(),
 				List.of(WARRIOR, ARCHER, HORSEMAN, SCOUT), Map.of(), List.of(), List.of(), 3, 0,
 				new TurnReport(1, List.of("Your Nation gained 10 Gold, 2 Population and 3 Research.")), null, null));
@@ -997,6 +1008,11 @@ class GameTest {
 		assertThat(egypt.turnReport().lines()).containsExactly("Rome conquered Carthage.", BASE_INCOME_REPORT);
 		assertThat(egypt.otherNations()).containsExactly("Rome");
 		assertThat(egypt.winner()).isNull();
+		for (NationView view : List.of(rome, carthage, egypt)) {
+			assertThat(view.map()).containsExactly(new MapNation("Rome", MapNation.Standing.IN_GAME),
+					new MapNation("Carthage", MapNation.Standing.CONQUERED),
+					new MapNation("Egypt", MapNation.Standing.IN_GAME));
+		}
 	}
 
 	@Test
@@ -1321,6 +1337,8 @@ class GameTest {
 		assertThat(game.conquered()).isEmpty();
 		assertThat(game.winner()).isEmpty();
 		assertThat(game.viewOf("Rome").otherNations()).containsExactly("Egypt");
+		assertThat(game.viewOf("Egypt").map()).containsExactly(new MapNation("Rome", MapNation.Standing.IN_GAME),
+				new MapNation("Carthage", MapNation.Standing.REMOVED), new MapNation("Egypt", MapNation.Standing.IN_GAME));
 		assertThat(game.act("Carthage", new Action.TrainUnits("Warrior", 1)))
 			.isEqualTo(ActionResult.rejected("Your Nation has been removed from the Game."));
 		assertThat(game.act("Rome", new Action.SendWarparty("Carthage", Map.of("Warrior", 1))))
