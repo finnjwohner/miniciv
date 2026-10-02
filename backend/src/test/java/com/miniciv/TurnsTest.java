@@ -161,7 +161,7 @@ class TurnsTest {
 		view.put("buildings", Map.of());
 		view.put("construction", construction);
 		view.put("availableUnits", List.of(Map.of("name", "Warrior", "gold", 20, "population", 2, "turns", 1, "upkeep", 1,
-				"strength", 3, "counters", List.of())));
+				"strength", 3.0, "counters", List.of())));
 		view.put("army", Map.of());
 		view.put("training", training);
 		view.put("warparties", List.of());
