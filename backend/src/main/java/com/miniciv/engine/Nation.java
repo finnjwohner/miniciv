@@ -91,9 +91,8 @@ class Nation {
 		version++;
 	}
 
-	NationView view(int turn, List<String> otherNations, List<MapNation> map, int travelTurns, Ruleset ruleset,
-			String winner) {
-		return new NationView(version, turn, name, gold, population, research, otherNations, map, ruleset.buildings(),
+	NationView view(int turn, List<MapNation> map, int travelTurns, Ruleset ruleset, String winner) {
+		return new NationView(version, turn, name, gold, population, research, map, ruleset.buildings(),
 				Collections.unmodifiableMap(new LinkedHashMap<>(buildings)), construction, repairs, defense(ruleset), damage(ruleset),
 				ruleset.units(),
 				Collections.unmodifiableMap(new LinkedHashMap<>(army)), training, warparties, travelTurns, upkeep(ruleset),

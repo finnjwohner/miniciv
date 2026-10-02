@@ -105,7 +105,7 @@ class GameTest {
 	void aNationsViewShowsItsOwnStateAndOnlyTheNamesOfTheOtherNations() {
 		game.endTurn();
 
-		assertThat(game.viewOf("Carthage")).isEqualTo(new NationView(2, 2, "Carthage", 60, 12, 3, List.of("Rome", "Egypt"),
+		assertThat(game.viewOf("Carthage")).isEqualTo(new NationView(2, 2, "Carthage", 60, 12, 3,
 				List.of(new MapNation("Rome", MapNation.Standing.IN_GAME), new MapNation("Carthage", MapNation.Standing.IN_GAME),
 						new MapNation("Egypt", MapNation.Standing.IN_GAME)),
 				List.of(FARM, GRANARY, BANK, WALLS, MOAT), Map.of(), List.of(), List.of(), 0, List.of(),

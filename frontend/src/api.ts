@@ -84,7 +84,7 @@ export type Warparty = {
  */
 export type MapNation = { name: string; standing: 'IN_GAME' | 'CONQUERED' | 'REMOVED' }
 /**
- * What only this Player sees: their own Nation, and just the names of the others still in the Game.
+ * What only this Player sees: their own Nation, and the Map with just the names of the others.
  * `version` rises with every change to the Nation.
  */
 export type NationView = {
@@ -94,7 +94,6 @@ export type NationView = {
   gold: number
   population: number
   research: number
-  otherNations: string[]
   /** Every Nation that took part in the Game, this one included, in the order they joined. */
   map: MapNation[]
   availableBuildings: BuildingType[]
@@ -122,6 +121,11 @@ export type NationView = {
   conqueredBy: string | null
   /** The Nation that won the Game, or null while it goes on. */
   winner: string | null
+}
+
+/** The other Nations still in the Game, in the order they joined. */
+export function otherNations(nation: NationView): string[] {
+  return nation.map.filter((n) => n.standing === 'IN_GAME' && n.name !== nation.nation).map((n) => n.name)
 }
 
 /** What this browser keeps after joining a Room; the token is secret. */
