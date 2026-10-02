@@ -50,12 +50,12 @@ class DilemmasTest {
 		assertThat(report("Rome")).containsExactly(BASE_INCOME_REPORT,
 				"Sickness broke out in your Nation; choose what to do before this Turn ends.");
 		assertThat(game.viewOf("Rome").dilemmas())
-			.containsExactly(new Dilemma("Outbreak", "Sickness broke out in your Nation", List.of(QUARANTINE, LET_IT_SPREAD)));
+			.containsExactly(new Dilemma("Outbreak", "Sickness broke out in your Nation", List.of(QUARANTINE, LET_IT_SPREAD), null));
 		assertThat(game.viewOf("Rome").population()).isEqualTo(12);
 	}
 
 	@Test
-	void answeringADilemmaAppliesTheChoiceAtOnceAndTheTurnReportDescribesIt() {
+	void anAnsweredDilemmasChoiceAppliesAsTheTurnEndsAndTheTurnReportDescribesIt() {
 		play(firstDraws(2), OUTBREAK);
 		game.endTurn();
 		int version = game.viewOf("Rome").version();
@@ -64,12 +64,18 @@ class DilemmasTest {
 
 		NationView rome = game.viewOf("Rome");
 		assertThat(rome.version()).isGreaterThan(version);
-		assertThat(rome.gold()).isEqualTo(45);
-		assertThat(rome.population()).isEqualTo(10);
-		assertThat(rome.dilemmas()).isEmpty();
+		assertThat(rome.gold()).isEqualTo(60);
+		assertThat(rome.population()).isEqualTo(12);
+		assertThat(rome.dilemmas()).singleElement().extracting(Dilemma::chosen).isEqualTo("Quarantine");
+
 		game.endTurn();
+
 		assertThat(report("Rome")).containsExactly("You quarantined the sick: your Nation lost 15 Gold and 2 Population.",
 				BASE_INCOME_REPORT);
+		rome = game.viewOf("Rome");
+		assertThat(rome.gold()).isEqualTo(55);
+		assertThat(rome.population()).isEqualTo(12);
+		assertThat(rome.dilemmas()).isEmpty();
 	}
 
 	@Test
@@ -96,9 +102,10 @@ class DilemmasTest {
 			.isEqualTo(ActionResult.rejected("Outbreak offers no choice called Pray."));
 		assertThat(game.act("Rome", new Action.AnswerDilemma("Outbreak", "Let it spread"))).isEqualTo(ActionResult.ACCEPTED);
 		assertThat(game.act("Rome", new Action.AnswerDilemma("Outbreak", "Quarantine")))
-			.isEqualTo(ActionResult.rejected("There is no Dilemma called Outbreak awaiting your choice."));
-		assertThat(game.viewOf("Rome").gold()).isEqualTo(60);
-		assertThat(game.viewOf("Rome").population()).isEqualTo(4);
+			.isEqualTo(ActionResult.rejected("You have already chosen what to do about Outbreak."));
+		assertThat(game.act("Rome", new Action.AnswerDilemma("Flood", "Flee")))
+			.isEqualTo(ActionResult.rejected("There is no Dilemma called Flood awaiting your choice."));
+		assertThat(game.viewOf("Rome").dilemmas()).singleElement().extracting(Dilemma::chosen).isEqualTo("Let it spread");
 	}
 
 	@Test

@@ -44,8 +44,8 @@ public sealed interface Action {
 	}
 
 	/**
-	 * Makes a choice for one of the Nation's Dilemmas awaiting it, applying the
-	 * choice's effects now.
+	 * Makes a choice for one of the Nation's Dilemmas, which applies as the
+	 * Turn ends.
 	 *
 	 * @param dilemma the Dilemma's name
 	 * @param choice the name of the choice made

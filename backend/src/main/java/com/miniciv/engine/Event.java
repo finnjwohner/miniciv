@@ -56,13 +56,6 @@ public record Event(String name, Subject subject, double chance, Conditions when
 	}
 
 	/**
-	 * This Dilemma as it awaits its Player's choice.
-	 */
-	Dilemma asDilemma() {
-		return new Dilemma(name, text, choices);
-	}
-
-	/**
 	 * The choice that applies to a Dilemma its Player did not answer in time.
 	 */
 	Choice worstChoice() {
