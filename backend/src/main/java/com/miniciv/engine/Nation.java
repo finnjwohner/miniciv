@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Predicate;
 
 /**
  * A Nation's state inside the engine.
@@ -295,6 +296,25 @@ class Nation {
 	 */
 	List<Spy> spiesInPlace() {
 		return spies.stream().filter(Spy::inPlace).toList();
+	}
+
+	/**
+	 * The Nation's Spies still travelling, to their targets or home, in the
+	 * order sent.
+	 */
+	List<Spy> spiesTravelling() {
+		return spies.stream().filter(spy -> !spy.inPlace()).toList();
+	}
+
+	/**
+	 * Loses one of the Nation's Spies abroad, caught by another Nation.
+	 *
+	 * @param spy the Spy, as {@link #spiesInPlace()} or
+	 * {@link #spiesTravelling()} gave it
+	 */
+	void loseSpy(Spy spy) {
+		spies.remove(spy);
+		version++;
 	}
 
 	/**
@@ -779,9 +799,20 @@ class Nation {
 	 * How many Scouts the Nation has at home.
 	 */
 	int scouts(Ruleset ruleset) {
+		return atHome(ruleset, UnitType::scout);
+	}
+
+	/**
+	 * How many Spies the Nation has at home.
+	 */
+	int spiesAtHome(Ruleset ruleset) {
+		return atHome(ruleset, UnitType::spy);
+	}
+
+	private int atHome(Ruleset ruleset, Predicate<UnitType> kind) {
 		return army.entrySet()
 			.stream()
-			.filter(owned -> ruleset.unit(owned.getKey()).orElseThrow().scout())
+			.filter(owned -> kind.test(ruleset.unit(owned.getKey()).orElseThrow()))
 			.mapToInt(Map.Entry::getValue)
 			.sum();
 	}

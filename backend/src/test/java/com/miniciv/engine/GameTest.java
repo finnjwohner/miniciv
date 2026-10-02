@@ -1,6 +1,8 @@
 package com.miniciv.engine;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
@@ -51,6 +53,38 @@ class GameTest {
 	static RandomGenerator luck(long... draws) {
 		int[] next = { 0 };
 		return () -> draws[next[0]++ % draws.length];
+	}
+
+	/**
+	 * Luck that draws nothing lucky, 0.99, unless told otherwise.
+	 */
+	static class Rigged implements RandomGenerator {
+
+		private final Deque<Long> queued = new ArrayDeque<>();
+
+		private long otherwise = ScoutsTest.draw(0.99);
+
+		/**
+		 * Draws the given values next, then goes back to what it drew before.
+		 */
+		void then(double... values) {
+			for (double value : values) {
+				queued.add(ScoutsTest.draw(value));
+			}
+		}
+
+		/**
+		 * Draws the given value from now on.
+		 */
+		void always(double value) {
+			otherwise = ScoutsTest.draw(value);
+		}
+
+		@Override
+		public long nextLong() {
+			return queued.isEmpty() ? otherwise : queued.poll();
+		}
+
 	}
 
 	@Test

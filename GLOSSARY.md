@@ -105,15 +105,15 @@ A group of Units a Player sends from their Army toward another Nation; it travel
 _Avoid_: Attack, expedition, army
 
 **Scout**:
-A Unit that works unseen in the background, giving its Nation a chance each Turn to discover Warparties abroad, better the more Scouts it has. Scouts stay at home and never fight, so they cannot hold off a Battle or Conquest.
+A Unit that works unseen in the background, giving its Nation a chance each Turn to discover Warparties abroad and to catch other Nations' Spies still travelling, better the more Scouts it has. Scouts stay at home and never fight, so they cannot hold off a Battle or Conquest.
 _Avoid_: Spy, lookout
 
 **Spy**:
-A Unit that travels to another Nation and stays there until caught, now and then reporting a snapshot of its hidden state (Gold, Population, Research, Army or Buildings). Spies kept at home can catch enemy Spies, and a caught Spy may reveal its sender.
+A Unit that travels to another Nation and stays there until caught, now and then reporting a snapshot of its hidden state (Gold, Population, Research, Army or Buildings). Spies kept at home can catch enemy Spies in their Nation, and Scouts and travelling Warparties can catch Spies still travelling. A caught Spy dies, stays silent or confesses, revealing its sender and a snapshot of the sender's Nation; the sender is told only if another of its Spies in the catching Nation reports it.
 _Avoid_: Scout, agent
 
 **Fact**:
-One piece of another Nation's hidden state a Spy reported, shown on the Map against that Nation with the Turn it was learned; a later report of the same kind replaces it.
+One piece of another Nation's hidden state a Spy reported or a caught Spy confessed, shown on the Map against that Nation with the Turn it was learned; a later report of the same kind replaces it.
 _Avoid_: Intel, knowledge, info
 
 **Recall**:

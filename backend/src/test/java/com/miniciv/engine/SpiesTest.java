@@ -205,12 +205,18 @@ class SpiesTest {
 
 	@Test
 	void aSpyMayReportItsTargetsArmy() {
-		play(reporting(0.8), "Rome", "Carthage");
+		// Carthage's Scout does not catch the Spy on its way.
+		GameTest.Rigged luck = new GameTest.Rigged();
+		play(luck, "Rome", "Carthage");
 		armyOf("Rome", "Spy", 1);
 		armyOf("Carthage", "Warrior", 2);
 		armyOf("Carthage", "Scout", 1);
+		sendSpy("Rome", "Carthage");
+		game.endTurn();
+		game.endTurn();
+		luck.then(0, 0.8);
 
-		spyArrivesAtCarthage();
+		game.endTurn();
 
 		assertThat(report("Rome")).contains("Your Spy in Carthage reported that Carthage's Army is Warrior ×2 and Scout ×1.");
 		assertThat(onMapOf("Rome", "Carthage").facts().army())
