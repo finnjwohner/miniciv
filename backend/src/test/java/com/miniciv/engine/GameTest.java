@@ -16,15 +16,15 @@ import static org.assertj.core.api.Assertions.entry;
 
 class GameTest {
 
-	static final BuildingType FARM = new BuildingType("Farm", 30, 2, 1, 0, 0);
+	static final BuildingType FARM = new BuildingType("Farm", 30, 2, 1, 0, 0, 0, 0);
 
-	static final BuildingType GRANARY = new BuildingType("Granary", 40, 1, 2, 0, 0);
+	static final BuildingType GRANARY = new BuildingType("Granary", 40, 1, 2, 0, 0, 0, 0);
 
-	static final BuildingType BANK = new BuildingType("Bank", 45, 1, 0, 0.5, 0);
+	static final BuildingType BANK = new BuildingType("Bank", 45, 1, 0, 0, 0.5, 0, 0);
 
-	static final BuildingType WALLS = new BuildingType("Walls", 30, 2, 0, 0, 10);
+	static final BuildingType WALLS = new BuildingType("Walls", 30, 2, 0, 0, 0, 0, 10);
 
-	static final BuildingType MOAT = new BuildingType("Moat", 20, 1, 0, 0, 4);
+	static final BuildingType MOAT = new BuildingType("Moat", 20, 1, 0, 0, 0, 0, 4);
 
 	static final UnitType WARRIOR = new UnitType("Warrior", 10, 3, 1, 1, 3, List.of("Horseman"));
 
@@ -304,6 +304,67 @@ class GameTest {
 		game.endTurn();
 
 		assertThat(game.viewOf("Rome").turnReport().lines()).contains("Your Buildings added 2 Population and 9 Gold.");
+	}
+
+	@Test
+	void aBuildingAddsItsFlatGoldAndResearchEachTurnFromTheTurnItCompletes() {
+		BuildingType market = new BuildingType("Market", 30, 1, 0, 3, 0, 0, 0);
+		BuildingType library = new BuildingType("Library", 20, 2, 0, 0, 0, 2, 0);
+		game = new Game(new Ruleset(List.of(), List.of(market, library), List.of()), List.of("Rome", "Carthage"),
+				EVEN_LUCK);
+		game.act("Rome", new Action.StartBuilding("Market"));
+		game.act("Rome", new Action.StartBuilding("Library"));
+
+		game.endTurn();
+		NationView rome = game.viewOf("Rome");
+		assertThat(rome.gold()).isEqualTo(0 + 10 + 3);
+		assertThat(rome.research()).isEqualTo(3);
+		assertThat(rome.turnReport().lines()).contains("Your Buildings added 3 Gold.");
+
+		game.endTurn();
+		rome = game.viewOf("Rome");
+		assertThat(rome.gold()).isEqualTo(13 + 12 + 3);
+		assertThat(rome.research()).isEqualTo(3 + 3 + 2);
+		assertThat(rome.turnReport().lines()).contains("Your Buildings added 3 Gold and 2 Research.");
+	}
+
+	@Test
+	void severalBuildingsFlatGoldAndResearchAddUpWithTheirOtherEffects() {
+		BuildingType market = new BuildingType("Market", 10, 1, 0, 3, 0, 0, 0);
+		BuildingType library = new BuildingType("Library", 10, 1, 0, 0, 0, 2, 0);
+		BuildingType farm = new BuildingType("Farm", 10, 1, 1, 0, 0, 0, 0);
+		game = new Game(new Ruleset(List.of(), List.of(market, library, farm), List.of()), List.of("Rome", "Carthage"),
+				EVEN_LUCK);
+		game.act("Rome", new Action.StartBuilding("Market"));
+		game.act("Rome", new Action.StartBuilding("Market"));
+		game.act("Rome", new Action.StartBuilding("Library"));
+		game.act("Rome", new Action.StartBuilding("Library"));
+		game.act("Rome", new Action.StartBuilding("Farm"));
+
+		game.endTurn();
+
+		NationView rome = game.viewOf("Rome");
+		assertThat(rome.gold()).isEqualTo(0 + 10 + 6);
+		assertThat(rome.research()).isEqualTo(3 + 4);
+		assertThat(rome.population()).isEqualTo(10 + 2 + 1);
+		assertThat(rome.turnReport().lines()).contains("Your Buildings added 1 Population, 6 Gold and 4 Research.");
+	}
+
+	@Test
+	void aDestroyedBuildingAddsNoFlatGoldOrResearchButADamagedOneStillDoes() {
+		BuildingType fort = new BuildingType("Fort", 20, 1, 0, 3, 0, 2, 3);
+		UnitType spearman = new UnitType("Spearman", 10, 1, 1, 1, 2.5, List.of());
+		game = new Game(new Ruleset(List.of(spearman), List.of(fort), List.of()), List.of("Rome", "Carthage"),
+				EVEN_LUCK);
+		game.act("Carthage", new Action.StartBuilding("Fort"));
+		game.act("Carthage", new Action.StartBuilding("Fort"));
+		armyOf("Rome", "Spearman", 2);
+		arrived("Rome", "Carthage", Map.of("Spearman", 2));
+
+		game.endTurn();
+
+		assertThat(game.viewOf("Carthage").damage()).containsExactly(new BuildingDamage("Fort", 1, 2, 14, 1));
+		assertThat(game.viewOf("Carthage").turnReport().lines()).contains("Your Buildings added 3 Gold and 2 Research.");
 	}
 
 	@Test
@@ -846,7 +907,7 @@ class GameTest {
 
 	@Test
 	void aDestroyedBuildingAddsNothingUntilRebuiltButADamagedOneStillDoes() {
-		BuildingType fort = new BuildingType("Fort", 20, 1, 1, 0, 3);
+		BuildingType fort = new BuildingType("Fort", 20, 1, 1, 0, 0, 0, 3);
 		UnitType spearman = new UnitType("Spearman", 10, 1, 1, 1, 2.5, List.of());
 		game = new Game(new Ruleset(List.of(spearman), List.of(fort), List.of()), List.of("Rome", "Carthage"),
 				EVEN_LUCK);

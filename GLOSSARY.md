@@ -47,7 +47,7 @@ The in-world leader of a Nation, named by its Player in the Room; Turn Reports n
 _Avoid_: Leader, king, player
 
 **Gold**:
-A resource a Nation gains each Turn, one for every one of its Population plus what Buildings such as banks add, and spends on Buildings and Units.
+A resource a Nation gains each Turn, one for every one of its Population plus what Buildings such as markets and banks add, and spends on Buildings and Units.
 _Avoid_: Money, coins
 
 **Population**:
@@ -55,7 +55,7 @@ A resource representing a Nation's people; it grows each Turn by a flat base amo
 _Avoid_: Citizens, pop, manpower
 
 **Research**:
-A resource a Nation accumulates each Turn and spends to unlock Technologies.
+A resource a Nation accumulates each Turn, a flat base amount plus what Buildings such as libraries add, and spends to unlock Technologies.
 _Avoid_: Science, tech points
 
 **Technology**:

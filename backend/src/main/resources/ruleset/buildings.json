@@ -1,6 +1,8 @@
 [
   { "name": "Farm", "gold": 30, "turns": 2, "populationPerTurn": 1 },
-  { "name": "Granary", "gold": 60, "turns": 3, "populationPerTurn": 2 },
+  { "name": "Granary", "gold": 60, "turns": 3, "populationPerTurn": 3 },
+  { "name": "Market", "gold": 40, "turns": 2, "goldPerTurn": 3 },
+  { "name": "Library", "gold": 50, "turns": 3, "researchPerTurn": 2 },
   { "name": "Bank", "gold": 100, "turns": 4, "goldPerPopulation": 0.5 },
   { "name": "Palisade", "gold": 40, "turns": 2, "defense": 6 },
   { "name": "Walls", "gold": 80, "turns": 4, "defense": 15 },

@@ -46,7 +46,7 @@ class TurnsTest {
 			return new Ruleset(
 					List.of(new UnitType("Warrior", 20, 2, 1, 1, 3, List.of()),
 							new UnitType("Catapult", 50, 1, 1, 1, 20, List.of())),
-					List.of(new BuildingType("Farm", 30, 2, 1, 0, 0)), List.of());
+					List.of(new BuildingType("Farm", 30, 2, 1, 0, 0, 0, 0)), List.of());
 		}
 
 	}
@@ -188,7 +188,7 @@ class TurnsTest {
 		view.put("research", research);
 		view.put("map", List.of(onMap("Rome", "IN_GAME"), onMap("Carthage", "IN_GAME")));
 		view.put("availableBuildings", List.of(Map.of("name", "Farm", "gold", 30, "turns", 2, "populationPerTurn", 1,
-				"goldPerPopulation", 0.0, "defense", 0)));
+				"goldPerTurn", 0, "goldPerPopulation", 0.0, "researchPerTurn", 0, "defense", 0)));
 		view.put("buildings", Map.of());
 		view.put("construction", construction);
 		view.put("repairs", List.of());

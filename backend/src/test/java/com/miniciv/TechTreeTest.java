@@ -36,7 +36,7 @@ class TechTreeTest {
 		@Bean
 		@Primary
 		Ruleset testRuleset() {
-			return new Ruleset(List.of(), List.of(new BuildingType("Walls", 30, 2, 0, 0, 10)),
+			return new Ruleset(List.of(), List.of(new BuildingType("Walls", 30, 2, 0, 0, 0, 0, 10)),
 					List.of(new Technology("Masonry", 3, List.of(), List.of("Walls")),
 							new Technology("Mathematics", 20, List.of("Masonry"), List.of())));
 		}
@@ -121,7 +121,7 @@ class TechTreeTest {
 				Map.of("name", "Mathematics", "research", 20, "prerequisites", List.of("Masonry"), "unlocks", List.of(),
 						"standing", "AVAILABLE")));
 		assertThat(unlocked.get("availableBuildings")).isEqualTo(List.of(Map.of("name", "Walls", "gold", 30, "turns", 2,
-				"populationPerTurn", 0, "goldPerPopulation", 0.0, "defense", 10)));
+				"populationPerTurn", 0, "goldPerTurn", 0, "goldPerPopulation", 0.0, "researchPerTurn", 0, "defense", 10)));
 	}
 
 	@Test

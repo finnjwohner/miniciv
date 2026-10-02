@@ -33,7 +33,9 @@ export function ResourcesPanel({ nation }: { nation: NationView }) {
 function describeEffect(building: BuildingType) {
   const effects = []
   if (building.populationPerTurn > 0) effects.push(`+${building.populationPerTurn} Population per Turn`)
+  if (building.goldPerTurn > 0) effects.push(`+${building.goldPerTurn} Gold per Turn`)
   if (building.goldPerPopulation > 0) effects.push(`+${building.goldPerPopulation} Gold per Population per Turn`)
+  if (building.researchPerTurn > 0) effects.push(`+${building.researchPerTurn} Research per Turn`)
   if (building.defense > 0) effects.push(`+${building.defense} Defense`)
   return effects.join(', ')
 }
