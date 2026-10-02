@@ -15,10 +15,17 @@ public sealed interface Action {
 	}
 
 	/**
-	 * Pays the Gold now to repair a defensive Building type's damaged Building
-	 * and rebuild its destroyed ones, restoring all the Defense they lost.
+	 * Pays now to repair a defensive Building type's damaged Building, which
+	 * takes some Turns.
 	 */
 	record RepairBuilding(String building) implements Action {
+	}
+
+	/**
+	 * Pays now to rebuild one of a defensive Building type's destroyed
+	 * Buildings, which takes as long as constructing it.
+	 */
+	record RebuildBuilding(String building) implements Action {
 	}
 
 	/**

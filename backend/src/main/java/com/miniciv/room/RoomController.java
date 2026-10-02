@@ -45,6 +45,9 @@ class RoomController {
 	record RepairBuildingRequest(String token, String building) {
 	}
 
+	record RebuildBuildingRequest(String token, String building) {
+	}
+
 	record TrainUnitsRequest(String token, String unit, int count) {
 	}
 
@@ -129,7 +132,7 @@ class RoomController {
 	}
 
 	/**
-	 * Repairs a defensive Building type's damaged and destroyed Buildings; the
+	 * Starts repairing a defensive Building type's damaged Building; the
 	 * Player's changed view arrives on {@code /user/queue/game}, or the reason
 	 * it was rejected on {@code /user/queue/rejections}.
 	 */
@@ -137,6 +140,18 @@ class RoomController {
 	@SendToUser(destinations = "/queue/rejections", broadcast = false)
 	Rejection repairBuilding(@DestinationVariable String code, RepairBuildingRequest request) {
 		ActionResult result = rooms.act(code, request.token(), new Action.RepairBuilding(request.building()));
+		return result.accepted() ? null : new Rejection(result.reason());
+	}
+
+	/**
+	 * Starts rebuilding one of a defensive Building type's destroyed Buildings;
+	 * the Player's changed view arrives on {@code /user/queue/game}, or the
+	 * reason it was rejected on {@code /user/queue/rejections}.
+	 */
+	@MessageMapping("/rooms/{code}/rebuilds")
+	@SendToUser(destinations = "/queue/rejections", broadcast = false)
+	Rejection rebuildBuilding(@DestinationVariable String code, RebuildBuildingRequest request) {
+		ActionResult result = rooms.act(code, request.token(), new Action.RebuildBuilding(request.building()));
 		return result.accepted() ? null : new Rejection(result.reason());
 	}
 

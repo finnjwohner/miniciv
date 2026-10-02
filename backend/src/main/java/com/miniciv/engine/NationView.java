@@ -12,9 +12,12 @@ import java.util.Map;
  * @param availableBuildings the Buildings the Nation may start
  * @param buildings how many of each Building the Nation has completed
  * @param construction the Buildings under construction, in the order started
+ * @param repairs the defensive Buildings being repaired or rebuilt, in the
+ *        order started
  * @param defense the Nation's Defense, raised by its defensive Buildings
  * @param damage the defensive Buildings that have lost Defense, by type in the
- *        order first completed
+ *        order first completed, not counting the Defense being repaired or
+ *        rebuilt
  * @param availableUnits the Unit types the Nation may train
  * @param army how many of each Unit type the Nation has at home
  * @param training the Units in training, in the order started
@@ -24,7 +27,7 @@ import java.util.Map;
  */
 public record NationView(int version, int turn, String nation, int gold, int population, int research,
 		List<String> otherNations, List<BuildingType> availableBuildings, Map<String, Integer> buildings,
-		List<Construction> construction, int defense, List<BuildingDamage> damage, List<UnitType> availableUnits,
+		List<Construction> construction, List<Repair> repairs, int defense, List<BuildingDamage> damage, List<UnitType> availableUnits,
 		Map<String, Integer> army,
 		List<Training> training, List<Warparty> warparties, int travelTurns, int upkeep, TurnReport turnReport) {
 
@@ -32,6 +35,7 @@ public record NationView(int version, int turn, String nation, int gold, int pop
 		otherNations = List.copyOf(otherNations);
 		availableBuildings = List.copyOf(availableBuildings);
 		construction = List.copyOf(construction);
+		repairs = List.copyOf(repairs);
 		damage = List.copyOf(damage);
 		availableUnits = List.copyOf(availableUnits);
 		training = List.copyOf(training);

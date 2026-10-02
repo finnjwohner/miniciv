@@ -62,6 +62,22 @@ _Avoid_: Structure, improvement
 A Nation's protection against attack, raised by defensive Buildings, which must be worn down to 0 before an attack can reduce Population.
 _Avoid_: Walls, fortification, armour
 
+**Damaged**:
+A defensive Building that has lost some of the Defense it raises but still stands; it raises only what it has left.
+_Avoid_: Hurt, worn, weakened
+
+**Destroyed**:
+A defensive Building that has lost all of its Defense; it raises no Defense and adds none of its other effects until Rebuilt.
+_Avoid_: Ruined, razed, lost
+
+**Repair**:
+Restoring the Defense one Damaged Building lost, paying Gold upfront and taking some Turns, both in proportion to the Defense lost.
+_Avoid_: Fix, mend
+
+**Rebuild**:
+Restoring one Destroyed Building, paying the Gold upfront and taking the Turns that constructing it would.
+_Avoid_: Reconstruct, restore
+
 ## Warfare
 
 **Unit**:
