@@ -17,6 +17,11 @@ package com.miniciv.engine;
 public record Spy(int id, String unit, String target, boolean homeward, int turnsLeft, int turnsTravelled) {
 
 	/**
+	 * How many Turns a Spy takes to reach another Nation.
+	 */
+	static final int TRAVEL_TURNS = 3;
+
+	/**
 	 * Whether it has arrived at its target and stays there.
 	 */
 	boolean inPlace() {

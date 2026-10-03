@@ -12,6 +12,7 @@ import java.util.Map;
  * counting up in the order sent
  * @param target the Nation the Warparty was sent to
  * @param units how many of each Unit type it holds
+ * @param strength its Units' Strength added up, without counters
  * @param homeward whether it has fought at its target and is heading home
  * @param turnsLeft how many more Turns must resolve before it arrives where it
  * is heading; 0 once it has arrived at its target and waits for the Battle
@@ -19,8 +20,8 @@ import java.util.Map;
  * included
  * @param plunder what it took from its target and is carrying home
  */
-public record Warparty(int id, String target, Map<String, Integer> units, boolean homeward, int turnsLeft,
-		int turnsTravelled, Plunder plunder) {
+public record Warparty(int id, String target, Map<String, Integer> units, double strength, boolean homeward,
+		int turnsLeft, int turnsTravelled, Plunder plunder) {
 
 	public Warparty {
 		units = Collections.unmodifiableMap(new LinkedHashMap<>(units));
@@ -29,9 +30,18 @@ public record Warparty(int id, String target, Map<String, Integer> units, boolea
 	/**
 	 * A Warparty carrying no plunder.
 	 */
-	public Warparty(int id, String target, Map<String, Integer> units, boolean homeward, int turnsLeft,
-			int turnsTravelled) {
-		this(id, target, units, homeward, turnsLeft, turnsTravelled, Plunder.NONE);
+	public Warparty(int id, String target, Map<String, Integer> units, double strength, boolean homeward,
+			int turnsLeft, int turnsTravelled) {
+		this(id, target, units, strength, homeward, turnsLeft, turnsTravelled, Plunder.NONE);
+	}
+
+	/**
+	 * A Warparty setting off for its target, taking as many Turns as the
+	 * bracket for its Strength.
+	 */
+	static Warparty sent(int id, String target, Map<String, Integer> units, Ruleset ruleset) {
+		double strength = ruleset.strengthOf(units);
+		return new Warparty(id, target, units, strength, false, TravelBracket.turnsOut(strength), 0);
 	}
 
 	/**
@@ -52,15 +62,20 @@ public record Warparty(int id, String target, Map<String, Integer> units, boolea
 	 * This Warparty one Turn closer to where it is heading.
 	 */
 	Warparty travelled() {
-		return new Warparty(id, target, units, homeward, turnsLeft - 1, homeward ? turnsTravelled : turnsTravelled + 1, plunder);
+		return new Warparty(id, target, units, strength, homeward, turnsLeft - 1, homeward ? turnsTravelled : turnsTravelled + 1, plunder);
 	}
 
 	/**
 	 * This Warparty, having fought at its target, setting off home with its
-	 * surviving Units and its plunder.
+	 * surviving Units and its plunder, taking as many Turns as the bracket for
+	 * its surviving Strength and more for its haul.
+	 *
+	 * @param haul what it carries home, whether plundered or seized
 	 */
-	Warparty headingHome(Map<String, Integer> survivors, Plunder plunder, int travelTurns) {
-		return new Warparty(id, target, survivors, true, travelTurns, turnsTravelled, plunder);
+	Warparty headingHome(Map<String, Integer> survivors, Plunder plunder, Plunder haul, Ruleset ruleset) {
+		double survivingStrength = ruleset.strengthOf(survivors);
+		return new Warparty(id, target, survivors, survivingStrength, true,
+				TravelBracket.turnsHome(survivingStrength, haul), turnsTravelled, plunder);
 	}
 
 	/**
@@ -69,7 +84,7 @@ public record Warparty(int id, String target, Map<String, Integer> units, boolea
 	 * Turn.
 	 */
 	Warparty turnedBack() {
-		return new Warparty(id, target, units, true, Math.max(1, turnsTravelled), turnsTravelled, plunder);
+		return new Warparty(id, target, units, strength, true, Math.max(1, turnsTravelled), turnsTravelled, plunder);
 	}
 
 	/**
@@ -84,14 +99,14 @@ public record Warparty(int id, String target, Map<String, Integer> units, boolea
 	 * taking at least one more.
 	 */
 	Warparty delayed(int turns) {
-		return new Warparty(id, target, units, homeward, Math.max(1, turnsLeft + turns), turnsTravelled, plunder);
+		return new Warparty(id, target, units, strength, homeward, Math.max(1, turnsLeft + turns), turnsTravelled, plunder);
 	}
 
 	/**
 	 * This Warparty holding only the given Units.
 	 */
-	Warparty with(Map<String, Integer> units) {
-		return new Warparty(id, target, units, homeward, turnsLeft, turnsTravelled, plunder);
+	Warparty with(Map<String, Integer> units, Ruleset ruleset) {
+		return new Warparty(id, target, units, ruleset.strengthOf(units), homeward, turnsLeft, turnsTravelled, plunder);
 	}
 
 }

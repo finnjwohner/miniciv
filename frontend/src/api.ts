@@ -80,16 +80,29 @@ export type Training = { unit: string; count: number; readyOnTurn: number }
  * 0 once it has arrived at its target and waits for the Battle at the end of this Turn.
  * `turnsTravelled` is how many Turns it travelled toward its target, which a Recall takes to get home.
  * `plunder` is the Gold and Research it took from its target and is carrying home.
+ * `strength` is its Units' Strength added up, without counters, which set how long it travels.
  */
 export type Warparty = {
   id: number
   target: string
   units: Record<string, number>
+  strength: number
   homeward: boolean
   turnsLeft: number
   turnsTravelled: number
   plunder: { gold: number; research: number }
 }
+/** A Warparty whose Strength is at least `strength`, but below the next bracket's, travels `turns` Turns. */
+export type TravelBracket = { strength: number; turns: number }
+
+/** How many Turns a Warparty with the given Strength takes to reach another Nation. */
+export function travelTurns(brackets: TravelBracket[], strength: number): number {
+  return brackets.reduce(
+    (turns, bracket) => (strength >= bracket.strength ? bracket.turns : turns),
+    brackets[0]?.turns ?? 0,
+  )
+}
+
 /**
  * A Spy sent abroad, told apart by `id`; `turnsLeft` is how many more Turns must resolve before it gets
  * where it is heading, 0 once it is in place at its target, where it stays and now and then reports.
@@ -208,8 +221,10 @@ export type NationView = {
   warparties: Warparty[]
   /** The Nation's Spies abroad, in the order sent. */
   spies: Spy[]
-  /** How many Turns a Warparty takes to reach another Nation. */
-  travelTurns: number
+  /** How many Turns a Warparty takes to reach another Nation, by its Strength, from the weakest up. */
+  travelBrackets: TravelBracket[]
+  /** How many Turns a Spy takes to reach another Nation. */
+  spyTravelTurns: number
   /** The Gold the Nation's Units cost each Turn, at home and abroad. */
   upkeep: number
   /** Other Nations' Warparties that arrived at this one and wait for the Battle as this Turn ends. */

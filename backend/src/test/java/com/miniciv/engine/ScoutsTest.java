@@ -86,7 +86,7 @@ class ScoutsTest {
 		armyOf("Carthage", "Warrior", 1);
 		armyOf("Carthage", "Scout", 2);
 		send("Rome", "Carthage", Map.of("Warrior", 4));
-		for (int turn = 1; turn <= 4; turn++) {
+		for (int turn = 1; turn <= 5; turn++) {
 			game.endTurn();
 		}
 
@@ -118,7 +118,7 @@ class ScoutsTest {
 		game.act("Carthage", new Action.TrainUnits("Scout", 1));
 		game.endTurn();
 		send("Rome", "Carthage", Map.of("Giant", 1));
-		for (int turn = 1; turn <= 4; turn++) {
+		for (int turn = 1; turn <= 8; turn++) {
 			game.endTurn();
 		}
 

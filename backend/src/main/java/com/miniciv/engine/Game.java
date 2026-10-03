@@ -32,12 +32,6 @@ public class Game {
 	private static final int RESEARCH_PER_TURN = 3;
 
 	/**
-	 * How many Turns a Warparty takes to reach another Nation, and to come
-	 * back.
-	 */
-	private static final int TRAVEL_TURNS = 3;
-
-	/**
 	 * How much Gold a Warparty's surviving Strength lets it plunder.
 	 */
 	private static final int PLUNDER_GOLD_PER_STRENGTH = 3;
@@ -527,7 +521,7 @@ public class Game {
 				attacker.seize(shares.get(i));
 			}
 			attacker.foughtBattle(arrivals.get(i).warparty(), battle.warpartySurvivors(i),
-					conquered ? Plunder.NONE : shares.get(i), TRAVEL_TURNS);
+					conquered ? Plunder.NONE : shares.get(i), shares.get(i), ruleset);
 		}
 		return new BattleFought(defender, arrivals, battle, shares, defenseWorn, populationLost, exposure,
 				conquered ? turnBackFrom(defender, taken) : null);
@@ -899,8 +893,8 @@ public class Game {
 			Battle battle = Battle.fight(List.of(firstBefore.units()), secondBefore.units(), ruleset, random);
 			Map<String, Integer> firstLost = battle.warpartiesLost().getFirst();
 			Map<String, Integer> secondLost = battle.armyLost();
-			first.foughtEncounter(firstBefore, battle.warpartySurvivors(0));
-			second.foughtEncounter(secondBefore, battle.armySurvivors());
+			first.foughtEncounter(firstBefore, battle.warpartySurvivors(0), ruleset);
+			second.foughtEncounter(secondBefore, battle.armySurvivors(), ruleset);
 			reportEncounter(encounter.first(), encounter.second(), firstBefore, secondBefore, firstLost, secondLost,
 					reports);
 			reportEncounter(encounter.second(), encounter.first(), secondBefore, firstBefore, secondLost, firstLost,
@@ -1298,10 +1292,10 @@ public class Game {
 				if (send.units().keySet().stream().anyMatch(unit -> ruleset.unit(unit).filter(UnitType::spy).isPresent())) {
 					yield ActionResult.rejected("Spies are sent on their own, not in a Warparty.");
 				}
-				yield actor.sendWarparty(send.target(), send.units(), TRAVEL_TURNS);
+				yield actor.sendWarparty(send.target(), send.units(), ruleset);
 			}
 			case Action.SendSpy send -> unreachable(nation, send.target(), "A Spy")
-				.orElseGet(() -> actor.sendSpy(send.target(), ruleset, TRAVEL_TURNS));
+				.orElseGet(() -> actor.sendSpy(send.target(), ruleset));
 			case Action.RecallWarparty recall -> recall(actor, recall.warparty());
 			case Action.OfferTribute offer -> offer(actor, offer);
 			case Action.AnswerTribute answer -> answer(actor, answer);
@@ -1533,7 +1527,7 @@ public class Game {
 		}
 		List<Tribute> involved = tributes.stream().filter(tribute -> tribute.involves(nation)).toList();
 		List<Encounter> met = encounters.stream().filter(encounter -> encounter.involves(nation)).toList();
-		return own.view(turn, map, TRAVEL_TURNS, arrivals, involved, met, ruleset, winner);
+		return own.view(turn, map, arrivals, involved, met, ruleset, winner);
 	}
 
 	private Nation nation(String name) {

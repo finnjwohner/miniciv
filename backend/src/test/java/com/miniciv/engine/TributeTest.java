@@ -130,7 +130,7 @@ class TributeTest {
 		assertThat(rome.population()).isEqualTo(romeBefore.population() + 3);
 		assertThat(carthage.gold()).isEqualTo(carthageBefore.gold() - 20);
 		assertThat(carthage.population()).isEqualTo(carthageBefore.population() - 3);
-		assertThat(rome.warparties()).containsExactly(new Warparty(1, "Carthage", Map.of("Warrior", 2), true, 3, 3));
+		assertThat(rome.warparties()).containsExactly(new Warparty(1, "Carthage", Map.of("Warrior", 2), 6, true, 3, 3));
 		assertThat(carthage.arrivals()).isEmpty();
 		assertThat(carthage.tributes())
 			.containsExactly(new Tribute("Carthage", "Rome", 1, 20, 3, Tribute.Answer.ACCEPTED));

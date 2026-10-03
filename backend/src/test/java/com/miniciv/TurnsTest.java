@@ -208,7 +208,11 @@ class TurnsTest {
 		view.put("training", training);
 		view.put("warparties", List.of());
 		view.put("spies", List.of());
-		view.put("travelTurns", 3);
+		view.put("travelBrackets",
+				List.of(Map.of("strength", 0, "turns", 3), Map.of("strength", 10, "turns", 4),
+						Map.of("strength", 25, "turns", 5), Map.of("strength", 50, "turns", 6),
+						Map.of("strength", 100, "turns", 7)));
+		view.put("spyTravelTurns", 3);
 		view.put("upkeep", 0);
 		view.put("arrivals", List.of());
 		view.put("tributes", List.of());
@@ -245,7 +249,7 @@ class TurnsTest {
 
 	/**
 	 * Has Rome train a Catapult on Turn 1 and send it to Carthage, which it
-	 * conquers as Turn 5 ends.
+	 * conquers as Turn 6 ends, its trip taking 4 Turns.
 	 */
 	void romeConquersCarthage(Connected... players) throws Exception {
 		trainUnits(rome, "Catapult", 1);
@@ -253,7 +257,7 @@ class TurnsTest {
 		endTurn(1, players);
 		sendWarparty(rome, "Carthage", Map.of("Catapult", 1));
 		rome.privately().next();
-		for (int turn = 2; turn <= 5; turn++) {
+		for (int turn = 2; turn <= 6; turn++) {
 			endTurn(turn, players);
 		}
 	}
@@ -442,7 +446,7 @@ class TurnsTest {
 		Map<?, ?> view = rome.privately().next();
 		assertThat(view.get("army")).isEqualTo(Map.of());
 		assertThat(view.get("warparties")).isEqualTo(List.of(
-				Map.of("id", 1, "target", "Carthage", "units", Map.of("Warrior", 2), "homeward", false, "turnsLeft", 3,
+				Map.of("id", 1, "target", "Carthage", "units", Map.of("Warrior", 2), "strength", 6.0, "homeward", false, "turnsLeft", 3,
 						"turnsTravelled", 0, "plunder", Map.of("gold", 0, "research", 0))));
 		carthage.privately().expectNone();
 	}
@@ -466,7 +470,7 @@ class TurnsTest {
 
 		Map<?, ?> view = rome.privately().next();
 		assertThat(view.get("warparties")).isEqualTo(List.of(
-				Map.of("id", 1, "target", "Carthage", "units", Map.of("Warrior", 2), "homeward", true, "turnsLeft", 1,
+				Map.of("id", 1, "target", "Carthage", "units", Map.of("Warrior", 2), "strength", 6.0, "homeward", true, "turnsLeft", 1,
 						"turnsTravelled", 0, "plunder", Map.of("gold", 0, "research", 0))));
 		carthage.privately().expectNone();
 
@@ -504,8 +508,8 @@ class TurnsTest {
 			.containsExactly("Rome", "Rome");
 		clock.advance(Duration.ofMinutes(2));
 		rooms.endDueTurns();
-		done(rome, 6);
-		assertThat(currentGame().get("turn")).isEqualTo(6);
+		done(rome, 7);
+		assertThat(currentGame().get("turn")).isEqualTo(7);
 		rome.privately().expectNone();
 	}
 
@@ -521,9 +525,9 @@ class TurnsTest {
 		romeConquersCarthage(rome, carthage, egypt);
 		assertThat(currentGame().get("winner")).isNull();
 
-		endTurn(6, rome, egypt);
+		endTurn(7, rome, egypt);
 
-		assertThat(currentGame().get("turn")).isEqualTo(7);
+		assertThat(currentGame().get("turn")).isEqualTo(8);
 	}
 
 	@Test

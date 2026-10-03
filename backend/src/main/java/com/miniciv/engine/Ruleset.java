@@ -3,6 +3,7 @@ package com.miniciv.engine;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -44,6 +45,18 @@ public record Ruleset(List<UnitType> units, List<BuildingType> buildings, List<T
 
 	public Optional<Technology> technology(String name) {
 		return technologies.stream().filter(t -> t.name().equals(name)).findFirst();
+	}
+
+	/**
+	 * The Strength of the given Units added up, without counters.
+	 *
+	 * @param units how many of each Unit type
+	 */
+	public double strengthOf(Map<String, Integer> units) {
+		return units.entrySet()
+			.stream()
+			.mapToDouble(u -> unit(u.getKey()).orElseThrow().strength() * u.getValue())
+			.sum();
 	}
 
 	/**

@@ -91,10 +91,7 @@ record Battle(List<Map<String, Integer>> warparties, Map<String, Integer> army,
 	 * counters or luck.
 	 */
 	double warpartySurvivingStrength(int warparty, Ruleset ruleset) {
-		return warpartySurvivors(warparty).entrySet()
-			.stream()
-			.mapToDouble(s -> ruleset.unit(s.getKey()).orElseThrow().strength() * s.getValue())
-			.sum();
+		return ruleset.strengthOf(warpartySurvivors(warparty));
 	}
 
 	/**

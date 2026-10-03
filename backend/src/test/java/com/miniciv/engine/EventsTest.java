@@ -177,7 +177,7 @@ class EventsTest {
 		assertThat(report("Rome")).contains(
 				"A dust storm swept the plains: your Warparty of Warrior ×2 heading to Carthage will now arrive in 3 Turns.");
 		assertThat(game.viewOf("Rome").warparties())
-			.containsExactly(new Warparty(1, "Carthage", Map.of("Warrior", 2), false, 3, 1));
+			.containsExactly(new Warparty(1, "Carthage", Map.of("Warrior", 2), 6, false, 3, 1));
 		assertThat(report("Carthage")).noneMatch(line -> line.contains("dust storm"));
 	}
 
@@ -191,7 +191,7 @@ class EventsTest {
 		game.endTurn();
 		game.endTurn();
 		assertThat(game.viewOf("Rome").warparties())
-			.containsExactly(new Warparty(1, "Carthage", Map.of("Warrior", 2), false, 0, 3));
+			.containsExactly(new Warparty(1, "Carthage", Map.of("Warrior", 2), 6, false, 0, 3));
 		assertThat(report("Rome")).noneMatch(line -> line.contains("dust storm"));
 
 		game.endTurn();

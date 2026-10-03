@@ -311,7 +311,7 @@ class SpiesTest {
 		armyOf("Egypt", "Giant", 1);
 		spyArrivesAtCarthage();
 		game.act("Egypt", new Action.SendWarparty("Carthage", Map.of("Giant", 1)));
-		for (int turn = 1; turn <= 4; turn++) {
+		for (int turn = 1; turn <= 8; turn++) {
 			game.endTurn();
 		}
 		assertThat(game.viewOf("Carthage").conqueredBy()).isEqualTo("Egypt");
