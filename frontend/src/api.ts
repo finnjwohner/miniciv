@@ -46,8 +46,20 @@ export type RoomView = {
   game: GameView | null
 }
 
-/** What happened to a Nation as a Turn resolved. */
-export type TurnReport = { turn: number; lines: string[] }
+/** The kinds of section a Turn Report is grouped into, in the order they are told. */
+export const TURN_REPORT_KINDS = [
+  'DECISIONS_AND_ALERTS',
+  'WARFARE',
+  'COMPLETED',
+  'EVENTS',
+  'SPIES_AND_SCOUTS',
+  'RESOURCES',
+] as const
+export type TurnReportKind = (typeof TURN_REPORT_KINDS)[number]
+/** One section of a Turn Report: what happened of one kind, in the order it happened. */
+export type TurnReportSection = { kind: TurnReportKind; lines: string[] }
+/** What happened to a Nation as a Turn resolved, grouped into the sections with something in them. */
+export type TurnReport = { turn: number; sections: TurnReportSection[] }
 /** A kind of Building; once complete it adds its Population, Gold and Research every Turn, and raises Defense while standing. */
 export type BuildingType = {
   name: string

@@ -1,4 +1,5 @@
-import type { GameView, NationView, PlayerView } from '../api'
+import { TURN_REPORT_KINDS } from '../api'
+import type { GameView, NationView, PlayerView, TurnReport, TurnReportKind } from '../api'
 import { Icon } from '../ui/Icon'
 import { NationName } from '../ui/NationName'
 import { Panel } from '../ui/Panel'
@@ -18,6 +19,37 @@ function PlayerStanding({ player, game }: { player: PlayerView; game: GameView }
       </span>
     )
   return <span className="tag tag--muted">deciding</span>
+}
+
+/** Each Turn Report section's heading. */
+const SECTION_HEADINGS: Record<TurnReportKind, string> = {
+  DECISIONS_AND_ALERTS: 'Decisions & alerts',
+  WARFARE: 'Warfare',
+  COMPLETED: 'Completed',
+  EVENTS: 'Events',
+  SPIES_AND_SCOUTS: 'Spies & Scouts',
+  RESOURCES: 'Resources',
+}
+
+/** The Turn Report's sections with something in them, each under its heading, in the fixed order. */
+function ReportSections({ report }: { report: TurnReport | null }) {
+  const sections = TURN_REPORT_KINDS.flatMap((kind) => {
+    const lines = report?.sections.find((section) => section.kind === kind)?.lines ?? []
+    return lines.length > 0 ? [{ kind, lines }] : []
+  })
+  if (sections.length === 0) return <p className="muted">Nothing has happened yet.</p>
+  return sections.map(({ kind, lines }) => (
+    <div key={kind} className="report__section">
+      <h4 className="report__heading" id={`report-${kind}`}>
+        {SECTION_HEADINGS[kind]}
+      </h4>
+      <ul className="report" aria-labelledby={`report-${kind}`}>
+        {lines.map((line, i) => (
+          <li key={i}>{line}</li>
+        ))}
+      </ul>
+    </div>
+  ))
 }
 
 /**
@@ -51,21 +83,13 @@ export function TurnPanel({
       actions={paused && !game.winner ? <span className="tag tag--bad">paused</span> : undefined}
     >
       <div className="turn">
-        <div className="turn__report">
-          <h3 className="turn__heading">
+        <section className="turn__report" aria-labelledby="turn-report">
+          <h3 className="turn__heading" id="turn-report">
             <Icon name="book" size={12} />
             Turn Report
           </h3>
-          {nation?.turnReport && nation.turnReport.lines.length > 0 ? (
-            <ul className="report">
-              {nation.turnReport.lines.map((line, i) => (
-                <li key={i}>{line}</li>
-              ))}
-            </ul>
-          ) : (
-            <p className="muted">Nothing has happened yet.</p>
-          )}
-        </div>
+          <ReportSections report={nation?.turnReport ?? null} />
+        </section>
         <div className="turn__side">
           {playing && (
             <>

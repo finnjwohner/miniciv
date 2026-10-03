@@ -293,7 +293,8 @@ class TurnsTest {
 		done(rome, 1);
 		done(carthage, 1);
 
-		Map<String, Object> report = Map.of("turn", 1, "lines", List.of(BASE_INCOME_REPORT));
+		Map<String, Object> report = Map.of("turn", 1, "sections",
+				List.of(Map.of("kind", "RESOURCES", "lines", List.of(BASE_INCOME_REPORT))));
 		assertThat(rome.privately().next()).isEqualTo(view(2, 2, "Rome", 60, 12, 3, List.of(), report));
 		assertThat(carthage.privately().next()).isEqualTo(view(2, 2, "Carthage", 60, 12, 3, List.of(), report));
 		rome.privately().expectNone();

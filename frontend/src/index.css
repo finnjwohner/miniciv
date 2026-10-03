@@ -543,6 +543,19 @@ a:focus-visible {
   margin-top: 0;
 }
 
+.report__section + .report__section {
+  margin-top: calc(var(--space) * 1.5);
+}
+
+.report__heading {
+  margin: 0 0 calc(var(--space) * 0.5);
+  font-size: 0.75rem;
+  font-weight: normal;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+
 .report {
   margin: 0;
   padding: 0;

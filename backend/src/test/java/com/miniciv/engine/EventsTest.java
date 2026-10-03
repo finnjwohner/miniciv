@@ -69,8 +69,8 @@ class EventsTest {
 		assertThat(report("Rome")).containsExactly(BASE_INCOME_REPORT);
 		game.endTurn();
 
-		assertThat(report("Rome")).containsExactly(incomeReport(12),
-				"A good harvest filled your granaries: your Nation gained 3 Population.");
+		assertThat(report("Rome")).containsExactly(
+				"A good harvest filled your granaries: your Nation gained 3 Population.", incomeReport(12));
 		assertThat(game.viewOf("Rome").population()).isEqualTo(17);
 		assertThat(game.viewOf("Carthage").population()).isEqualTo(17);
 	}
@@ -115,8 +115,8 @@ class EventsTest {
 		}
 		game.endTurn();
 
-		assertThat(report("Rome")).containsExactly(incomeReport(16),
-				"Plague swept through your Nation: your Nation lost 5 Population.");
+		assertThat(report("Rome")).containsExactly(
+				"Plague swept through your Nation: your Nation lost 5 Population.", incomeReport(16));
 		assertThat(game.viewOf("Rome").population()).isEqualTo(13);
 	}
 
@@ -163,8 +163,9 @@ class EventsTest {
 
 		game.endTurn();
 
-		assertThat(report("Rome")).containsExactly(BASE_INCOME_REPORT,
-				"Pestilence struck: your Nation gained 4 Gold and lost 12 Population and 3 Research.");
+		assertThat(report("Rome")).containsExactly(
+				"Pestilence struck: your Nation gained 4 Gold and lost 12 Population and 3 Research.",
+				BASE_INCOME_REPORT);
 		NationView rome = game.viewOf("Rome");
 		assertThat(rome.gold()).isEqualTo(64);
 		assertThat(rome.population()).isZero();
@@ -177,12 +178,13 @@ class EventsTest {
 				"An earthquake shook your Nation"));
 		game.act("Rome", new Action.StartBuilding("Walls"));
 		game.endTurn();
-		assertThat(report("Rome")).containsExactly(BASE_INCOME_REPORT, "An earthquake shook your Nation.");
+		assertThat(report("Rome")).containsExactly("An earthquake shook your Nation.", BASE_INCOME_REPORT);
 
 		game.endTurn();
 
-		assertThat(report("Rome")).containsExactly("Your Walls has been built.", incomeReport(12),
-				"An earthquake shook your Nation: your Defense was worn down from 10 to 7, damaging Walls.");
+		assertThat(report("Rome")).containsExactly("Your Walls has been built.",
+				"An earthquake shook your Nation: your Defense was worn down from 10 to 7, damaging Walls.",
+				incomeReport(12));
 		assertThat(game.viewOf("Rome").defense()).isEqualTo(7);
 	}
 
@@ -199,9 +201,8 @@ class EventsTest {
 
 		game.endTurn();
 
-		assertThat(report("Rome")).containsExactly(incomeReport(12),
-				"Your tax collectors outdid themselves: your Nation gained 4 Gold.",
-				"Your scholars debated: your Nation gained 1 Research.");
+		assertThat(report("Rome")).containsExactly("Your tax collectors outdid themselves: your Nation gained 4 Gold.",
+				"Your scholars debated: your Nation gained 1 Research.", incomeReport(12));
 	}
 
 	@Test
@@ -215,8 +216,9 @@ class EventsTest {
 
 		game.endTurn();
 
-		assertThat(report("Rome")).containsExactly("Your Walls has been built.", incomeReport(12),
-				"An earthquake shook your Nation: your Defense was worn down from 10 to 7, damaging Walls.");
+		assertThat(report("Rome")).containsExactly("Your Walls has been built.",
+				"An earthquake shook your Nation: your Defense was worn down from 10 to 7, damaging Walls.",
+				incomeReport(12));
 		assertThat(report("Carthage")).containsExactly(incomeReport(12));
 	}
 

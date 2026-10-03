@@ -109,7 +109,13 @@ export function nationView(overrides: Partial<NationView> = {}): NationView {
       { name: 'Writing', research: 15, prerequisites: [], unlocks: ['Spy', 'Library'], standing: 'UNLOCKED' },
       { name: 'Iron Working', research: 25, prerequisites: ['Bronze Working'], unlocks: ['Horseman'], standing: 'AVAILABLE' },
     ],
-    turnReport: { turn: 2, lines: ['Your Farm was completed.', 'A good harvest filled your granaries (+4 Population).'] },
+    turnReport: {
+      turn: 2,
+      sections: [
+        { kind: 'COMPLETED', lines: ['Your Farm has been built.'] },
+        { kind: 'EVENTS', lines: ['A good harvest filled your granaries: your Nation gained 4 Population.'] },
+      ],
+    },
     dilemmas: [
       {
         name: 'Flooded river',
