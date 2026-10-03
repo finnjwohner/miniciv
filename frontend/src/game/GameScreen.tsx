@@ -161,7 +161,7 @@ function GameScreen({
             players={room.players}
             playerId={playerId}
             playing={playing}
-            countdown={formatCountdown(paused ? game.millisLeft : turnEndsAt - now)}
+            millisLeft={paused ? game.millisLeft : turnEndsAt - now}
             onDone={onDone}
           />
           {nation && playing && (

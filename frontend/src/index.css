@@ -613,6 +613,26 @@ input[type='range'] {
   color: var(--accent-text);
 }
 
+/* A panel whose action was just rejected shakes once, in pixel steps (see Panel.tsx). */
+.panel--shake {
+  animation: shake 360ms steps(1, end);
+}
+
+@keyframes shake {
+  0%,
+  100% {
+    transform: none;
+  }
+  15%,
+  55% {
+    transform: translateX(-4px);
+  }
+  35%,
+  75% {
+    transform: translateX(4px);
+  }
+}
+
 /* Notices above the dashboard */
 
 .banner {
@@ -719,6 +739,24 @@ input[type='range'] {
   padding: calc(var(--space) * 1.5);
   font-family: var(--font-pixel);
   font-size: 0.8rem;
+}
+
+/* In the last seconds of the Turn, End Turn pulses once a second (see TurnPanel.tsx). */
+.turn__end--pulse {
+  animation: pulse 1s ease-out infinite;
+}
+
+@keyframes pulse {
+  0% {
+    box-shadow:
+      2px 2px 0 #000,
+      0 0 0 0 var(--bad);
+  }
+  100% {
+    box-shadow:
+      2px 2px 0 #000,
+      0 0 0 10px transparent;
+  }
 }
 
 .roster--compact {

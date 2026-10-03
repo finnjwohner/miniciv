@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react'
 import type { Dilemma, Encounter, MapNation, NationView, Tribute } from '../api'
 import { Panel } from '../ui/Panel'
-import { CountInput, Rejection } from './controls'
+import { CountInput } from './controls'
 import { listCounts } from './format'
 import { MapName } from './MapName'
 
@@ -177,8 +177,8 @@ export function DecisionsPanel({
       icon="warning"
       className="dash__decisions panel--highlight"
       actions={open > 0 ? <span className="tag tag--accent">{open} open</span> : undefined}
+      rejection={rejection}
     >
-      <Rejection reason={rejection} />
       <ul className="decisions">
         {nation.dilemmas.map((d) => (
           <DilemmaDecision key={d.name} dilemma={d} onAnswer={onAnswerDilemma} />

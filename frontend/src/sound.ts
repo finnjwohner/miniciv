@@ -14,7 +14,8 @@ const note = (frequency: number, at: number, length: number, wave: OscillatorTyp
   loudness,
 })
 
-const CUES: Record<Cue, Note[]> = {
+/** Each cue's tones, in the order they play. */
+export const CUES: Record<Cue, Note[]> = {
   click: [note(660, 0, 0.04, 'square', 0.3)],
   endTurn: [note(523, 0, 0.08), note(784, 0.08, 0.14)],
   newTurn: [note(392, 0, 0.08, 'triangle', 0.7), note(523, 0.08, 0.08, 'triangle', 0.7), note(659, 0.16, 0.18, 'triangle', 0.7)],
