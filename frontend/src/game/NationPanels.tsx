@@ -40,6 +40,21 @@ function describeEffect(building: BuildingType) {
   return effects.join(', ')
 }
 
+/**
+ * The rows in progress that are the same by `sameBy`, each shown once with its `count` summed, in the
+ * order first started; the key doubles as the row's React key.
+ */
+function mergeAlike<T>(items: T[], sameBy: (item: T) => (string | number | boolean)[], count: (item: T) => number = () => 1) {
+  const rows = new Map<string, { item: T; count: number }>()
+  for (const item of items) {
+    const key = JSON.stringify(sameBy(item))
+    const row = rows.get(key)
+    if (row) row.count += count(item)
+    else rows.set(key, { item, count: count(item) })
+  }
+  return [...rows].map(([key, row]) => ({ key, ...row }))
+}
+
 /** A defensive Building type's Damaged and Destroyed Buildings, with buttons to Repair and Rebuild them. */
 function Damage({
   damage,
@@ -90,8 +105,8 @@ function Damage({
 
 /**
  * The Buildings the Nation can construct, then the ones it has, with a button to Sell each type it may
- * Sell one of, and the ones it is constructing, Repairing or Rebuilding. The buttons to construct come
- * first so they stay put as construction starts.
+ * Sell one of, and the ones it is constructing, Repairing or Rebuilding, the same ones merged into one row.
+ * The buttons to construct come first so they stay put as construction starts.
  */
 export function BuildPanel({
   nation,
@@ -154,16 +169,20 @@ export function BuildPanel({
               ),
             ]
           })}
-          {nation.construction.map((c, i) => (
-            <li key={`construction-${i}`} className="row">
-              <span className="row__name">{c.building}</span>
+          {mergeAlike(nation.construction, (c) => [c.building, c.turnsLeft]).map(({ key, item: c, count }) => (
+            <li key={`construction-${key}`} className="row">
+              <span className="row__name">
+                {c.building} ×{count}
+              </span>
               <span className="tag tag--muted">constructing</span>
               <span className="row__meta">{plural(c.turnsLeft, 'Turn')} left</span>
             </li>
           ))}
-          {nation.repairs.map((r, i) => (
-            <li key={`repair-${i}`} className="row">
-              <span className="row__name">{r.building}</span>
+          {mergeAlike(nation.repairs, (r) => [r.building, r.rebuild, r.turnsLeft]).map(({ key, item: r, count }) => (
+            <li key={`repair-${key}`} className="row">
+              <span className="row__name">
+                {r.building} ×{count}
+              </span>
               <span className="tag tag--muted">{r.rebuild ? 'being Rebuilt' : 'being Repaired'}</span>
               <span className="row__meta">{plural(r.turnsLeft, 'Turn')} left</span>
             </li>
@@ -213,7 +232,10 @@ function TrainUnit({
   )
 }
 
-/** The Unit types the Nation can train, then the Units in training, so the Train buttons stay put. */
+/**
+ * The Unit types the Nation can train, then the Units in training, merged by Unit type and Turns left, so
+ * the Train buttons stay put.
+ */
 export function TrainPanel({
   nation,
   rejection,
@@ -236,12 +258,12 @@ export function TrainPanel({
         <p className="muted">No Units in training.</p>
       ) : (
         <ul className="list">
-          {nation.training.map((t, i) => (
-            <li key={i} className="row">
+          {mergeAlike(nation.training, (t) => [t.unit, t.readyOnTurn], (t) => t.count).map(({ key, item: t, count }) => (
+            <li key={key} className="row">
               <span className="row__name">
-                {t.unit} ×{t.count}
+                {t.unit} ×{count}
               </span>
-              <span className="row__meta">ready on Turn {t.readyOnTurn}</span>
+              <span className="row__meta">{plural(t.readyOnTurn - nation.turn, 'Turn')} left</span>
             </li>
           ))}
         </ul>
