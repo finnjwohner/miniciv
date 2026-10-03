@@ -15,6 +15,7 @@ describe('TurnReportPanel', () => {
       nation: nationView({
         turnReport: {
           turn: 2,
+          netChange: { gold: 0, population: 0, research: 0 },
           sections: [
             { kind: 'DECISIONS_AND_ALERTS', lines: ['Sickness broke out in your Nation; choose what to do before this Turn ends.'] },
             { kind: 'WARFARE', lines: [] },
@@ -40,5 +41,66 @@ describe('TurnReportPanel', () => {
     renderGame({ nation: nationView({ turnReport: null }) })
 
     expect(screen.getByText('Nothing has happened yet.')).toBeInTheDocument()
+  })
+})
+
+/** The Turn Report panel. */
+function turnReport() {
+  return within(screen.getByRole('region', { name: 'Turn Report' }))
+}
+
+/** The Turn Report's net-change line: the paragraph naming a resource, if there is one. */
+function netChangeLine() {
+  return turnReport().queryByText((_, element) => element?.tagName === 'P' && /Gold|Population|Research/.test(element.textContent ?? ''))
+}
+
+describe('net change', () => {
+  it('heads the Turn Report with how the resources moved, leaving out those that did not change', () => {
+    renderGame({
+      nation: nationView({
+        turnReport: {
+          turn: 2,
+          netChange: { gold: 14, population: 3, research: -2 },
+          sections: [{ kind: 'RESOURCES', lines: ["Your Units' upkeep cost 3 Gold."] }],
+        },
+      }),
+    })
+
+    const line = netChangeLine()
+    expect(line).toHaveTextContent('+14 Gold · +3 Population · −2 Research', { normalizeWhitespace: false })
+    expect(line?.compareDocumentPosition(turnReport().getByRole('heading', { name: 'Resources' }))).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    )
+  })
+
+  it('leaves out every resource but the one that changed', () => {
+    renderGame({
+      nation: nationView({ turnReport: { turn: 3, netChange: { gold: -20, population: 0, research: 0 }, sections: [] } }),
+    })
+
+    expect(netChangeLine()?.textContent).toBe('−20 Gold')
+  })
+
+  it('shows gains in green and losses in red', () => {
+    renderGame({
+      nation: nationView({ turnReport: { turn: 2, netChange: { gold: 14, population: 0, research: -2 }, sections: [] } }),
+    })
+
+    expect(turnReport().getByText('+14 Gold')).toHaveClass('net--gain')
+    expect(turnReport().getByText('−2 Research')).toHaveClass('net--loss')
+  })
+
+  it('is hidden when nothing changed', () => {
+    renderGame({
+      nation: nationView({
+        turnReport: {
+          turn: 2,
+          netChange: { gold: 0, population: 0, research: 0 },
+          sections: [{ kind: 'COMPLETED', lines: ['Your Farm has been built.'] }],
+        },
+      }),
+    })
+
+    expect(netChangeLine()).not.toBeInTheDocument()
   })
 })
