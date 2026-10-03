@@ -24,6 +24,9 @@ import java.util.Map;
  * @param damage the defensive Buildings that have lost Defense, by type in the
  *        order first completed, not counting the Defense being repaired or
  *        rebuilt
+ * @param sellValues the Gold Selling one Building of each type would return
+ *        now, for the types the Nation may Sell one of, in the order first
+ *        completed
  * @param availableUnits the Unit types the Nation may train
  * @param army how many of each Unit type the Nation has at home
  * @param training the Units in training, in the order started
@@ -51,7 +54,8 @@ import java.util.Map;
  */
 public record NationView(int version, int turn, String nation, int gold, int population, int research,
 		List<MapNation> map, List<BuildingType> availableBuildings, Map<String, Integer> buildings,
-		List<Construction> construction, List<Repair> repairs, int defense, List<BuildingDamage> damage, List<UnitType> availableUnits,
+		List<Construction> construction, List<Repair> repairs, int defense, List<BuildingDamage> damage,
+		Map<String, Integer> sellValues, List<UnitType> availableUnits,
 		Map<String, Integer> army,
 		List<Training> training, List<Warparty> warparties, List<Spy> spies, int travelTurns, int upkeep, List<ArrivedWarparty> arrivals,
 		List<Tribute> tributes, List<Encounter> encounters, List<TechTreeEntry> techTree,

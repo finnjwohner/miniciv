@@ -196,6 +196,8 @@ export type NationView = {
   defense: number
   /** The defensive Buildings that have lost Defense, by type. */
   damage: BuildingDamage[]
+  /** The Gold Selling one Building of each type would return now, for the types the Nation may Sell one of. */
+  sellValues: Record<string, number>
   /** The Unit types the Nation may train: those needing no Technology, or one it has unlocked. */
   availableUnits: UnitType[]
   /** How many of each Unit type the Nation has at home. */

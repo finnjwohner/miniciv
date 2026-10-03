@@ -136,6 +136,7 @@ class Nation {
 		List<UnitType> availableUnits = ruleset.units().stream().filter(unit -> hasAccessTo(unit.name(), ruleset)).toList();
 		return new NationView(version, turn, name, gold, population, research, map, availableBuildings,
 				Collections.unmodifiableMap(new LinkedHashMap<>(buildings)), construction, repairs, defense(ruleset), damage(ruleset),
+				sellValues(ruleset),
 				availableUnits,
 				Collections.unmodifiableMap(new LinkedHashMap<>(army)), training, warparties, spies, travelTurns, upkeep(ruleset),
 				arrivals, tributes, encounters, techTree(ruleset), turnReport, awaitingChoice(winner),
@@ -594,6 +595,97 @@ class Nation {
 			.mapToInt(Repair::defense)
 			.sum();
 		return defenseLost.getOrDefault(building.name(), 0) - repairing;
+	}
+
+	/**
+	 * Gives up one of a Building type's standing Buildings at once for Gold:
+	 * an undamaged one if there is any, for half its Gold, or else the damaged
+	 * one, for a quarter, rounded down. A defensive one takes the Defense it
+	 * raised, and any it lost, with it.
+	 */
+	ActionResult sell(BuildingType building) {
+		Optional<String> unsellable = unsellable(building);
+		if (unsellable.isPresent()) {
+			return ActionResult.rejected(unsellable.get());
+		}
+		gold += sellValue(building);
+		if (undamaged(building) == 0) {
+			int lost = defenseLost.get(building.name()) - damaged(building);
+			if (lost == 0) {
+				defenseLost.remove(building.name());
+			}
+			else {
+				defenseLost.put(building.name(), lost);
+			}
+		}
+		buildings.computeIfPresent(building.name(), (b, count) -> count == 1 ? null : count - 1);
+		version++;
+		return ActionResult.ACCEPTED;
+	}
+
+	/**
+	 * Why the Nation may not Sell one of a Building type's Buildings now, if
+	 * it may not.
+	 */
+	private Optional<String> unsellable(BuildingType building) {
+		String name = building.name();
+		if (!buildings.containsKey(name)) {
+			return Optional.of(construction.stream().anyMatch(c -> c.building().equals(name))
+					? "Your " + name + " is still under construction, and cannot be sold until it is complete."
+					: "You have no " + name + " to sell.");
+		}
+		Optional<Repair> repair = repairs.stream().filter(r -> r.building().equals(name)).findFirst();
+		if (repair.isPresent()) {
+			return Optional.of("Your " + name + " is being " + (repair.get().rebuild() ? "rebuilt" : "repaired")
+					+ ", and cannot be sold until that is done.");
+		}
+		if (undamaged(building) == 0 && damaged(building) == 0) {
+			return Optional.of("Every " + name + " you have is destroyed, and a destroyed Building cannot be sold.");
+		}
+		return Optional.empty();
+	}
+
+	/**
+	 * The Gold Selling one of a Building type's Buildings returns, which the
+	 * Nation must be able to do.
+	 */
+	private int sellValue(BuildingType building) {
+		return building.gold() / (undamaged(building) > 0 ? 2 : 4);
+	}
+
+	/**
+	 * The Gold Selling one Building of each type would return now, for the
+	 * types the Nation may Sell one of, in the order first completed.
+	 */
+	private Map<String, Integer> sellValues(Ruleset ruleset) {
+		Map<String, Integer> values = new LinkedHashMap<>();
+		for (String building : buildings.keySet()) {
+			BuildingType type = ruleset.building(building).orElseThrow();
+			if (unsellable(type).isEmpty()) {
+				values.put(building, sellValue(type));
+			}
+		}
+		return Collections.unmodifiableMap(values);
+	}
+
+	/**
+	 * How many of a Building type's completed Buildings have lost no Defense.
+	 */
+	private int undamaged(BuildingType building) {
+		int count = buildings.getOrDefault(building.name(), 0);
+		if (building.defense() == 0) {
+			return count;
+		}
+		int lost = defenseLost.getOrDefault(building.name(), 0);
+		return count - Math.ceilDiv(lost, building.defense());
+	}
+
+	/**
+	 * The Defense lost by a Building type's one damaged but standing Building,
+	 * or 0 if none is.
+	 */
+	private int damaged(BuildingType building) {
+		return building.defense() == 0 ? 0 : defenseLost.getOrDefault(building.name(), 0) % building.defense();
 	}
 
 	ActionResult trainUnits(UnitType unit, int count, int turn) {

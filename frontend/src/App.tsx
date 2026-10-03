@@ -57,6 +57,7 @@ function JoinedRoom({ code, membership }: { code: string; membership: Membership
     startBuilding,
     repairBuilding,
     rebuildBuilding,
+    sellBuilding,
     trainUnits,
     sendWarparty,
     recallWarparty,
@@ -85,6 +86,7 @@ function JoinedRoom({ code, membership }: { code: string; membership: Membership
           onStartBuilding={startBuilding}
           onRepairBuilding={repairBuilding}
           onRebuildBuilding={rebuildBuilding}
+          onSellBuilding={sellBuilding}
           onTrainUnits={trainUnits}
           onSendWarparty={sendWarparty}
           onRecallWarparty={recallWarparty}

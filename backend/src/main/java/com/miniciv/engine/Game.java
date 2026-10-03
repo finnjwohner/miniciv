@@ -1267,6 +1267,9 @@ public class Game {
 			case Action.RebuildBuilding rebuild -> ruleset.building(rebuild.building())
 				.map(actor::rebuild)
 				.orElseGet(() -> noSuchBuilding(rebuild.building()));
+			case Action.SellBuilding sell -> ruleset.building(sell.building())
+				.map(actor::sell)
+				.orElseGet(() -> noSuchBuilding(sell.building()));
 			case Action.TrainUnits train -> {
 				if (train.count() < 1) {
 					yield ActionResult.rejected("Train at least one Unit.");

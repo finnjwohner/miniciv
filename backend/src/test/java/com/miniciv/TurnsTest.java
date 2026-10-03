@@ -133,6 +133,10 @@ class TurnsTest {
 		player.stomp().send("/app/rooms/" + code + "/rebuilds", Map.of("token", player.token(), "building", building));
 	}
 
+	void sellBuilding(Connected player, String building) {
+		player.stomp().send("/app/rooms/" + code + "/sales", Map.of("token", player.token(), "building", building));
+	}
+
 	void trainUnits(Connected player, String unit, int count) {
 		player.stomp().send("/app/rooms/" + code + "/units", Map.of("token", player.token(), "unit", unit, "count", count));
 	}
@@ -194,6 +198,7 @@ class TurnsTest {
 		view.put("repairs", List.of());
 		view.put("defense", 0);
 		view.put("damage", List.of());
+		view.put("sellValues", Map.of());
 		view.put("availableUnits",
 				List.of(Map.of("name", "Warrior", "gold", 20, "population", 2, "turns", 1, "upkeep", 1, "strength", 3.0,
 						"counters", List.of(), "scout", false, "spy", false),
@@ -532,6 +537,18 @@ class TurnsTest {
 
 		assertThat(romeRejections.next()).isEqualTo(Map.of("reason", "You have no damaged Farm to repair."));
 		assertThat(romeRejections.next()).isEqualTo(Map.of("reason", "You have no destroyed Farm to rebuild."));
+		rome.privately().expectNone();
+	}
+
+	@Test
+	void aPlayerWhoseSaleIsRejectedIsToldWhyPrivately() throws Exception {
+		startGame();
+		rome.privately().next();
+		StompConnection.Messages romeRejections = rome.stomp().subscribe("/user/queue/rejections");
+
+		sellBuilding(rome, "Farm");
+
+		assertThat(romeRejections.next()).isEqualTo(Map.of("reason", "You have no Farm to sell."));
 		rome.privately().expectNone();
 	}
 
