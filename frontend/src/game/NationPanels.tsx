@@ -88,19 +88,24 @@ function Damage({
   )
 }
 
-/** The Buildings the Nation has and is constructing, Repairing or Rebuilding, and the ones it can construct. */
+/**
+ * The Buildings the Nation has and is constructing, Repairing or Rebuilding, with a button to Sell each
+ * type it may Sell one of, and the ones it can construct.
+ */
 export function BuildPanel({
   nation,
   rejection,
   onStart,
   onRepair,
   onRebuild,
+  onSell,
 }: {
   nation: NationView
   rejection: string | null
   onStart: (building: string) => void
   onRepair: (building: string) => void
   onRebuild: (building: string) => void
+  onSell: (building: string) => void
 }) {
   const owned = Object.entries(nation.buildings)
   return (
@@ -113,10 +118,16 @@ export function BuildPanel({
         <ul className="list">
           {owned.map(([name, count]) => {
             const damage = nation.damage.find((d) => d.building === name)
+            const sellValue = nation.sellValues[name]
             return [
               <li key={name} className="row">
                 <span className="row__name">{name}</span>
                 <span className="row__meta">×{count}</span>
+                {sellValue !== undefined && (
+                  <button aria-label={`Sell ${name}`} onClick={() => onSell(name)}>
+                    Sell for {sellValue} Gold
+                  </button>
+                )}
               </li>,
               damage && (
                 <Damage

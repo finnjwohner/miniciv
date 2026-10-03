@@ -29,6 +29,14 @@ public sealed interface Action {
 	}
 
 	/**
+	 * Gives up one of the Nation's standing Buildings of a type at once for
+	 * Gold: an undamaged one if it has any, for half its Gold, or else the
+	 * damaged one, for a quarter.
+	 */
+	record SellBuilding(String building) implements Action {
+	}
+
+	/**
 	 * Pays the Gold and Population for a number of Units of one type now and
 	 * starts training them.
 	 */

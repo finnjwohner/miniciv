@@ -80,6 +80,15 @@ export function useRoom(code: string, token: string) {
     })
   }
 
+  /** Sells one standing Building of a type for Gold at once; a rejection's reason arrives in `rejection`. */
+  const sellBuilding = (building: string) => {
+    setRejection(null)
+    client.current?.publish({
+      destination: `/app/rooms/${code}/sales`,
+      body: JSON.stringify({ token, building }),
+    })
+  }
+
   /** Starts training Units of one type; a rejection's reason arrives in `rejection`. */
   const trainUnits = (unit: string, count: number) => {
     setRejection(null)
@@ -185,6 +194,7 @@ export function useRoom(code: string, token: string) {
     startBuilding,
     repairBuilding,
     rebuildBuilding,
+    sellBuilding,
     trainUnits,
     sendWarparty,
     recallWarparty,

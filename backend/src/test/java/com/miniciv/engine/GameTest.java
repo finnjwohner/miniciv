@@ -190,7 +190,7 @@ class GameTest {
 		assertThat(game.viewOf("Carthage")).isEqualTo(new NationView(2, 2, "Carthage", 60, 12, 3,
 				List.of(new MapNation("Rome", MapNation.Standing.IN_GAME), new MapNation("Carthage", MapNation.Standing.IN_GAME),
 						new MapNation("Egypt", MapNation.Standing.IN_GAME)),
-				List.of(FARM, GRANARY, BANK, WALLS, MOAT), Map.of(), List.of(), List.of(), 0, List.of(),
+				List.of(FARM, GRANARY, BANK, WALLS, MOAT), Map.of(), List.of(), List.of(), 0, List.of(), Map.of(),
 				List.of(WARRIOR, ARCHER, HORSEMAN, SCOUT), Map.of(), List.of(), List.of(), List.of(), 3, 0, List.of(), List.of(), List.of(), List.of(),
 				new TurnReport(1, List.of(BASE_INCOME_REPORT)), List.of(), null,
 				null));
@@ -1060,6 +1060,135 @@ class GameTest {
 
 		assertThat(game.act("Carthage", new Action.RepairBuilding("Walls")))
 			.isEqualTo(ActionResult.rejected("You have no damaged Walls to repair."));
+	}
+
+	@Test
+	void sellingABuildingReturnsHalfItsGoldAtOnceAndItsEffectsStopFromThatTurnsResolution() {
+		game.act("Carthage", new Action.StartBuilding("Farm"));
+		game.endTurn();
+		game.endTurn();
+		assertThat(game.viewOf("Carthage").sellValues()).containsExactly(entry("Farm", 15));
+		int carthageGold = game.viewOf("Carthage").gold();
+		int carthagePopulation = game.viewOf("Carthage").population();
+
+		ActionResult result = game.act("Carthage", new Action.SellBuilding("Farm"));
+
+		assertThat(result).isEqualTo(ActionResult.ACCEPTED);
+		NationView carthage = game.viewOf("Carthage");
+		assertThat(carthage.gold()).isEqualTo(carthageGold + 15);
+		assertThat(carthage.buildings()).isEmpty();
+		assertThat(carthage.sellValues()).isEmpty();
+
+		game.endTurn();
+		assertThat(game.viewOf("Carthage").population()).isEqualTo(carthagePopulation + 2);
+		assertThat(game.viewOf("Carthage").turnReport().lines()).noneMatch(line -> line.startsWith("Your Buildings added"));
+	}
+
+	/**
+	 * A Game where Carthage's two Forts, each raising 10 Defense, are worn
+	 * down by the given Spearmen of Rome's, each wearing 2.5 Defense off.
+	 */
+	void fortsWornDownBy(int spearmen) {
+		BuildingType fort = new BuildingType("Fort", 22, 1, 0, 0, 0, 0, 10);
+		UnitType spearman = new UnitType("Spearman", 5, 1, 1, 0, 2.5, List.of());
+		game = new Game(new Ruleset(List.of(spearman), List.of(fort, FARM), List.of()), List.of("Rome", "Carthage"),
+				EVEN_LUCK);
+		game.act("Carthage", new Action.StartBuilding("Fort"));
+		game.act("Carthage", new Action.StartBuilding("Fort"));
+		armyOf("Rome", "Spearman", spearmen);
+		arrived("Rome", "Carthage", Map.of("Spearman", spearmen));
+		game.endTurn();
+	}
+
+	@Test
+	void anUndamagedBuildingSellsFirstForHalfItsGoldThenADamagedOneForAQuarterTakingItsDamageWithIt() {
+		fortsWornDownBy(2);
+		assertThat(game.viewOf("Carthage").defense()).isEqualTo(15);
+		assertThat(game.viewOf("Carthage").sellValues()).containsExactly(entry("Fort", 11));
+		int carthageGold = game.viewOf("Carthage").gold();
+
+		assertThat(game.act("Carthage", new Action.SellBuilding("Fort"))).isEqualTo(ActionResult.ACCEPTED);
+
+		NationView carthage = game.viewOf("Carthage");
+		assertThat(carthage.gold()).isEqualTo(carthageGold + 11);
+		assertThat(carthage.defense()).isEqualTo(5);
+		assertThat(carthage.damage()).containsExactly(new BuildingDamage("Fort", 0, 5, 6, 1, 11, 1));
+		assertThat(carthage.sellValues()).containsExactly(entry("Fort", 5));
+
+		assertThat(game.act("Carthage", new Action.SellBuilding("Fort"))).isEqualTo(ActionResult.ACCEPTED);
+
+		carthage = game.viewOf("Carthage");
+		assertThat(carthage.gold()).isEqualTo(carthageGold + 11 + 5);
+		assertThat(carthage.defense()).isZero();
+		assertThat(carthage.damage()).isEmpty();
+		assertThat(carthage.buildings()).isEmpty();
+	}
+
+	@Test
+	void aDestroyedBuildingCannotBeSoldButAStandingOneOfTheSameTypeCan() {
+		fortsWornDownBy(6);
+		assertThat(game.viewOf("Carthage").damage()).containsExactly(new BuildingDamage("Fort", 1, 5, 6, 1, 11, 1));
+		int carthageGold = game.viewOf("Carthage").gold();
+
+		assertThat(game.act("Carthage", new Action.SellBuilding("Fort"))).isEqualTo(ActionResult.ACCEPTED);
+
+		NationView carthage = game.viewOf("Carthage");
+		assertThat(carthage.gold()).isEqualTo(carthageGold + 5);
+		assertThat(carthage.buildings()).containsExactly(entry("Fort", 1));
+		assertThat(carthage.damage()).containsExactly(new BuildingDamage("Fort", 1, 0, 0, 0, 11, 1));
+		assertThat(carthage.defense()).isZero();
+		assertThat(carthage.sellValues()).isEmpty();
+		assertThat(game.act("Carthage", new Action.SellBuilding("Fort"))).isEqualTo(
+				ActionResult.rejected("Every Fort you have is destroyed, and a destroyed Building cannot be sold."));
+		assertThat(game.viewOf("Carthage").gold()).isEqualTo(carthageGold + 5);
+	}
+
+	@Test
+	void sellingAnUndamagedBuildingLeavesADestroyedOneOfTheSameTypeDestroyed() {
+		fortsWornDownBy(4);
+		assertThat(game.viewOf("Carthage").damage()).containsExactly(new BuildingDamage("Fort", 1, 0, 0, 0, 11, 1));
+		int carthageGold = game.viewOf("Carthage").gold();
+
+		assertThat(game.act("Carthage", new Action.SellBuilding("Fort"))).isEqualTo(ActionResult.ACCEPTED);
+
+		NationView carthage = game.viewOf("Carthage");
+		assertThat(carthage.gold()).isEqualTo(carthageGold + 11);
+		assertThat(carthage.buildings()).containsExactly(entry("Fort", 1));
+		assertThat(carthage.damage()).containsExactly(new BuildingDamage("Fort", 1, 0, 0, 0, 11, 1));
+		assertThat(carthage.defense()).isZero();
+	}
+
+	@Test
+	void aBuildingTypeBeingRepairedOrRebuiltCannotBeSold() {
+		fortsWornDownBy(6);
+		game.act("Carthage", new Action.RepairBuilding("Fort"));
+
+		assertThat(game.viewOf("Carthage").sellValues()).isEmpty();
+		assertThat(game.act("Carthage", new Action.SellBuilding("Fort")))
+			.isEqualTo(ActionResult.rejected("Your Fort is being repaired, and cannot be sold until that is done."));
+
+		game.endTurn();
+		game.act("Carthage", new Action.RebuildBuilding("Fort"));
+
+		assertThat(game.act("Carthage", new Action.SellBuilding("Fort")))
+			.isEqualTo(ActionResult.rejected("Your Fort is being rebuilt, and cannot be sold until that is done."));
+		assertThat(game.viewOf("Carthage").buildings()).containsExactly(entry("Fort", 2));
+	}
+
+	@Test
+	void onlyACompletedBuildingTheNationHasCanBeSold() {
+		game.act("Carthage", new Action.StartBuilding("Farm"));
+		int carthageGold = game.viewOf("Carthage").gold();
+
+		assertThat(game.act("Carthage", new Action.SellBuilding("Pyramid")))
+			.isEqualTo(ActionResult.rejected("There is no Building called Pyramid."));
+		assertThat(game.act("Carthage", new Action.SellBuilding("Moat")))
+			.isEqualTo(ActionResult.rejected("You have no Moat to sell."));
+		assertThat(game.act("Carthage", new Action.SellBuilding("Farm")))
+			.isEqualTo(ActionResult.rejected("Your Farm is still under construction, and cannot be sold until it is complete."));
+		assertThat(game.viewOf("Carthage").sellValues()).isEmpty();
+		assertThat(game.viewOf("Carthage").gold()).isEqualTo(carthageGold);
+		assertThat(game.viewOf("Carthage").construction()).containsExactly(new Construction("Farm", 2));
 	}
 
 	@Test
