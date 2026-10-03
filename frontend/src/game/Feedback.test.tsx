@@ -1,7 +1,8 @@
-import { act, fireEvent, screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { GameView } from '../api'
-import { fakeWebAudio, timesPlayed, type Tone } from '../test/audio'
+import { fakeWebAudio, gesture, timesPlayed, type Tone } from '../test/audio'
+import { passes } from '../test/clock'
 import { MY_PLAYER_ID, renderGame, roomView } from '../test/fixtures'
 import { prefersReducedMotion } from '../test/motion'
 
@@ -14,20 +15,6 @@ function roomWithTimeLeft(millisLeft: number, game: Partial<GameView> = {}) {
 function roomDoneWithTimeLeft(millisLeft: number) {
   const room = roomWithTimeLeft(millisLeft)
   return { ...room, players: room.players.map((p) => (p.id === MY_PLAYER_ID ? { ...p, done: true } : p)) }
-}
-
-/** Browsers only let a page make sound after a gesture, so tests make one before listening. */
-function gesture() {
-  fireEvent.pointerDown(document.body)
-}
-
-/** Lets `millis` pass a quarter of a second at a time, letting the screen catch up after each, as a browser would. */
-function passes(millis: number) {
-  for (let passed = 0; passed < millis; passed += 250) {
-    act(() => {
-      vi.advanceTimersByTime(Math.min(250, millis - passed))
-    })
-  }
 }
 
 /** The End Turn button, under either of its labels. */

@@ -1,4 +1,5 @@
 // A stand-in for the browser's Web Audio, which jsdom lacks, recording every tone played.
+import { fireEvent } from '@testing-library/react'
 import { vi } from 'vitest'
 import { CUES, type Cue } from '../sound'
 
@@ -75,4 +76,9 @@ export function timesPlayed(tones: Tone[], cue: Cue): number {
     if (pitches.every((pitch, j) => tones[i + j].frequency === pitch)) times++
   }
   return times
+}
+
+/** Browsers only let a page make sound after a gesture, so tests make one before listening. */
+export function gesture() {
+  fireEvent.pointerDown(document.body)
 }

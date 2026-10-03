@@ -9,6 +9,7 @@ import { DecisionsPanel } from './DecisionsPanel'
 import { formatCountdown } from './format'
 import { BuildPanel, ResourcesPanel, TechTreePanel, TrainPanel } from './NationPanels'
 import { TurnPanel, TurnReportPanel } from './TurnPanel'
+import { useTurnStartCues } from './turnStart'
 
 /** The time now, updated a few times a second. */
 function useNow() {
@@ -37,7 +38,7 @@ type Area = 'decisions' | ActionTab
  * One Turn of the Game as this Player sees it, as a dashboard. On a wide screen it fits without page
  * scroll in three columns: the Map; the Turn timer and End Turn, Resources, this Turn's decisions and the
  * Turn Report; and the action panels in tabs, which a Player out of the Game has none of. Narrower
- * screens stack the panels, the Turn panel first.
+ * screens stack the panels, the Turn panel first. Each new Turn arrives with its cues.
  */
 function GameScreen({
   room,
@@ -79,6 +80,7 @@ function GameScreen({
   onDone: (turn: number) => void
 }) {
   const now = useNow()
+  useTurnStartCues(nation)
   const [actedIn, setActedIn] = useState<Area | null>(null)
   const game = room.game!
   const me = room.players.find((p) => p.id === playerId)

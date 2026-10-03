@@ -816,6 +816,24 @@ input[type='range'] {
   margin-left: auto;
 }
 
+/* A row new in this Nation view flashes briefly (see turnStart.ts). */
+.row--fresh {
+  animation: flash 900ms steps(1, end);
+}
+
+@keyframes flash {
+  0%,
+  50% {
+    border-color: var(--accent);
+    background: var(--surface-raised);
+  }
+  25%,
+  75% {
+    border-color: var(--border);
+    background: var(--bg);
+  }
+}
+
 .row--nested {
   margin-left: calc(var(--space) * 2);
   border-style: dashed;
@@ -919,6 +937,7 @@ input[type='range'] {
 }
 
 .stat {
+  position: relative;
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
@@ -943,6 +962,39 @@ input[type='range'] {
 .stat__value {
   font-family: var(--font-pixel);
   font-size: 1rem;
+}
+
+/* As a new Turn arrives, a resource's change rises from it and fades (see NationPanels.tsx). */
+.stat__float {
+  position: absolute;
+  bottom: var(--space);
+  right: var(--space);
+  font-family: var(--font-pixel);
+  font-size: 0.75rem;
+  pointer-events: none;
+  animation: float-up 1.2s steps(8, end) forwards;
+}
+
+.stat__float--good {
+  color: var(--good);
+}
+
+.stat__float--bad {
+  color: var(--bad);
+}
+
+@keyframes float-up {
+  0% {
+    opacity: 1;
+    transform: none;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-1rem);
+  }
 }
 
 /* Map: every Nation and its Facts */
