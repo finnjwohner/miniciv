@@ -23,7 +23,8 @@ class EventsTest {
 	static final List<Event> STARTER = RulesetFiles.load("ruleset").events();
 
 	/**
-	 * Luck that makes every Event happen whenever its conditions hold.
+	 * Luck that makes every Event happen whenever its conditions hold, with its
+	 * effects as small as luck can vary them.
 	 */
 	static final RandomGenerator ALWAYS = luck(0);
 
@@ -69,9 +70,9 @@ class EventsTest {
 		game.endTurn();
 
 		assertThat(report("Rome")).containsExactly(incomeReport(12),
-				"A good harvest filled your granaries: your Nation gained 4 Population.");
-		assertThat(game.viewOf("Rome").population()).isEqualTo(18);
-		assertThat(game.viewOf("Carthage").population()).isEqualTo(18);
+				"A good harvest filled your granaries: your Nation gained 3 Population.");
+		assertThat(game.viewOf("Rome").population()).isEqualTo(17);
+		assertThat(game.viewOf("Carthage").population()).isEqualTo(17);
 	}
 
 	@Test
@@ -97,8 +98,8 @@ class EventsTest {
 		game.endTurn();
 
 		assertThat(report("Rome")).containsExactly(incomeReport(16),
-				"Plague swept through your Nation: your Nation lost 6 Population.");
-		assertThat(game.viewOf("Rome").population()).isEqualTo(12);
+				"Plague swept through your Nation: your Nation lost 5 Population.");
+		assertThat(game.viewOf("Rome").population()).isEqualTo(13);
 	}
 
 	@Test
@@ -109,9 +110,9 @@ class EventsTest {
 		game.endTurn();
 
 		assertThat(report("Rome")).containsExactly(BASE_INCOME_REPORT,
-				"Famine struck: your Nation gained 5 Gold and lost 12 Population and 3 Research.");
+				"Famine struck: your Nation gained 4 Gold and lost 12 Population and 3 Research.");
 		NationView rome = game.viewOf("Rome");
-		assertThat(rome.gold()).isEqualTo(65);
+		assertThat(rome.gold()).isEqualTo(64);
 		assertThat(rome.population()).isZero();
 		assertThat(rome.research()).isZero();
 	}
@@ -127,8 +128,8 @@ class EventsTest {
 		game.endTurn();
 
 		assertThat(report("Rome")).containsExactly("Your Walls has been built.", incomeReport(12),
-				"An earthquake shook your Nation: your Defense was worn down from 10 to 6, damaging Walls.");
-		assertThat(game.viewOf("Rome").defense()).isEqualTo(6);
+				"An earthquake shook your Nation: your Defense was worn down from 10 to 7, damaging Walls.");
+		assertThat(game.viewOf("Rome").defense()).isEqualTo(7);
 	}
 
 	@Test
@@ -145,7 +146,7 @@ class EventsTest {
 		game.endTurn();
 
 		assertThat(report("Rome")).containsExactly(incomeReport(12),
-				"Your tax collectors outdid themselves: your Nation gained 5 Gold.",
+				"Your tax collectors outdid themselves: your Nation gained 4 Gold.",
 				"Your scholars debated: your Nation gained 1 Research.");
 	}
 
@@ -161,7 +162,7 @@ class EventsTest {
 		game.endTurn();
 
 		assertThat(report("Rome")).containsExactly("Your Walls has been built.", incomeReport(12),
-				"An earthquake shook your Nation: your Defense was worn down from 10 to 6, damaging Walls.");
+				"An earthquake shook your Nation: your Defense was worn down from 10 to 7, damaging Walls.");
 		assertThat(report("Carthage")).containsExactly(incomeReport(12));
 	}
 
@@ -232,17 +233,117 @@ class EventsTest {
 
 	@Test
 	void eventsAreRolledInTheOrderListedForEachNationAndWarpartyInTurn() {
-		play(luck(-1, 0, 0, -1), starter("Good harvest"), starter("Rumours of war"));
+		play(luck(-1, 0, Long.MIN_VALUE, 0, -1), starter("Good harvest"), starter("Rumours of war"));
 		armyOf("Rome", "Recruit", 8);
 		game.act("Rome", new Action.SendWarparty("Carthage", Map.of("Recruit", 8)));
 
 		game.endTurn();
 
-		// Good harvest misses Rome, then strikes Carthage; Rumours of war is
-		// rolled only for Carthage, which a large Warparty is approaching.
+		// Good harvest misses Rome, then strikes Carthage, varied by even luck;
+		// Rumours of war is rolled only for Carthage, which a large Warparty is
+		// approaching.
 		assertThat(report("Rome")).noneMatch(line -> line.startsWith("A good harvest"));
 		assertThat(report("Carthage")).contains("A good harvest filled your granaries: your Nation gained 4 Population.",
 				"Rumours spread of a large army marching on your Nation.");
+	}
+
+	/**
+	 * Luck that makes every Event happen, then draws the given luck for each of
+	 * its effects that varies.
+	 */
+	static RandomGenerator happensWith(double... variance) {
+		long[] draws = new long[variance.length + 1];
+		for (int i = 0; i < variance.length; i++) {
+			draws[i + 1] = ScoutsTest.draw(variance[i]);
+		}
+		return luck(draws);
+	}
+
+	static Event windfall(int gold) {
+		return new Event("Windfall", Event.Subject.NATION, 1, null, new Event.Effects(gold, 0, 0, 0, 0),
+				"A windfall came your way");
+	}
+
+	@Test
+	void luckVariesAnEventsEffectByUpToATenthEitherWay() {
+		play(happensWith(0), windfall(30));
+		game.endTurn();
+		assertThat(report("Rome")).contains("A windfall came your way: your Nation gained 27 Gold.");
+
+		play(happensWith(0.5), windfall(30));
+		game.endTurn();
+		assertThat(report("Rome")).contains("A windfall came your way: your Nation gained 30 Gold.");
+
+		play(happensWith(0.99), windfall(30));
+		game.endTurn();
+		assertThat(report("Rome")).contains("A windfall came your way: your Nation gained 33 Gold.");
+		assertThat(game.viewOf("Rome").gold()).isEqualTo(50 + 10 + 33);
+	}
+
+	@Test
+	void luckVariesASmallEffectByOneEitherWayOrNotAtAll() {
+		play(happensWith(0), windfall(4));
+		game.endTurn();
+		assertThat(report("Rome")).contains("A windfall came your way: your Nation gained 3 Gold.");
+
+		play(happensWith(0.5), windfall(4));
+		game.endTurn();
+		assertThat(report("Rome")).contains("A windfall came your way: your Nation gained 4 Gold.");
+
+		play(happensWith(0.99), windfall(4));
+		game.endTurn();
+		assertThat(report("Rome")).contains("A windfall came your way: your Nation gained 5 Gold.");
+	}
+
+	@Test
+	void luckNeverVariesAnEffectAwayToNothing() {
+		play(happensWith(0), windfall(1));
+
+		game.endTurn();
+
+		assertThat(report("Rome")).contains("A windfall came your way: your Nation gained 1 Gold.");
+	}
+
+	@Test
+	void luckVariesALossAsMuchAsAGainSoLowLuckMeansASmallerLoss() {
+		Event plague = new Event("Plague", Event.Subject.NATION, 1, null, new Event.Effects(0, -6, 0, 0, 0),
+				"Plague swept through your Nation");
+		play(happensWith(0), plague);
+		game.endTurn();
+		assertThat(report("Rome")).contains("Plague swept through your Nation: your Nation lost 5 Population.");
+
+		play(happensWith(0.99), plague);
+		game.endTurn();
+		assertThat(report("Rome")).contains("Plague swept through your Nation: your Nation lost 7 Population.");
+	}
+
+	@Test
+	void luckIsDrawnForGoldPopulationResearchAndDefenseDamageInTurn() {
+		play(happensWith(0, 0.99, 0.5, 0.99), new Event("Siege engines", Event.Subject.NATION, 1,
+				new Event.Conditions(null, null, null, null, null, null, 10), new Event.Effects(20, 10, -1, 4, 0),
+				"Siege engines rolled through"));
+		game.act("Rome", new Action.StartBuilding("Walls"));
+		game.endTurn();
+		game.endTurn();
+
+		assertThat(report("Rome")).contains("Siege engines rolled through: your Nation gained 18 Gold and 11 Population "
+				+ "and lost 1 Research and your Defense was worn down from 10 to 5, damaging Walls.");
+	}
+
+	@Test
+	void luckNeverVariesHowManyTurnsAnEventDelaysAWarparty() {
+		// Were luck drawn for the delay, the next Turn's roll would miss.
+		play(luck(0, -1), new Event("Swollen river", Event.Subject.WARPARTY, 1, null,
+				new Event.Effects(0, 0, 0, 0, 2), "A swollen river forced a long way round"));
+		armyOf("Rome", "Warrior", 2);
+		game.act("Rome", new Action.SendWarparty("Carthage", Map.of("Warrior", 2)));
+
+		game.endTurn();
+		assertThat(report("Rome")).contains("A swollen river forced a long way round: "
+				+ "your Warparty of Warrior ×2 heading to Carthage will now arrive in 4 Turns.");
+		game.endTurn();
+		assertThat(report("Rome")).contains("A swollen river forced a long way round: "
+				+ "your Warparty of Warrior ×2 heading to Carthage will now arrive in 5 Turns.");
 	}
 
 	@Test

@@ -30,12 +30,13 @@ class DilemmasTest {
 	}
 
 	/**
-	 * Luck that makes every Event happen for the given number of draws, and
-	 * none after.
+	 * Luck that makes every Event happen for the given number of draws, then
+	 * draws an even 0.5, which no Event with a chance of a half or less happens
+	 * on and which leaves effects as authored.
 	 */
 	static RandomGenerator firstDraws(int draws) {
 		int[] drawn = { 0 };
-		return () -> drawn[0]++ < draws ? 0 : -1;
+		return () -> drawn[0]++ < draws ? 0 : Long.MIN_VALUE;
 	}
 
 	List<String> report(String nation) {
@@ -92,6 +93,24 @@ class DilemmasTest {
 		NationView carthage = game.viewOf("Carthage");
 		assertThat(carthage.population()).isEqualTo(6);
 		assertThat(carthage.dilemmas()).isEmpty();
+	}
+
+	@Test
+	void luckVariesTheEffectsOfTheChoiceThatApplies() {
+		GameTest.Rigged luck = new GameTest.Rigged();
+		luck.then(0, 0);
+		play(luck, OUTBREAK);
+		game.endTurn();
+		game.act("Rome", new Action.AnswerDilemma("Outbreak", "Quarantine"));
+		// Rome's Gold low and Population high, then Carthage's Population high.
+		luck.then(0, 0.99, 0.99);
+
+		game.endTurn();
+
+		assertThat(report("Rome")).first().isEqualTo("You quarantined the sick: your Nation lost 14 Gold and 3 Population.");
+		assertThat(report("Carthage")).first()
+			.isEqualTo("You did not choose in time what to do about Outbreak. "
+					+ "You let the sickness spread: your Nation lost 9 Population.");
 	}
 
 	@Test
