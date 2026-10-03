@@ -347,6 +347,51 @@ a:focus-visible {
   overflow-wrap: anywhere;
 }
 
+.roster .roster__nation {
+  border-left-width: calc(var(--line) * 3);
+}
+
+.roster__ruler {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+/* A Nation's emblem, drawn in its colour */
+.banner {
+  display: inline-flex;
+  flex-shrink: 0;
+}
+
+/* A row of choices, such as colours or emblems; taken ones are greyed out, the chosen one marked */
+.picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space);
+}
+
+.picker__choice {
+  width: 2.5rem;
+  height: 2.5rem;
+  padding: 0;
+  color: var(--text-muted);
+}
+
+.picker__choice[aria-pressed='true'] {
+  border-color: var(--text);
+  outline: var(--line) solid var(--accent);
+  outline-offset: 2px;
+}
+
+.picker__choice:disabled {
+  opacity: 0.25;
+}
+
+.picker__choice--swatch:disabled {
+  background-image: linear-gradient(135deg, transparent 45%, var(--bg) 45%, var(--bg) 55%, transparent 55%);
+}
+
 /* Game: a dashboard of panels. Turn Report, End Turn and decisions come first in the page, so a phone
    stacks them on top; wider screens arrange the rest around them. */
 

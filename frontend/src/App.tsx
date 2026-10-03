@@ -54,6 +54,7 @@ function JoinedRoom({ code, membership }: { code: string; membership: Membership
     nation,
     rejection,
     setReady,
+    setIdentity,
     startBuilding,
     repairBuilding,
     rebuildBuilding,
@@ -100,7 +101,15 @@ function JoinedRoom({ code, membership }: { code: string; membership: Membership
         />
       </div>
     )
-  return <RoomScreen room={room} playerId={membership.playerId} onReady={setReady} />
+  return (
+    <RoomScreen
+      room={room}
+      playerId={membership.playerId}
+      rejection={rejection}
+      onReady={setReady}
+      onIdentity={setIdentity}
+    />
+  )
 }
 
 export default App

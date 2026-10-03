@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Random;
+import java.util.function.Function;
 import java.util.function.Predicate;
 
 import com.miniciv.engine.Action;
@@ -28,11 +29,21 @@ public class Room {
 	 * who is done with the Turn, and once it has started, the Game's public
 	 * facts. The version rises with every change, so a browser can ignore a View
 	 * older than one it already has.
+	 *
+	 * @param colours the colours a Player may pick for their Nation
+	 * @param emblems the emblems a Player may pick for their Nation, as pixel
+	 *        icon names
 	 */
-	public record View(String code, int version, List<PlayerView> players, GameView game) {
+	public record View(String code, int version, List<String> colours, List<String> emblems,
+			List<PlayerView> players, GameView game) {
 	}
 
-	public record PlayerView(String id, String nationName, boolean ready, boolean done) {
+	/**
+	 * @param ruler the name of the Nation's Ruler, empty until the Player names
+	 *        them
+	 */
+	public record PlayerView(String id, String nationName, String ruler, String colour, String emblem, boolean ready,
+			boolean done) {
 	}
 
 	/**
@@ -65,6 +76,22 @@ public class Room {
 	 */
 	public record Joined(String playerId, String token) {
 	}
+
+	/**
+	 * The colours a Player may pick for their Nation, unique among the Players
+	 * in a Room.
+	 */
+	static final List<String> COLOURS = List.of("#e2574c", "#e8913a", "#f2c14e", "#7bc96f", "#4fb8b0", "#5b8def",
+			"#a678de", "#e07bb5");
+
+	/**
+	 * The emblems a Player may pick for their Nation, as pixel icon names,
+	 * unique among the Players in a Room.
+	 */
+	static final List<String> EMBLEMS = List.of("crown", "moon", "sun", "heart", "star", "fire", "zap", "anchor",
+			"tree", "fish", "feather", "key");
+
+	private static final int MAX_RULER_LENGTH = 20;
 
 	private static final int MIN_PLAYERS = 2;
 
@@ -124,27 +151,77 @@ public class Room {
 			throw new JoinRefused(JoinRefused.Reason.NATION_NAME_TAKEN,
 					"A Nation called " + name + " is already in this Room.");
 		}
-		Player player = new Player(name);
+		Player player = new Player(name, firstFree(COLOURS, Player::colour), firstFree(EMBLEMS, Player::emblem));
 		players.add(player);
 		version++;
 		return new Joined(player.id(), player.token());
 	}
 
 	/**
-	 * Marks a Player ready or unready; the Game starts as soon as 2–4 Players
-	 * are all ready. Has no effect once the Game has started.
+	 * The first of the choices no Player in the Room has.
 	 */
-	public synchronized void ready(String token, boolean ready) {
+	private String firstFree(List<String> choices, Function<Player, String> chosen) {
+		return choices.stream()
+			.filter(choice -> players.stream().noneMatch(p -> chosen.apply(p).equals(choice)))
+			.findFirst()
+			.orElseThrow();
+	}
+
+	/**
+	 * Names a Player's Ruler and sets their Nation's colour and emblem, until
+	 * the Game starts; the colour and emblem must be on offer and not another
+	 * Player's. A ready Player stays ready.
+	 */
+	public synchronized ActionResult identify(String token, String ruler, String colour, String emblem) {
+		Player player = player(token);
+		String name = ruler == null ? "" : ruler.strip();
 		if (game != null) {
-			return;
+			return ActionResult.rejected("The Game has started, so your Ruler, colour and emblem can no longer change.");
 		}
-		player(token).ready(ready);
+		if (name.isEmpty()) {
+			return ActionResult.rejected("Name your Ruler.");
+		}
+		if (name.length() > MAX_RULER_LENGTH) {
+			return ActionResult.rejected("Your Ruler's name can be at most " + MAX_RULER_LENGTH + " characters.");
+		}
+		if (!COLOURS.contains(colour)) {
+			return ActionResult.rejected("There is no colour " + colour + " to pick.");
+		}
+		if (!EMBLEMS.contains(emblem)) {
+			return ActionResult.rejected("There is no emblem " + emblem + " to pick.");
+		}
+		if (players.stream().anyMatch(p -> p != player && p.colour().equals(colour))) {
+			return ActionResult.rejected("Another Nation in this Room already has that colour.");
+		}
+		if (players.stream().anyMatch(p -> p != player && p.emblem().equals(emblem))) {
+			return ActionResult.rejected("Another Nation in this Room already has that emblem.");
+		}
+		player.identify(name, colour, emblem);
+		version++;
+		return ActionResult.ACCEPTED;
+	}
+
+	/**
+	 * Marks a Player ready or unready; the Game starts as soon as 2–4 Players
+	 * are all ready. A Player must name their Ruler before readying up. Has no
+	 * effect once the Game has started.
+	 */
+	public synchronized ActionResult ready(String token, boolean ready) {
+		Player player = player(token);
+		if (game != null) {
+			return ActionResult.ACCEPTED;
+		}
+		if (ready && player.ruler().isEmpty()) {
+			return ActionResult.rejected("Name your Ruler before you ready up.");
+		}
+		player.ready(ready);
 		version++;
 		if (players.size() >= MIN_PLAYERS && players.stream().allMatch(Player::ready)) {
 			game = new Game(ruleset, players.stream().map(Player::nationName).toList(), new Random(SEEDS.nextLong()));
 			turnEndsAt = clock.instant().plus(TURN_LENGTH);
 			settle();
 		}
+		return ActionResult.ACCEPTED;
 	}
 
 	/**
@@ -379,7 +456,7 @@ public class Room {
 
 	public synchronized View view() {
 		List<PlayerView> playerViews = players.stream()
-			.map(p -> new PlayerView(p.id(), p.nationName(), p.ready(), p.done()))
+			.map(p -> new PlayerView(p.id(), p.nationName(), p.ruler(), p.colour(), p.emblem(), p.ready(), p.done()))
 			.toList();
 		GameView gameView = null;
 		if (game != null) {
@@ -394,7 +471,7 @@ public class Room {
 			gameView = new GameView(game.turn(), game.nations(), millisLeft, game.conquered(), game.removed(),
 					game.winner().orElse(null), waiting);
 		}
-		return new View(code, version, playerViews, gameView);
+		return new View(code, version, COLOURS, EMBLEMS, playerViews, gameView);
 	}
 
 }

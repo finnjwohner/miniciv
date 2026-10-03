@@ -36,6 +36,9 @@ class RoomController {
 	record ReadyRequest(String token, boolean ready) {
 	}
 
+	record IdentityRequest(String token, String ruler, String colour, String emblem) {
+	}
+
 	record DoneRequest(String token, int turn) {
 	}
 
@@ -138,9 +141,29 @@ class RoomController {
 		return rooms.find(code).orElseThrow().nationViewOf(player.getName());
 	}
 
+	/**
+	 * Marks the Player ready or unready; the changed Room arrives on
+	 * {@code /topic/rooms/{code}}, or the reason it was rejected on
+	 * {@code /user/queue/rejections}.
+	 */
 	@MessageMapping("/rooms/{code}/ready")
-	void ready(@DestinationVariable String code, ReadyRequest request) {
-		rooms.ready(code, request.token(), request.ready());
+	@SendToUser(destinations = "/queue/rejections", broadcast = false)
+	Rejection ready(@DestinationVariable String code, ReadyRequest request) {
+		ActionResult result = rooms.ready(code, request.token(), request.ready());
+		return result.accepted() ? null : new Rejection(result.reason());
+	}
+
+	/**
+	 * Names the Player's Ruler and sets their Nation's colour and emblem; the
+	 * changed Room arrives on {@code /topic/rooms/{code}}, or the reason it was
+	 * rejected on {@code /user/queue/rejections}.
+	 */
+	@MessageMapping("/rooms/{code}/identity")
+	@SendToUser(destinations = "/queue/rejections", broadcast = false)
+	Rejection identify(@DestinationVariable String code, IdentityRequest request) {
+		ActionResult result = rooms.identify(code, request.token(), request.ruler(), request.colour(),
+				request.emblem());
+		return result.accepted() ? null : new Rejection(result.reason());
 	}
 
 	/**

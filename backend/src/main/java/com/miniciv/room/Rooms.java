@@ -78,11 +78,12 @@ public class Rooms {
 		return change(room, r -> r.join(nationName));
 	}
 
-	public void ready(String code, String token, boolean ready) {
-		change(find(code).orElseThrow(), room -> {
-			room.ready(token, ready);
-			return null;
-		});
+	public ActionResult ready(String code, String token, boolean ready) {
+		return change(find(code).orElseThrow(), room -> room.ready(token, ready));
+	}
+
+	public ActionResult identify(String code, String token, String ruler, String colour, String emblem) {
+		return change(find(code).orElseThrow(), room -> room.identify(token, ruler, colour, emblem));
 	}
 
 	public void done(String code, String token, int turn) {

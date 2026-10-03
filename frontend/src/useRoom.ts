@@ -47,11 +47,23 @@ export function useRoom(code: string, token: string) {
     }
   }, [code, token])
 
-  const setReady = (ready: boolean) =>
+  /** Marks the Player ready or not; a rejection's reason arrives in `rejection`. */
+  const setReady = (ready: boolean) => {
+    setRejection(null)
     client.current?.publish({
       destination: `/app/rooms/${code}/ready`,
       body: JSON.stringify({ token, ready }),
     })
+  }
+
+  /** Names the Nation's Ruler and sets its colour and emblem; a rejection's reason arrives in `rejection`. */
+  const setIdentity = (ruler: string, colour: string, emblem: string) => {
+    setRejection(null)
+    client.current?.publish({
+      destination: `/app/rooms/${code}/identity`,
+      body: JSON.stringify({ token, ruler, colour, emblem }),
+    })
+  }
 
   /** Starts constructing a Building; a rejection's reason arrives in `rejection`. */
   const startBuilding = (building: string) => {
@@ -191,6 +203,7 @@ export function useRoom(code: string, token: string) {
     nation,
     rejection,
     setReady,
+    setIdentity,
     startBuilding,
     repairBuilding,
     rebuildBuilding,

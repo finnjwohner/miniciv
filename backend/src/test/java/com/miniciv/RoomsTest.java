@@ -47,6 +47,23 @@ class RoomsTest {
 	record Refusal(int status, String message) {
 	}
 
+	/**
+	 * A Player as everyone in the Room sees them, holding the colour and emblem
+	 * a Player joining at the given seat, counting from 0, is given.
+	 */
+	static Map<String, Object> seen(Map<?, ?> joined, String nationName, String ruler, int seat, boolean ready) {
+		return Map.of("id", joined.get("playerId"), "nationName", nationName, "ruler", ruler, "colour",
+				IdentityTest.COLOURS.get(seat), "emblem", IdentityTest.EMBLEMS.get(seat), "ready", ready, "done", false);
+	}
+
+	/**
+	 * Names a Player's Ruler, keeping the colour and emblem they were given at
+	 * the given seat, and readies them up.
+	 */
+	void readyUp(StompConnection stomp, String code, Map<?, ?> joined, int seat) {
+		TurnsTest.readyUp(stomp, code, (String) joined.get("token"), seat);
+	}
+
 	@Test
 	void creatingARoomReturnsARoomCodeAndInviteLink() {
 		Map<?, ?> room = rest().post().uri("/api/rooms").retrieve().body(Map.class);
@@ -65,8 +82,7 @@ class RoomsTest {
 		assertThat((String) player.get("token")).isNotBlank();
 		try (StompConnection stomp = new StompConnection(port)) {
 			Map<?, ?> room = stomp.subscribe("/app/rooms/" + code).next();
-			assertThat(room.get("players"))
-				.isEqualTo(List.of(Map.of("id", player.get("playerId"), "nationName", "Rome", "ready", false, "done", false)));
+			assertThat(room.get("players")).isEqualTo(List.of(seen(player, "Rome", "", 0, false)));
 		}
 	}
 
@@ -79,19 +95,18 @@ class RoomsTest {
 			stomp.subscribe("/app/rooms/" + code).next();
 
 			Map<?, ?> carthage = join(code, "Carthage");
-			assertThat(updates.next().get("players")).isEqualTo(List.of(
-					Map.of("id", rome.get("playerId"), "nationName", "Rome", "ready", false, "done", false),
-					Map.of("id", carthage.get("playerId"), "nationName", "Carthage", "ready", false, "done", false)));
+			assertThat(updates.next().get("players"))
+				.isEqualTo(List.of(seen(rome, "Rome", "", 0, false), seen(carthage, "Carthage", "", 1, false)));
 
-			stomp.send("/app/rooms/" + code + "/ready", Map.of("token", carthage.get("token"), "ready", true));
-			assertThat(updates.next().get("players")).isEqualTo(List.of(
-					Map.of("id", rome.get("playerId"), "nationName", "Rome", "ready", false, "done", false),
-					Map.of("id", carthage.get("playerId"), "nationName", "Carthage", "ready", true, "done", false)));
+			readyUp(stomp, code, carthage, 1);
+			assertThat(updates.next().get("players"))
+				.isEqualTo(List.of(seen(rome, "Rome", "", 0, false), seen(carthage, "Carthage", "Ruler 2", 1, false)));
+			assertThat(updates.next().get("players"))
+				.isEqualTo(List.of(seen(rome, "Rome", "", 0, false), seen(carthage, "Carthage", "Ruler 2", 1, true)));
 
 			stomp.send("/app/rooms/" + code + "/ready", Map.of("token", carthage.get("token"), "ready", false));
-			assertThat(updates.next().get("players")).isEqualTo(List.of(
-					Map.of("id", rome.get("playerId"), "nationName", "Rome", "ready", false, "done", false),
-					Map.of("id", carthage.get("playerId"), "nationName", "Carthage", "ready", false, "done", false)));
+			assertThat(updates.next().get("players"))
+				.isEqualTo(List.of(seen(rome, "Rome", "", 0, false), seen(carthage, "Carthage", "Ruler 2", 1, false)));
 		}
 	}
 
@@ -105,11 +120,13 @@ class RoomsTest {
 
 			join(code, "Carthage");
 			int afterJoin = (Integer) updates.next().get("version");
-			stomp.send("/app/rooms/" + code + "/ready", Map.of("token", rome.get("token"), "ready", true));
+			readyUp(stomp, code, rome, 0);
+			int afterIdentity = (Integer) updates.next().get("version");
 			int afterReady = (Integer) updates.next().get("version");
 
 			assertThat(afterJoin).isGreaterThan(current);
-			assertThat(afterReady).isGreaterThan(afterJoin);
+			assertThat(afterIdentity).isGreaterThan(afterJoin);
+			assertThat(afterReady).isGreaterThan(afterIdentity);
 		}
 	}
 
@@ -122,10 +139,12 @@ class RoomsTest {
 			StompConnection.Messages updates = stomp.subscribe("/topic/rooms/" + code);
 			stomp.subscribe("/app/rooms/" + code).next();
 
-			stomp.send("/app/rooms/" + code + "/ready", Map.of("token", rome.get("token"), "ready", true));
+			readyUp(stomp, code, rome, 0);
+			updates.next();
 			assertThat(updates.next().get("game")).isNull();
 
-			stomp.send("/app/rooms/" + code + "/ready", Map.of("token", carthage.get("token"), "ready", true));
+			readyUp(stomp, code, carthage, 1);
+			updates.next();
 			Map<?, ?> game = (Map<?, ?>) updates.next().get("game");
 			assertThat(game.get("turn")).isEqualTo(1);
 			assertThat(game.get("nations")).isEqualTo(List.of("Rome", "Carthage"));
@@ -140,10 +159,11 @@ class RoomsTest {
 			StompConnection.Messages updates = stomp.subscribe("/topic/rooms/" + code);
 			stomp.subscribe("/app/rooms/" + code).next();
 
-			stomp.send("/app/rooms/" + code + "/ready", Map.of("token", rome.get("token"), "ready", true));
+			readyUp(stomp, code, rome, 0);
+			updates.next();
 
 			Map<?, ?> room = updates.next();
-			assertThat(room.get("players")).isEqualTo(List.of(Map.of("id", rome.get("playerId"), "nationName", "Rome", "ready", true, "done", false)));
+			assertThat(room.get("players")).isEqualTo(List.of(seen(rome, "Rome", "Ruler 1", 0, true)));
 			assertThat(room.get("game")).isNull();
 		}
 	}
@@ -172,9 +192,11 @@ class RoomsTest {
 		try (StompConnection stomp = new StompConnection(port)) {
 			StompConnection.Messages updates = stomp.subscribe("/topic/rooms/" + code);
 			stomp.subscribe("/app/rooms/" + code).next();
-			stomp.send("/app/rooms/" + code + "/ready", Map.of("token", rome.get("token"), "ready", true));
-			stomp.send("/app/rooms/" + code + "/ready", Map.of("token", carthage.get("token"), "ready", true));
-			updates.next();
+			readyUp(stomp, code, rome, 0);
+			readyUp(stomp, code, carthage, 1);
+			for (int i = 0; i < 3; i++) {
+				updates.next();
+			}
 			assertThat(updates.next().get("game")).isNotNull();
 		}
 
