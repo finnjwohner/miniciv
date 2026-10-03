@@ -24,6 +24,11 @@ const CUES: Record<Cue, Note[]> = {
   tick: [note(1200, 0, 0.02, 'triangle', 0.4)],
 }
 
+/** Whether `name` names a cue, such as a button's `data-cue`. */
+export function isCue(name: string): name is Cue {
+  return Object.hasOwn(CUES, name)
+}
+
 /** Plays `cue` through `context` at `volume`, from 0 (silent) to 1 (full). */
 export function playCue(context: AudioContext, cue: Cue, volume: number) {
   if (volume <= 0) return

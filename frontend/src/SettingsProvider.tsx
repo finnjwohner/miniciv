@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { SettingsContext, type Settings } from './settings'
-import { playCue, type Cue } from './sound'
+import { isCue, playCue, type Cue } from './sound'
 
 /** Sound on at a modest volume, and reduced motion if the operating system asks for it. */
 function initialSettings(): Settings {
@@ -39,13 +39,16 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     [settings.sound, settings.volume],
   )
 
+  // Heard while capturing, before React handles the click, which may disable the button.
   useEffect(() => {
     const onClick = (e: MouseEvent) => {
       const button = e.target instanceof Element ? e.target.closest('button') : null
-      if (button && !button.disabled) play((button.dataset.cue as Cue | undefined) ?? 'click')
+      if (!button || button.disabled) return
+      const cue = button.dataset.cue
+      play(cue && isCue(cue) ? cue : 'click')
     }
-    document.addEventListener('click', onClick)
-    return () => document.removeEventListener('click', onClick)
+    document.addEventListener('click', onClick, { capture: true })
+    return () => document.removeEventListener('click', onClick, { capture: true })
   }, [play])
 
   useEffect(() => {
