@@ -89,8 +89,9 @@ function Damage({
 }
 
 /**
- * The Buildings the Nation has and is constructing, Repairing or Rebuilding, with a button to Sell each
- * type it may Sell one of, and the ones it can construct.
+ * The Buildings the Nation can construct, then the ones it has, with a button to Sell each type it may
+ * Sell one of, and the ones it is constructing, Repairing or Rebuilding. The buttons to construct come
+ * first so they stay put as construction starts.
  */
 export function BuildPanel({
   nation,
@@ -111,6 +112,20 @@ export function BuildPanel({
   return (
     <Panel title="Build" icon="building">
       <Rejection reason={rejection} />
+      <h3>Construct</h3>
+      <ul className="list">
+        {nation.availableBuildings.map((b) => (
+          <li key={b.name} className="row row--wrap">
+            <span className="row__name">{b.name}</span>
+            <span className="row__meta">
+              {b.gold} Gold, {plural(b.turns, 'Turn')} — {describeEffect(b)}
+            </span>
+            <button aria-label={`Build ${b.name}`} onClick={() => onStart(b.name)} disabled={b.gold > nation.gold}>
+              Build
+            </button>
+          </li>
+        ))}
+      </ul>
       <h3>Your Buildings</h3>
       {owned.length === 0 && nation.construction.length === 0 && nation.repairs.length === 0 ? (
         <p className="muted">None yet.</p>
@@ -156,20 +171,6 @@ export function BuildPanel({
           ))}
         </ul>
       )}
-      <h3>Construct</h3>
-      <ul className="list">
-        {nation.availableBuildings.map((b) => (
-          <li key={b.name} className="row row--wrap">
-            <span className="row__name">{b.name}</span>
-            <span className="row__meta">
-              {b.gold} Gold, {plural(b.turns, 'Turn')} — {describeEffect(b)}
-            </span>
-            <button aria-label={`Build ${b.name}`} onClick={() => onStart(b.name)} disabled={b.gold > nation.gold}>
-              Build
-            </button>
-          </li>
-        ))}
-      </ul>
     </Panel>
   )
 }
@@ -213,7 +214,7 @@ function TrainUnit({
   )
 }
 
-/** The Units in training and the Unit types the Nation can train. */
+/** The Unit types the Nation can train, then the Units in training, so the Train buttons stay put. */
 export function TrainPanel({
   nation,
   rejection,
@@ -226,6 +227,12 @@ export function TrainPanel({
   return (
     <Panel title="Train" icon="sword">
       <Rejection reason={rejection} />
+      <h3>Units</h3>
+      <ul className="list">
+        {nation.availableUnits.map((u) => (
+          <TrainUnit key={u.name} unit={u} nation={nation} onTrain={onTrain} />
+        ))}
+      </ul>
       <h3>In training</h3>
       {nation.training.length === 0 ? (
         <p className="muted">No Units in training.</p>
@@ -241,12 +248,6 @@ export function TrainPanel({
           ))}
         </ul>
       )}
-      <h3>Units</h3>
-      <ul className="list">
-        {nation.availableUnits.map((u) => (
-          <TrainUnit key={u.name} unit={u} nation={nation} onTrain={onTrain} />
-        ))}
-      </ul>
     </Panel>
   )
 }

@@ -41,9 +41,9 @@ function describeBrackets(brackets: TravelBracket[]) {
 }
 
 /**
- * The Army at home and its total Strength, the Nation's Warparties abroad with their Strength,
- * destination and Turns left, each not yet heading home with a button to Recall it, and a form to send
- * Units from the Army to another Nation previewing the Warparty's Strength and travel Turns.
+ * A form to send Units from the Army to another Nation previewing the Warparty's Strength and travel
+ * Turns, then the Army at home and its total Strength, and the Nation's Warparties abroad with their
+ * Strength, destination and Turns left, each not yet heading home with a button to Recall it.
  */
 export function ArmyPanel({
   nation,
@@ -83,44 +83,6 @@ export function ArmyPanel({
       actions={<span className="tag tag--accent">Strength {formatAmount(strength)}</span>}
     >
       <Rejection reason={rejection} />
-      <h3>At home</h3>
-      {army.length === 0 ? (
-        <p className="muted">No Units yet.</p>
-      ) : (
-        <ul className="list">
-          {army.map(([name, count]) => (
-            <li key={name} className="row">
-              <span className="row__name">
-                {name} ×{count}
-              </span>
-              <span className="row__meta">Strength {formatAmount(strengthOf(name, count))}</span>
-            </li>
-          ))}
-          <li className="row row--total">
-            <span className="row__name">Total Strength</span>
-            <span className="row__meta">{formatAmount(strength)}</span>
-          </li>
-        </ul>
-      )}
-      <h3>Warparties abroad</h3>
-      {nation.warparties.length === 0 ? (
-        <p className="muted">No Warparties abroad.</p>
-      ) : (
-        <ul className="list">
-          {nation.warparties.map((w) => (
-            <li key={w.id} className="row row--wrap">
-              <span className="row__name">{listCounts(w.units)}</span>
-              <span className="tag">Strength {formatAmount(w.strength)}</span>
-              <span className="row__meta">{describeWarparty(w, nation.map)}</span>
-              {!w.homeward && (
-                <button onClick={() => onRecall(w.id)}>
-                  Recall (home in {plural(recallTurns(nation.travelBrackets, w), 'Turn')})
-                </button>
-              )}
-            </li>
-          ))}
-        </ul>
-      )}
       <h3>Send a Warparty</h3>
       {sendable.length === 0 ? (
         <p className="muted">Your Army has no Units to send.</p>
@@ -160,6 +122,44 @@ export function ArmyPanel({
           </p>
         </div>
       )}
+      <h3>At home</h3>
+      {army.length === 0 ? (
+        <p className="muted">No Units yet.</p>
+      ) : (
+        <ul className="list">
+          {army.map(([name, count]) => (
+            <li key={name} className="row">
+              <span className="row__name">
+                {name} ×{count}
+              </span>
+              <span className="row__meta">Strength {formatAmount(strengthOf(name, count))}</span>
+            </li>
+          ))}
+          <li className="row row--total">
+            <span className="row__name">Total Strength</span>
+            <span className="row__meta">{formatAmount(strength)}</span>
+          </li>
+        </ul>
+      )}
+      <h3>Warparties abroad</h3>
+      {nation.warparties.length === 0 ? (
+        <p className="muted">No Warparties abroad.</p>
+      ) : (
+        <ul className="list">
+          {nation.warparties.map((w) => (
+            <li key={w.id} className="row row--wrap">
+              <span className="row__name">{listCounts(w.units)}</span>
+              <span className="tag">Strength {formatAmount(w.strength)}</span>
+              <span className="row__meta">{describeWarparty(w, nation.map)}</span>
+              {!w.homeward && (
+                <button onClick={() => onRecall(w.id)}>
+                  Recall (home in {plural(recallTurns(nation.travelBrackets, w), 'Turn')})
+                </button>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
     </Panel>
   )
 }
@@ -181,7 +181,7 @@ function describeSpy(spy: Spy, map: MapNation[]) {
   )
 }
 
-/** The Nation's Spies abroad, and a form to send a Spy from the Army to another Nation. */
+/** A form to send a Spy from the Army to another Nation, then the Nation's Spies abroad. */
 export function SpiesPanel({
   nation,
   rejection,
@@ -201,18 +201,6 @@ export function SpiesPanel({
   return (
     <Panel title="Spies" icon="eye" actions={<span className="muted">{atHome} at home</span>}>
       <Rejection reason={rejection} />
-      {nation.spies.length === 0 ? (
-        <p className="muted">No Spies abroad.</p>
-      ) : (
-        <ul className="list">
-          {nation.spies.map((s) => (
-            <li key={s.id} className="row row--wrap">
-              <span className="row__name">{s.unit}</span>
-              <span className="row__meta">{describeSpy(s, nation.map)}</span>
-            </li>
-          ))}
-        </ul>
-      )}
       {atHome === 0 ? (
         <p className="muted">Train a Spy to send one abroad. Spies kept at home can catch enemy Spies.</p>
       ) : targets.length === 0 ? (
@@ -227,6 +215,18 @@ export function SpiesPanel({
           </div>
           <p className="muted">Takes {plural(nation.spyTravelTurns, 'Turn')} to arrive, then stays there.</p>
         </div>
+      )}
+      {nation.spies.length === 0 ? (
+        <p className="muted">No Spies abroad.</p>
+      ) : (
+        <ul className="list">
+          {nation.spies.map((s) => (
+            <li key={s.id} className="row row--wrap">
+              <span className="row__name">{s.unit}</span>
+              <span className="row__meta">{describeSpy(s, nation.map)}</span>
+            </li>
+          ))}
+        </ul>
       )}
     </Panel>
   )
