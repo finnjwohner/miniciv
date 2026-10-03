@@ -461,7 +461,7 @@ class TurnsTest {
 		assertThat(view.get("army")).isEqualTo(Map.of());
 		assertThat(view.get("warparties")).isEqualTo(List.of(
 				Map.of("id", 1, "target", "Carthage", "units", Map.of("Warrior", 2), "strength", 6.0, "homeward", false, "turnsLeft", 3,
-						"turnsTravelled", 0, "plunder", Map.of("gold", 0, "research", 0))));
+						"turnsTravelled", 0, "plunder", Map.of("gold", 0, "research", 0), "strengthSent", 6.0)));
 		carthage.privately().expectNone();
 	}
 
@@ -485,7 +485,7 @@ class TurnsTest {
 		Map<?, ?> view = rome.privately().next();
 		assertThat(view.get("warparties")).isEqualTo(List.of(
 				Map.of("id", 1, "target", "Carthage", "units", Map.of("Warrior", 2), "strength", 6.0, "homeward", true, "turnsLeft", 1,
-						"turnsTravelled", 0, "plunder", Map.of("gold", 0, "research", 0))));
+						"turnsTravelled", 0, "plunder", Map.of("gold", 0, "research", 0), "strengthSent", 6.0)));
 		carthage.privately().expectNone();
 
 		recallWarparty(rome, 1);

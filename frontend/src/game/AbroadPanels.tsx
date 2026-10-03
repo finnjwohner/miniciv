@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { otherNations, travelTurns } from '../api'
+import { otherNations, recallTurns, travelTurns } from '../api'
 import type { Fact, MapNation, NationView, Spy, TravelBracket, Warparty } from '../api'
 import { NationEmblem } from '../ui/NationName'
 import { Panel } from '../ui/Panel'
@@ -114,7 +114,7 @@ export function ArmyPanel({
               <span className="row__meta">{describeWarparty(w, nation.map)}</span>
               {!w.homeward && (
                 <button onClick={() => onRecall(w.id)}>
-                  Recall (home in {plural(Math.max(1, w.turnsTravelled), 'Turn')})
+                  Recall (home in {plural(recallTurns(nation.travelBrackets, w), 'Turn')})
                 </button>
               )}
             </li>

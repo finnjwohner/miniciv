@@ -145,7 +145,7 @@ class TributeTest {
 		assertThat(romeAccepted.get("population")).isEqualTo(romePopulation + 3);
 		assertThat(romeAccepted.get("warparties")).isEqualTo(List.of(
 				Map.of("id", 1, "target", "Carthage", "units", Map.of("Warrior", 2), "strength", 6.0, "homeward", true, "turnsLeft", 3,
-						"turnsTravelled", 3, "plunder", Map.of("gold", 0, "research", 0))));
+						"turnsTravelled", 3, "plunder", Map.of("gold", 0, "research", 0), "strengthSent", 6.0)));
 		Map<?, ?> carthageAccepted = carthage.privately().next();
 		assertThat(carthageAccepted.get("gold")).isEqualTo(carthageGold - 20);
 		assertThat(carthageAccepted.get("population")).isEqualTo(carthagePopulation - 3);

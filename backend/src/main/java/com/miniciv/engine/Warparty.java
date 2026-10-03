@@ -19,16 +19,27 @@ import java.util.Map;
  * @param turnsTravelled how many Turns it travelled toward its target, delays
  * included
  * @param plunder what it took from its target and is carrying home
+ * @param strengthSent its Strength when it was sent, before any losses on the
+ * way
  */
 public record Warparty(int id, String target, Map<String, Integer> units, double strength, boolean homeward,
-		int turnsLeft, int turnsTravelled, Plunder plunder) {
+		int turnsLeft, int turnsTravelled, Plunder plunder, double strengthSent) {
 
 	public Warparty {
 		units = Collections.unmodifiableMap(new LinkedHashMap<>(units));
 	}
 
 	/**
-	 * A Warparty carrying no plunder.
+	 * A Warparty that has lost no Strength since it was sent.
+	 */
+	public Warparty(int id, String target, Map<String, Integer> units, double strength, boolean homeward,
+			int turnsLeft, int turnsTravelled, Plunder plunder) {
+		this(id, target, units, strength, homeward, turnsLeft, turnsTravelled, plunder, strength);
+	}
+
+	/**
+	 * A Warparty carrying no plunder that has lost no Strength since it was
+	 * sent.
 	 */
 	public Warparty(int id, String target, Map<String, Integer> units, double strength, boolean homeward,
 			int turnsLeft, int turnsTravelled) {
@@ -62,7 +73,8 @@ public record Warparty(int id, String target, Map<String, Integer> units, double
 	 * This Warparty one Turn closer to where it is heading.
 	 */
 	Warparty travelled() {
-		return new Warparty(id, target, units, strength, homeward, turnsLeft - 1, homeward ? turnsTravelled : turnsTravelled + 1, plunder);
+		return new Warparty(id, target, units, strength, homeward, turnsLeft - 1, homeward ? turnsTravelled : turnsTravelled + 1, plunder,
+				strengthSent);
 	}
 
 	/**
@@ -75,16 +87,20 @@ public record Warparty(int id, String target, Map<String, Integer> units, double
 	Warparty headingHome(Map<String, Integer> survivors, Plunder plunder, Plunder haul, Ruleset ruleset) {
 		double survivingStrength = ruleset.strengthOf(survivors);
 		return new Warparty(id, target, survivors, survivingStrength, true,
-				TravelBracket.turnsHome(survivingStrength, haul), turnsTravelled, plunder);
+				TravelBracket.turnsHome(survivingStrength, haul), turnsTravelled, plunder, strengthSent);
 	}
 
 	/**
 	 * This Warparty, before it has fought at its target, turning back home: the
-	 * trip home takes as long as it has travelled so far, and at least one
-	 * Turn.
+	 * trip home takes as long as it has travelled so far, less in proportion to
+	 * how much faster the bracket for its Strength now travels than the one for
+	 * its Strength when sent, rounded up, and at least one Turn.
 	 */
 	Warparty turnedBack() {
-		return new Warparty(id, target, units, strength, true, Math.max(1, turnsTravelled), turnsTravelled, plunder);
+		int turnsHome = (int) Math.ceil((double) turnsTravelled * TravelBracket.turnsOut(strength)
+				/ TravelBracket.turnsOut(strengthSent));
+		return new Warparty(id, target, units, strength, true, Math.max(1, Math.min(turnsTravelled, turnsHome)),
+				turnsTravelled, plunder, strengthSent);
 	}
 
 	/**
@@ -99,14 +115,16 @@ public record Warparty(int id, String target, Map<String, Integer> units, double
 	 * taking at least one more.
 	 */
 	Warparty delayed(int turns) {
-		return new Warparty(id, target, units, strength, homeward, Math.max(1, turnsLeft + turns), turnsTravelled, plunder);
+		return new Warparty(id, target, units, strength, homeward, Math.max(1, turnsLeft + turns), turnsTravelled, plunder,
+				strengthSent);
 	}
 
 	/**
 	 * This Warparty holding only the given Units.
 	 */
 	Warparty with(Map<String, Integer> units, Ruleset ruleset) {
-		return new Warparty(id, target, units, ruleset.strengthOf(units), homeward, turnsLeft, turnsTravelled, plunder);
+		return new Warparty(id, target, units, ruleset.strengthOf(units), homeward, turnsLeft, turnsTravelled, plunder,
+				strengthSent);
 	}
 
 }

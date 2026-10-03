@@ -718,7 +718,7 @@ class GameTest {
 		game.endTurn();
 
 		assertThat(game.viewOf("Rome").warparties())
-			.containsExactly(new Warparty(1, "Carthage", Map.of("Warrior", 1), 3, true, 3, 3, new Plunder(9, 3)));
+			.containsExactly(new Warparty(1, "Carthage", Map.of("Warrior", 1), 3, true, 3, 3, new Plunder(9, 3), 6));
 		assertThat(game.viewOf("Carthage").army()).containsExactly(entry("Warrior", 1));
 		assertThat(game.viewOf("Rome").turnReport().lines()).contains(
 				"Your Warparty of Warrior ×2 fought Carthage's Army of Warrior ×2. You lost Warrior ×1 and Carthage lost Warrior ×1.");
@@ -1462,9 +1462,9 @@ class GameTest {
 
 		assertThat(game.viewOf("Carthage").army()).isEmpty();
 		assertThat(game.viewOf("Rome").warparties())
-			.containsExactly(new Warparty(1, "Carthage", Map.of("Warrior", 1), 3, true, 3, 3, new Plunder(9, 3)));
+			.containsExactly(new Warparty(1, "Carthage", Map.of("Warrior", 1), 3, true, 3, 3, new Plunder(9, 3), 6));
 		assertThat(game.viewOf("Egypt").warparties())
-			.containsExactly(new Warparty(1, "Carthage", Map.of("Warrior", 1), 3, true, 3, 3, new Plunder(9, 3)));
+			.containsExactly(new Warparty(1, "Carthage", Map.of("Warrior", 1), 3, true, 3, 3, new Plunder(9, 3), 6));
 		assertThat(game.viewOf("Rome").turnReport().lines()).contains(
 				"Your Warparty of Warrior ×2 fought Carthage's Army of Warrior ×3 alongside Egypt's Warparty of Warrior ×2. You lost Warrior ×1 and Carthage lost Warrior ×3.",
 				"Your Warparty and Egypt's reduced Carthage's Population by 12, doubled as Carthage's Army was wiped out.",
@@ -1530,7 +1530,7 @@ class GameTest {
 
 		assertThat(game.viewOf("Rome").warparties()).isEmpty();
 		assertThat(game.viewOf("Egypt").warparties())
-			.containsExactly(new Warparty(1, "Carthage", Map.of("Warrior", 1), 3, true, 3, 3, new Plunder(9, 3)));
+			.containsExactly(new Warparty(1, "Carthage", Map.of("Warrior", 1), 3, true, 3, 3, new Plunder(9, 3), 9));
 		assertThat(game.viewOf("Carthage").army()).containsExactly(entry("Warrior", 2));
 		assertThat(game.viewOf("Rome").turnReport().lines()).contains(
 				"Your Warparty of Warrior ×1 fought Carthage's Army of Warrior ×4 alongside Egypt's Warparty of Warrior ×3. You lost Warrior ×1 and Carthage lost Warrior ×2.",
@@ -1557,8 +1557,8 @@ class GameTest {
 		game.endTurn();
 
 		assertThat(game.viewOf("Rome").warparties()).containsExactly(
-				new Warparty(1, "Carthage", Map.of("Warrior", 1), 3, true, 3, 3, new Plunder(9, 3)),
-				new Warparty(2, "Carthage", Map.of("Warrior", 1), 3, true, 3, 3, new Plunder(9, 3)));
+				new Warparty(1, "Carthage", Map.of("Warrior", 1), 3, true, 3, 3, new Plunder(9, 3), 6),
+				new Warparty(2, "Carthage", Map.of("Warrior", 1), 3, true, 3, 3, new Plunder(9, 3), 6));
 		String battle = "Your Warparty of Warrior ×2 fought Carthage's Army of Warrior ×3 alongside your Warparty of Warrior ×2. You lost Warrior ×1 and Carthage lost Warrior ×3.";
 		assertThat(game.viewOf("Rome").turnReport().lines()).containsSubsequence(battle, battle,
 				"Your Warparties reduced Carthage's Population by 12, doubled as Carthage's Army was wiped out.");
