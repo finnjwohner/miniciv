@@ -4,7 +4,9 @@ import GameScreen from './game/GameScreen'
 import Home from './Home'
 import JoinRoom from './JoinRoom'
 import RoomScreen from './RoomScreen'
+import { SettingsProvider } from './SettingsProvider'
 import { Icon } from './ui/Icon'
+import { SettingsMenu } from './ui/SettingsMenu'
 import { useRoom } from './useRoom'
 
 function usePath() {
@@ -26,10 +28,11 @@ function App() {
   const roomCode = path.match(/^\/rooms\/([^/]+)\/?$/)?.[1]
 
   return (
-    <>
+    <SettingsProvider>
       <header className="topbar">
         <Icon name="castle" />
         <h1>miniciv</h1>
+        <SettingsMenu />
       </header>
       <main>
         {roomCode ? (
@@ -38,7 +41,7 @@ function App() {
           <Home onJoined={(code) => navigate(`/rooms/${code}`)} />
         )}
       </main>
-    </>
+    </SettingsProvider>
   )
 }
 

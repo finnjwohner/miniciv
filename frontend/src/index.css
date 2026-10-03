@@ -85,6 +85,43 @@ a {
   color: var(--accent);
 }
 
+/* Settings: the gear at the top bar's right and the pop-up it opens beneath it. */
+.settings {
+  position: relative;
+  margin-left: auto;
+}
+
+.settings__gear {
+  padding: calc(var(--space) * 0.5);
+}
+
+.settings__popup {
+  position: absolute;
+  top: calc(100% + var(--space));
+  right: 0;
+  z-index: 10;
+  width: 16rem;
+}
+
+/* A checkbox with its label beside it. */
+.toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space);
+  cursor: pointer;
+}
+
+.toggle input,
+input[type='range'] {
+  accent-color: var(--accent);
+}
+
+input[type='range'] {
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
 .screen {
   max-width: 64rem;
   margin: 0 auto;
@@ -179,8 +216,19 @@ button:hover:not(:disabled) {
 }
 
 button:active:not(:disabled) {
-  transform: translate(2px, 2px);
   box-shadow: none;
+}
+
+/* While motion is on (see settings.tsx), a button presses down quickly and springs back past its rest. */
+[data-motion] button {
+  transition:
+    transform 180ms cubic-bezier(0.34, 1.8, 0.64, 1),
+    box-shadow 180ms ease-out;
+}
+
+[data-motion] button:active:not(:disabled) {
+  transform: translate(2px, 2px);
+  transition-duration: 40ms;
 }
 
 button:disabled {
