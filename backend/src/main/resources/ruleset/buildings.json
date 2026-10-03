@@ -1,10 +1,15 @@
 [
   { "name": "Farm", "gold": 30, "turns": 2, "populationPerTurn": 1 },
   { "name": "Granary", "gold": 60, "turns": 3, "populationPerTurn": 3 },
+  { "name": "Aqueduct", "gold": 110, "turns": 4, "populationPerTurn": 4 },
   { "name": "Market", "gold": 40, "turns": 2, "goldPerTurn": 3 },
+  { "name": "Harbour", "gold": 70, "turns": 3, "goldPerTurn": 5 },
   { "name": "Library", "gold": 50, "turns": 3, "researchPerTurn": 2 },
+  { "name": "University", "gold": 100, "turns": 4, "researchPerTurn": 4 },
+  { "name": "Observatory", "gold": 90, "turns": 4, "researchPerTurn": 3 },
   { "name": "Bank", "gold": 100, "turns": 4, "goldPerPopulation": 0.5 },
   { "name": "Palisade", "gold": 40, "turns": 2, "defense": 6 },
   { "name": "Walls", "gold": 80, "turns": 4, "defense": 15 },
-  { "name": "Moat", "gold": 60, "turns": 3, "defense": 10 }
+  { "name": "Moat", "gold": 60, "turns": 3, "defense": 10 },
+  { "name": "Castle", "gold": 150, "turns": 5, "defense": 25 }
 ]
