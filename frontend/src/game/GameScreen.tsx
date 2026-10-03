@@ -4,10 +4,11 @@ import { Icon, type IconName } from '../ui/Icon'
 import { NationName } from '../ui/NationName'
 import type { ReceivedRoom } from '../useRoom'
 import { ArmyPanel, MapPanel, SpiesPanel } from './AbroadPanels'
+import { ActionTabs, type ActionTab } from './ActionTabs'
 import { DecisionsPanel } from './DecisionsPanel'
 import { formatCountdown } from './format'
 import { BuildPanel, ResourcesPanel, TechTreePanel, TrainPanel } from './NationPanels'
-import { TurnPanel } from './TurnPanel'
+import { TurnPanel, TurnReportPanel } from './TurnPanel'
 
 /** The time now, updated a few times a second. */
 function useNow() {
@@ -30,11 +31,13 @@ function Banner({ tone, icon, children }: { tone: 'accent' | 'bad' | 'muted'; ic
 }
 
 /** The panels an action can be taken in, so a rejection is shown where its action was. */
-type Area = 'decisions' | 'build' | 'train' | 'tech' | 'army' | 'spies'
+type Area = 'decisions' | ActionTab
 
 /**
- * One Turn of the Game as this Player sees it, as a dashboard: the Turn Report and End Turn button
- * first, this Turn's decisions under them, and panels for everything else the Player can do.
+ * One Turn of the Game as this Player sees it, as a dashboard. On a wide screen it fits without page
+ * scroll in three columns: the Map; the Turn timer and End Turn, Resources, this Turn's decisions and the
+ * Turn Report; and the action panels in tabs, which a Player out of the Game has none of. Narrower
+ * screens stack the panels, the Turn panel first.
  */
 function GameScreen({
   room,
@@ -83,6 +86,8 @@ function GameScreen({
   const knockedOut = me !== undefined && game.conquered.includes(me.nationName)
   const removed = me !== undefined && game.removed.includes(me.nationName)
   const playing = !game.winner && !knockedOut && !removed
+  /** Whether the Player has action panels to show, in tabs. */
+  const actionable = playing && nation !== null
   const paused = game.waitingFor.length > 0
   const othersRemoved = game.removed.filter((n) => n !== me?.nationName)
   /** A Nation's name with its colour and emblem, as its Player chose them. */
@@ -148,52 +153,63 @@ function GameScreen({
         </Banner>
       )}
 
-      <div className={playing ? 'dash' : 'dash dash--watching'}>
-        <TurnPanel
-          game={game}
-          nation={nation}
-          players={room.players}
-          playerId={playerId}
-          playing={playing}
-          countdown={formatCountdown(paused ? game.millisLeft : turnEndsAt - now)}
-          onDone={onDone}
-        />
-        {nation && playing && (
-          <>
-            <DecisionsPanel
-              nation={nation}
-              rejection={rejectionIn('decisions')}
-              onAnswerDilemma={from('decisions', onAnswerDilemma)}
-              onAnswerEncounter={from('decisions', onAnswerEncounter)}
-              onOfferTribute={from('decisions', onOfferTribute)}
-              onAnswerTribute={from('decisions', onAnswerTribute)}
-            />
-            <ResourcesPanel nation={nation} />
-            <BuildPanel
-              nation={nation}
-              rejection={rejectionIn('build')}
-              onStart={from('build', onStartBuilding)}
-              onRepair={from('build', onRepairBuilding)}
-              onRebuild={from('build', onRebuildBuilding)}
-              onSell={from('build', onSellBuilding)}
-            />
-            <TrainPanel nation={nation} rejection={rejectionIn('train')} onTrain={from('train', onTrainUnits)} />
-            <TechTreePanel
-              nation={nation}
-              rejection={rejectionIn('tech')}
-              onUnlock={from('tech', onUnlockTechnology)}
-            />
-            <ArmyPanel
-              nation={nation}
-              rejection={rejectionIn('army')}
-              onSend={from('army', onSendWarparty)}
-              onRecall={from('army', onRecallWarparty)}
-            />
-            <SpiesPanel nation={nation} rejection={rejectionIn('spies')} onSend={from('spies', onSendSpy)} />
-          </>
-        )}
+      <div className={actionable ? 'dash' : 'dash dash--watching'}>
         {nation && <MapPanel nation={nation} />}
-        {!nation && playing && <p className="muted">Loading your Nation…</p>}
+        <div className="dash__centre">
+          <TurnPanel
+            game={game}
+            players={room.players}
+            playerId={playerId}
+            playing={playing}
+            countdown={formatCountdown(paused ? game.millisLeft : turnEndsAt - now)}
+            onDone={onDone}
+          />
+          {nation && playing && (
+            <>
+              <ResourcesPanel nation={nation} />
+              <DecisionsPanel
+                nation={nation}
+                rejection={rejectionIn('decisions')}
+                onAnswerDilemma={from('decisions', onAnswerDilemma)}
+                onAnswerEncounter={from('decisions', onAnswerEncounter)}
+                onOfferTribute={from('decisions', onOfferTribute)}
+                onAnswerTribute={from('decisions', onAnswerTribute)}
+              />
+            </>
+          )}
+          {nation && <TurnReportPanel report={nation.turnReport} />}
+          {!nation && playing && <p className="muted">Loading your Nation…</p>}
+        </div>
+        {nation && actionable && (
+          <ActionTabs
+            nation={nation}
+            panels={{
+              build: (
+                <BuildPanel
+                  nation={nation}
+                  rejection={rejectionIn('build')}
+                  onStart={from('build', onStartBuilding)}
+                  onRepair={from('build', onRepairBuilding)}
+                  onRebuild={from('build', onRebuildBuilding)}
+                  onSell={from('build', onSellBuilding)}
+                />
+              ),
+              train: <TrainPanel nation={nation} rejection={rejectionIn('train')} onTrain={from('train', onTrainUnits)} />,
+              tech: (
+                <TechTreePanel nation={nation} rejection={rejectionIn('tech')} onUnlock={from('tech', onUnlockTechnology)} />
+              ),
+              army: (
+                <ArmyPanel
+                  nation={nation}
+                  rejection={rejectionIn('army')}
+                  onSend={from('army', onSendWarparty)}
+                  onRecall={from('army', onRecallWarparty)}
+                />
+              ),
+              spies: <SpiesPanel nation={nation} rejection={rejectionIn('spies')} onSend={from('spies', onSendSpy)} />,
+            }}
+          />
+        )}
       </div>
     </div>
   )

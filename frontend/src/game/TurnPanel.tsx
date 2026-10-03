@@ -1,4 +1,4 @@
-import type { GameView, NationView, PlayerView, TurnReport, TurnReportKind } from '../api'
+import type { GameView, PlayerView, TurnReport, TurnReportKind } from '../api'
 import { Icon } from '../ui/Icon'
 import { NationName } from '../ui/NationName'
 import { Panel } from '../ui/Panel'
@@ -48,13 +48,21 @@ function ReportSections({ report }: { report: TurnReport | null }) {
   ))
 }
 
+/** What happened as the last Turn resolved, by section, filling the space left and scrolling within it. */
+export function TurnReportPanel({ report }: { report: TurnReport | null }) {
+  return (
+    <Panel title="Turn Report" icon="book" className="dash__report">
+      <ReportSections report={report} />
+    </Panel>
+  )
+}
+
 /**
- * The heart of the Game screen: what happened as the last Turn resolved, and, while the Player is
- * playing, the Turn timer and the button to end their Turn, with which Players are done.
+ * The Turn timer and the button to end the Turn, while the Player is playing, and how each Player
+ * stands: who is done, deciding, disconnected or out of the Game.
  */
 export function TurnPanel({
   game,
-  nation,
   players,
   playerId,
   playing,
@@ -62,7 +70,6 @@ export function TurnPanel({
   onDone,
 }: {
   game: GameView
-  nation: NationView | null
   players: PlayerView[]
   playerId: string
   playing: boolean
@@ -79,36 +86,27 @@ export function TurnPanel({
       actions={paused && !game.winner ? <span className="tag tag--bad">paused</span> : undefined}
     >
       <div className="turn">
-        <section className="turn__report" aria-labelledby="turn-report">
-          <h3 className="turn__heading" id="turn-report">
-            <Icon name="book" size={12} />
-            Turn Report
-          </h3>
-          <ReportSections report={nation?.turnReport ?? null} />
-        </section>
-        <div className="turn__side">
-          {playing && (
-            <>
-              <div className={paused ? 'turn__timer turn__timer--paused' : 'turn__timer'} aria-label="Time left">
-                {countdown}
-              </div>
-              <button className="button--primary turn__end" onClick={() => onDone(game.turn)} disabled={!me || me.done}>
-                {me?.done ? 'Waiting for the others…' : 'End Turn'}
-              </button>
-            </>
-          )}
-          <ul className="roster roster--compact">
-            {players.map((p) => (
-              <li key={p.id} className={p.id === playerId ? 'roster__nation roster__nation--you' : 'roster__nation'}>
-                <span className="roster__name">
-                  <NationName name={p.nationName} colour={p.colour} emblem={p.emblem} />
-                </span>
-                {p.id === playerId && <span className="tag tag--accent">you</span>}
-                <PlayerStanding player={p} game={game} />
-              </li>
-            ))}
-          </ul>
-        </div>
+        {playing && (
+          <div className="turn__controls">
+            <div className={paused ? 'turn__timer turn__timer--paused' : 'turn__timer'} aria-label="Time left">
+              {countdown}
+            </div>
+            <button className="button--primary turn__end" onClick={() => onDone(game.turn)} disabled={!me || me.done}>
+              {me?.done ? 'Waiting for the others…' : 'End Turn'}
+            </button>
+          </div>
+        )}
+        <ul className="roster roster--compact">
+          {players.map((p) => (
+            <li key={p.id} className={p.id === playerId ? 'roster__nation roster__nation--you' : 'roster__nation'}>
+              <span className="roster__name">
+                <NationName name={p.nationName} colour={p.colour} emblem={p.emblem} />
+              </span>
+              {p.id === playerId && <span className="tag tag--accent">you</span>}
+              <PlayerStanding player={p} game={game} />
+            </li>
+          ))}
+        </ul>
       </div>
     </Panel>
   )

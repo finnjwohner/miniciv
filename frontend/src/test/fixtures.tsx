@@ -135,11 +135,12 @@ export function nationView(overrides: Partial<NationView> = {}): NationView {
 
 /**
  * Renders the Game screen as the Player `playerId` (Rome's by default), with every action a no-op
- * unless passed in `props`.
+ * unless passed in `props`. `rerenderGame` re-renders it with other props, as when the server sends a new
+ * Nation view or a rejection, keeping what the Player has open.
  */
 export function renderGame(props: Partial<ComponentProps<typeof GameScreen>> = {}) {
   const noop = () => {}
-  return render(
+  const gameScreen = (overrides: Partial<ComponentProps<typeof GameScreen>>) => (
     <GameScreen
       room={roomView()}
       nation={nationView()}
@@ -159,9 +160,11 @@ export function renderGame(props: Partial<ComponentProps<typeof GameScreen>> = {
       onAnswerTribute={noop}
       onAnswerEncounter={noop}
       onDone={noop}
-      {...props}
-    />,
+      {...overrides}
+    />
   )
+  const result = render(gameScreen(props))
+  return { ...result, rerenderGame: (overrides: Partial<ComponentProps<typeof GameScreen>>) => result.rerender(gameScreen(overrides)) }
 }
 
 function player(nation: typeof ROME): Omit<PlayerView, 'id'> {
