@@ -5,38 +5,32 @@ import type { BuildingType, Facts, GameView, NationView, PlayerView, UnitType } 
 import GameScreen from '../game/GameScreen'
 import type { ReceivedRoom } from '../useRoom'
 
-/** The Player the tests play as, by default. */
-export const ME = 'player-rome'
+/** The id of the Player the tests play as, by default: Rome's. */
+export const MY_PLAYER_ID = 'player-rome'
 
-/** Rome (the tests' Player) and Egypt, both still deciding. */
-export function playerViews(): PlayerView[] {
+/**
+ * The Turn the Game is on. A Nation view and its Game view each carry the Turn; to test another,
+ * override both.
+ */
+export const TURN = 3
+
+/** Each Nation's name, Ruler, colour and emblem, as its Player picked them in the Room. */
+const ROME = { name: 'Rome', ruler: 'Augustus', colour: '#c0392b', emblem: 'sword' }
+const EGYPT = { name: 'Egypt', ruler: 'Cleopatra', colour: '#2980b9', emblem: 'sun' }
+
+/** The tests' Player, playing Rome, and Egypt's Player, both still deciding. */
+function playerViews(): PlayerView[] {
   return [
-    {
-      id: ME,
-      nationName: 'Rome',
-      ruler: 'Augustus',
-      colour: '#c0392b',
-      emblem: 'sword',
-      ready: true,
-      done: false,
-    },
-    {
-      id: 'player-egypt',
-      nationName: 'Egypt',
-      ruler: 'Cleopatra',
-      colour: '#2980b9',
-      emblem: 'sun',
-      ready: true,
-      done: false,
-    },
+    { id: MY_PLAYER_ID, ...player(ROME) },
+    { id: 'player-egypt', ...player(EGYPT) },
   ]
 }
 
-/** Turn 3 of a Game between Rome and Egypt, with a minute left and no one disconnected. */
-export function gameView(overrides: Partial<GameView> = {}): GameView {
+/** The Turn of a Game between Rome and Egypt, with a minute left and no one disconnected. */
+function gameView(overrides: Partial<GameView> = {}): GameView {
   return {
-    turn: 3,
-    nations: ['Rome', 'Egypt'],
+    turn: TURN,
+    nations: [ROME.name, EGYPT.name],
     millisLeft: 60_000,
     conquered: [],
     removed: [],
@@ -46,13 +40,16 @@ export function gameView(overrides: Partial<GameView> = {}): GameView {
   }
 }
 
-/** The Room the Game is played in, as just received; pass `game` to adjust it. */
+/**
+ * The Room the Game is played in, as just received; pass `game` to adjust it. The Turn timer counts
+ * down from `receivedAt`, the time now, so a test checking it should fake the clock.
+ */
 export function roomView(overrides: Partial<ReceivedRoom> = {}): ReceivedRoom {
   return {
     code: 'ABCD',
     version: 1,
-    colours: ['#c0392b', '#2980b9', '#27ae60', '#f39c12'],
-    emblems: ['sword', 'sun', 'crown', 'tree'],
+    colours: [ROME.colour, EGYPT.colour, '#27ae60', '#f39c12'],
+    emblems: [ROME.emblem, EGYPT.emblem, 'crown', 'tree'],
     players: playerViews(),
     game: gameView(),
     receivedAt: Date.now(),
@@ -61,20 +58,20 @@ export function roomView(overrides: Partial<ReceivedRoom> = {}): ReceivedRoom {
 }
 
 /**
- * Rome on Turn 3: a few Buildings, a Library under construction, Archers in training, a Dilemma
+ * Rome on the Game's Turn: a few Buildings, a Library under construction, Archers in training, a Dilemma
  * awaiting a choice and a Turn Report from the last Turn.
  */
 export function nationView(overrides: Partial<NationView> = {}): NationView {
   return {
     version: 1,
-    turn: 3,
-    nation: 'Rome',
+    turn: TURN,
+    nation: ROME.name,
     gold: 120,
     population: 14,
     research: 12,
     map: [
-      { name: 'Rome', ruler: 'Augustus', colour: '#c0392b', emblem: 'sword', standing: 'IN_GAME', facts: noFacts() },
-      { name: 'Egypt', ruler: 'Cleopatra', colour: '#2980b9', emblem: 'sun', standing: 'IN_GAME', facts: noFacts() },
+      { ...ROME, standing: 'IN_GAME', facts: noFacts() },
+      { ...EGYPT, standing: 'IN_GAME', facts: noFacts() },
     ],
     availableBuildings: [
       building({ name: 'Farm', gold: 30, turns: 2, populationPerTurn: 1 }),
@@ -131,7 +128,7 @@ export function nationView(overrides: Partial<NationView> = {}): NationView {
 }
 
 /**
- * Renders the Game screen as the Player `playerId` (Rome by default), with every action a no-op
+ * Renders the Game screen as the Player `playerId` (Rome's by default), with every action a no-op
  * unless passed in `props`.
  */
 export function renderGame(props: Partial<ComponentProps<typeof GameScreen>> = {}) {
@@ -140,7 +137,7 @@ export function renderGame(props: Partial<ComponentProps<typeof GameScreen>> = {
     <GameScreen
       room={roomView()}
       nation={nationView()}
-      playerId={ME}
+      playerId={MY_PLAYER_ID}
       rejection={null}
       onStartBuilding={noop}
       onRepairBuilding={noop}
@@ -159,6 +156,10 @@ export function renderGame(props: Partial<ComponentProps<typeof GameScreen>> = {
       {...props}
     />,
   )
+}
+
+function player(nation: typeof ROME): Omit<PlayerView, 'id'> {
+  return { nationName: nation.name, ruler: nation.ruler, colour: nation.colour, emblem: nation.emblem, ready: true, done: false }
 }
 
 function noFacts(): Facts {
