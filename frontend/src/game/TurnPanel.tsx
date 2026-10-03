@@ -1,5 +1,6 @@
 import type { GameView, NationView, PlayerView } from '../api'
 import { Icon } from '../ui/Icon'
+import { NationName } from '../ui/NationName'
 import { Panel } from '../ui/Panel'
 
 /** How a Player stands in the Game, as a tag beside their Nation. */
@@ -79,7 +80,9 @@ export function TurnPanel({
           <ul className="roster roster--compact">
             {players.map((p) => (
               <li key={p.id} className={p.id === playerId ? 'roster__nation roster__nation--you' : 'roster__nation'}>
-                <span className="roster__name">{p.nationName}</span>
+                <span className="roster__name">
+                  <NationName name={p.nationName} colour={p.colour} emblem={p.emblem} />
+                </span>
                 {p.id === playerId && <span className="tag tag--accent">you</span>}
                 <PlayerStanding player={p} game={game} />
               </li>

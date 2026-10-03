@@ -202,11 +202,18 @@ export type Facts = {
   defense: Fact<number> | null
 }
 /**
- * A Nation on the Map, as another Nation knows it: its name, whether it is still in the Game,
- * was conquered, or was removed as its Player was disconnected for too long, and what this Nation has
- * learned of it.
+ * A Nation on the Map, as another Nation knows it: its name, Ruler, colour and emblem, public from the
+ * start, whether it is still in the Game, was conquered, or was removed as its Player was disconnected
+ * for too long, and what this Nation has learned of it.
  */
-export type MapNation = { name: string; standing: 'IN_GAME' | 'CONQUERED' | 'REMOVED'; facts: Facts }
+export type MapNation = {
+  name: string
+  ruler: string
+  colour: string
+  emblem: string
+  standing: 'IN_GAME' | 'CONQUERED' | 'REMOVED'
+  facts: Facts
+}
 /**
  * What only this Player sees: their own Nation, and the Map with the names of the others and what their
  * Spies reported of them.

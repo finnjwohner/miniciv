@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import type { NationView } from '../api'
 import { Icon, type IconName } from '../ui/Icon'
+import { NationName } from '../ui/NationName'
 import type { ReceivedRoom } from '../useRoom'
 import { ArmyPanel, MapPanel, SpiesPanel } from './AbroadPanels'
 import { DecisionsPanel } from './DecisionsPanel'
@@ -84,6 +85,11 @@ function GameScreen({
   const playing = !game.winner && !knockedOut && !removed
   const paused = game.waitingFor.length > 0
   const othersRemoved = game.removed.filter((n) => n !== me?.nationName)
+  /** A Nation's name with its colour and emblem, as its Player chose them. */
+  const named = (name: string) => {
+    const player = room.players.find((p) => p.nationName === name)
+    return <NationName name={name} colour={player?.colour} emblem={player?.emblem} />
+  }
 
   /** Remembers which panel an action was taken in before taking it. */
   const from =
@@ -98,7 +104,9 @@ function GameScreen({
     <div className="game">
       {game.winner && (
         <Banner tone="accent" icon="trophy">
-          <strong>{game.winner === me?.nationName ? 'You have won the Game!' : `${game.winner} has won the Game.`}</strong>
+          <strong>
+            {game.winner === me?.nationName ? 'You have won the Game!' : <>{named(game.winner)} has won the Game.</>}
+          </strong>
         </Banner>
       )}
       {knockedOut && (
@@ -120,7 +128,7 @@ function GameScreen({
           <ul>
             {game.waitingFor.map((w) => (
               <li key={w.nation}>
-                Waiting for {w.nation} to reconnect; removed from the Game in{' '}
+                Waiting for {named(w.nation)} to reconnect; removed from the Game in{' '}
                 {formatCountdown(room.receivedAt + w.millisLeft - now)}.
               </li>
             ))}
@@ -129,7 +137,14 @@ function GameScreen({
       )}
       {othersRemoved.length > 0 && (
         <Banner tone="muted" icon="warning">
-          Removed from the Game, as their Players were disconnected for too long: {othersRemoved.join(', ')}.
+          Removed from the Game, as their Players were disconnected for too long:{' '}
+          {othersRemoved.map((n, i) => (
+            <span key={n}>
+              {i > 0 && ', '}
+              {named(n)}
+            </span>
+          ))}
+          .
         </Banner>
       )}
 

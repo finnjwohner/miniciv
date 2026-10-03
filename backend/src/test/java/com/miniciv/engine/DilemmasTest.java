@@ -37,7 +37,7 @@ class DilemmasTest {
 
 	void play(RandomGenerator luck, Event... events) {
 		game = new Game(new Ruleset(RULESET.units(), RULESET.buildings(), List.of(), List.of(events)),
-				List.of("Rome", "Carthage"), luck);
+				Identities.of("Rome", "Carthage"), luck);
 	}
 
 	/**

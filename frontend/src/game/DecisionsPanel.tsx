@@ -1,8 +1,9 @@
 import { useState, type ReactNode } from 'react'
-import type { Dilemma, Encounter, NationView, Tribute } from '../api'
+import type { Dilemma, Encounter, MapNation, NationView, Tribute } from '../api'
 import { Panel } from '../ui/Panel'
 import { CountInput, Rejection } from './controls'
 import { listCounts } from './format'
+import { MapName } from './MapName'
 
 /** Such as "20 Gold and 3 Population". */
 function describeTribute(tribute: Tribute) {
@@ -69,17 +70,20 @@ function DilemmaDecision({
 function EncounterDecision({
   encounter,
   nation,
+  map,
   onAnswer,
 }: {
   encounter: Encounter
   nation: string
+  map: MapNation[]
   onAnswer: (warparty: number, fight: boolean) => void
 }) {
   const [own, other] = sides(encounter, nation)
+  const them = <MapName name={other.nation} map={map} />
   return (
     <Decision kind="Encounter" open={own.choice === 'NONE'}>
       <p>
-        Your Warparty of {listCounts(own.units)} met {other.nation}'s Warparty of {listCounts(other.units)}.
+        Your Warparty of {listCounts(own.units)} met {them}'s Warparty of {listCounts(other.units)}.
       </p>
       {own.choice === 'NONE' ? (
         <div className="button-row">
@@ -90,11 +94,12 @@ function EncounterDecision({
         <p>{own.choice === 'FIGHT' ? 'You chose to fight.' : 'You chose not to fight.'}</p>
       )}
       <p className="muted">
+        {them}{' '}
         {other.choice === 'FIGHT'
-          ? `${other.nation} chose to fight, so they will fight as this Turn ends.`
+          ? 'chose to fight, so they will fight as this Turn ends.'
           : other.choice === 'PASS'
-            ? `${other.nation} chose not to fight.`
-            : `${other.nation} has not chosen yet.`}
+            ? 'chose not to fight.'
+            : 'has not chosen yet.'}
       </p>
     </Decision>
   )
@@ -183,23 +188,25 @@ export function DecisionsPanel({
             key={sides(e, nation.nation)[0].warparty}
             encounter={e}
             nation={nation.nation}
+            map={nation.map}
             onAnswer={onAnswerEncounter}
           />
         ))}
         {nation.arrivals.map((a) => {
           const offered = offeredFor(a.nation, a.warparty)
+          const attacker = <MapName name={a.nation} map={nation.map} />
           return (
             <Decision key={`${a.nation}-${a.warparty}`} kind="Warparty arrived" open={!offered}>
-              <p>A Warparty from {a.nation} has arrived; the Battle will be fought as this Turn ends.</p>
+              <p>A Warparty from {attacker} has arrived; the Battle will be fought as this Turn ends.</p>
               {!offered ? (
                 <TributeOffer nation={a.nation} warparty={a.warparty} onOffer={onOfferTribute} />
               ) : offered.answer === 'REFUSED' ? (
                 <p>
-                  {a.nation} refused your Tribute of {describeTribute(offered)}.
+                  {attacker} refused your Tribute of {describeTribute(offered)}.
                 </p>
               ) : (
                 <p className="muted">
-                  You offered {a.nation} {describeTribute(offered)}; waiting for their answer.
+                  You offered {attacker} {describeTribute(offered)}; waiting for their answer.
                 </p>
               )}
             </Decision>
@@ -208,14 +215,14 @@ export function DecisionsPanel({
         {accepted.map((t) => (
           <Decision key={`${t.to}-${t.warparty}`} kind="Tribute" open={false}>
             <p>
-              {t.to} accepted your Tribute of {describeTribute(t)}, and its Warparty turned back home.
+              <MapName name={t.to} map={nation.map} /> accepted your Tribute of {describeTribute(t)}, and its Warparty turned back home.
             </p>
           </Decision>
         ))}
         {received.map((t) => (
           <Decision key={`${t.from}-${t.warparty}`} kind="Tribute offered" open={t.answer === 'NONE'}>
             <p>
-              {t.from} offers you {describeTribute(t)} to Recall your Warparty.
+              <MapName name={t.from} map={nation.map} /> offers you {describeTribute(t)} to Recall your Warparty.
             </p>
             {t.answer === 'NONE' ? (
               <>

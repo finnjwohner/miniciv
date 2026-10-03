@@ -26,7 +26,7 @@ class ScoutsTest {
 	 */
 	static final RandomGenerator NEVER = luck(-1);
 
-	Game game = new Game(RULESET, List.of("Rome", "Carthage", "Egypt"), EVEN_LUCK);
+	Game game = new Game(RULESET, Identities.of("Rome", "Carthage", "Egypt"), EVEN_LUCK);
 
 	/**
 	 * A draw of the given double, between 0 and 1, from {@link GameTest#luck}.
@@ -51,7 +51,7 @@ class ScoutsTest {
 	}
 
 	void play(RandomGenerator luck, String... nations) {
-		game = new Game(RULESET, List.of(nations), luck);
+		game = new Game(RULESET, Identities.of(nations), luck);
 	}
 
 	@Test
@@ -91,7 +91,7 @@ class ScoutsTest {
 		}
 
 		assertThat(report("Carthage")).contains(
-				"Your Army of Warrior ×1 fought Rome's Warparty of Warrior ×4. You lost Warrior ×1 and Rome lost no Units.");
+				"Your Army of Warrior ×1 fought Caesar of Rome's Warparty of Warrior ×4. You lost Warrior ×1 and Rome lost no Units.");
 		assertThat(game.viewOf("Carthage").army()).containsExactly(entry("Scout", 2));
 	}
 
@@ -104,7 +104,7 @@ class ScoutsTest {
 			game.endTurn();
 		}
 
-		assertThat(report("Carthage")).contains("Rome's Warparty of Warrior ×2 met no Army at your Nation.");
+		assertThat(report("Carthage")).contains("Caesar of Rome's Warparty of Warrior ×2 met no Army at your Nation.");
 		assertThat(report("Rome")).contains("Your Warparty of Warrior ×2 met no Army at Carthage.");
 		assertThat(game.viewOf("Carthage").army()).containsExactly(entry("Scout", 1));
 	}
@@ -112,7 +112,7 @@ class ScoutsTest {
 	@Test
 	void scoutsCannotHoldOffConquest() {
 		UnitType giant = new UnitType("Giant", 10, 1, 1, 1, 100, List.of());
-		game = new Game(new Ruleset(List.of(giant, GameTest.SCOUT), List.of(), List.of()), List.of("Rome", "Carthage"),
+		game = new Game(new Ruleset(List.of(giant, GameTest.SCOUT), List.of(), List.of()), Identities.of("Rome", "Carthage"),
 				EVEN_LUCK);
 		game.act("Rome", new Action.TrainUnits("Giant", 1));
 		game.act("Carthage", new Action.TrainUnits("Scout", 1));
@@ -135,7 +135,7 @@ class ScoutsTest {
 		send("Carthage", "Egypt", Map.of("Warrior", 2));
 		game.endTurn();
 
-		assertThat(report("Rome")).contains("Your Scouts discovered Carthage's Warparty of Warrior ×2 heading to Egypt.");
+		assertThat(report("Rome")).contains("Your Scouts discovered Hannibal of Carthage's Warparty of Warrior ×2 heading to Egypt.");
 		assertThat(report("Carthage")).noneMatch(line -> line.contains("Scouts"));
 		assertThat(report("Egypt")).noneMatch(line -> line.contains("Scouts"));
 	}
@@ -156,9 +156,9 @@ class ScoutsTest {
 		game.endTurn();
 
 		assertThat(report("Rome")).containsSubsequence(
-				"Your Scouts discovered Carthage's Warparty of Warrior ×1 heading to your Nation.",
-				"Your Scouts discovered Carthage's Warparty of Warrior ×1 heading to Egypt.",
-				"Your Scouts discovered Egypt's Warparty of Warrior ×2 heading home from Carthage.");
+				"Your Scouts discovered Hannibal of Carthage's Warparty of Warrior ×1 heading to your Nation.",
+				"Your Scouts discovered Hannibal of Carthage's Warparty of Warrior ×1 heading to Egypt.",
+				"Your Scouts discovered Cleopatra of Egypt's Warparty of Warrior ×2 heading home from Carthage.");
 	}
 
 	@Test
@@ -173,8 +173,8 @@ class ScoutsTest {
 
 		game.endTurn();
 
-		assertThat(report("Rome")).contains("A Warparty from Carthage arrived at your Nation; the Battle will be fought as this Turn ends.",
-				"Your Scouts discovered Carthage's Warparty of Warrior ×1 waiting at Egypt for the Battle.");
+		assertThat(report("Rome")).contains("Hannibal of Carthage's Warparty arrived at your Nation; the Battle will be fought as this Turn ends.",
+				"Your Scouts discovered Hannibal of Carthage's Warparty of Warrior ×1 waiting at Egypt for the Battle.");
 		assertThat(report("Rome")).filteredOn(line -> line.startsWith("Your Scouts")).hasSize(1);
 	}
 
@@ -217,7 +217,7 @@ class ScoutsTest {
 				assertThat(report("Rome")).noneMatch(line -> line.startsWith("Your Scouts"));
 			}
 			else {
-				assertThat(report("Rome")).contains("Your Scouts discovered Carthage's Warparty of Warrior ×2 heading to your Nation.");
+				assertThat(report("Rome")).contains("Your Scouts discovered Hannibal of Carthage's Warparty of Warrior ×2 heading to your Nation.");
 			}
 		}
 	}
@@ -233,7 +233,7 @@ class ScoutsTest {
 		game.endTurn();
 
 		assertThat(report("Rome")).filteredOn(line -> line.startsWith("Your Scouts"))
-			.containsExactly("Your Scouts discovered Carthage's Warparty of Warrior ×1 heading to Egypt.");
+			.containsExactly("Your Scouts discovered Hannibal of Carthage's Warparty of Warrior ×1 heading to Egypt.");
 	}
 
 	/**

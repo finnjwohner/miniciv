@@ -194,10 +194,13 @@ public class Game {
 	 */
 	private String winner;
 
-	public Game(Ruleset ruleset, List<String> nations, RandomGenerator random) {
+	/**
+	 * @param nations who each Nation taking part is, in the order they joined
+	 */
+	public Game(Ruleset ruleset, List<NationIdentity> nations, RandomGenerator random) {
 		this.ruleset = ruleset;
-		for (String name : nations) {
-			this.nations.put(name, new Nation(name, BASE_GOLD, BASE_POPULATION, BASE_RESEARCH));
+		for (NationIdentity identity : nations) {
+			this.nations.put(identity.name(), new Nation(identity, BASE_GOLD, BASE_POPULATION, BASE_RESEARCH));
 		}
 		this.random = random;
 	}
@@ -310,9 +313,10 @@ public class Game {
 				.filter(Warparty::awaitingBattle)
 				.isPresent()) {
 				reports.get(lapsed.to())
-					.add("You did not answer " + lapsed.from() + "'s Tribute of " + lapsed.described() + " in time.");
+					.add("You did not answer " + ruled(lapsed.from()) + "'s Tribute of " + lapsed.described()
+							+ " in time.");
 				reports.get(lapsed.from())
-					.add(lapsed.to() + " did not answer your Tribute of " + lapsed.described()
+					.add(ruled(lapsed.to()) + " did not answer your Tribute of " + lapsed.described()
 							+ " in time, so the Battle went ahead.");
 			}
 		}
@@ -362,8 +366,8 @@ public class Game {
 					.add("Your Warparty of " + listed(arrived.units()) + " arrived at " + arrived.target()
 							+ "; the Battle will be fought as this Turn ends.");
 				reports.get(arrived.target())
-					.add("A Warparty from " + nation.name()
-							+ " arrived at your Nation; the Battle will be fought as this Turn ends.");
+					.add(nation.ruled()
+							+ "'s Warparty arrived at your Nation; the Battle will be fought as this Turn ends.");
 			}
 			for (Spy arrived : nation.spiesTravelOut()) {
 				reports.get(nation.name()).add("Your Spy arrived at " + arrived.target() + ".");
@@ -594,7 +598,7 @@ public class Game {
 		for (int i = 0; i < arrivals.size(); i++) {
 			String attacker = arrivals.get(i).attacker().name();
 			String warparty = listed(battle.warparties().get(i));
-			sides.add(attacker + "'s Warparty of " + warparty);
+			sides.add(ruled(attacker) + "'s Warparty of " + warparty);
 			losses.add(attacker + " lost " + lost(battle.warpartiesLost().get(i)));
 			List<String> alongside = new ArrayList<>();
 			for (int j = 0; j < arrivals.size(); j++) {
@@ -619,7 +623,7 @@ public class Game {
 			if (!fought.survived(i)) {
 				String attacker = arrivals.get(i).attacker().name();
 				reports.get(attacker).add("Your Warparty sent to " + defender + " was destroyed.");
-				defenderReport.add(attacker + "'s Warparty was destroyed.");
+				defenderReport.add(ruled(attacker) + "'s Warparty was destroyed.");
 			}
 		}
 		List<Arrival> survivors = fought.survivors();
@@ -675,7 +679,7 @@ public class Game {
 					+ ". You are knocked out of the Game.");
 			reports.forEach((nation, report) -> {
 				if (!attackers.contains(nation) && !nation(nation).conquered()) {
-					report.add(joined(attackers) + " conquered " + defender + ".");
+					report.add(joined(attackers.stream().map(this::ruled).toList()) + " conquered " + defender + ".");
 				}
 			});
 			conquest.turnedBack()
@@ -696,23 +700,27 @@ public class Game {
 			Plunder plunder = fought.shares().get(i);
 			if (plunder.isNone()) {
 				reports.get(attacker).add("Your Warparty took nothing from " + defender + " and is heading home.");
-				defenderReport.add(attacker + "'s Warparty took nothing from you and is heading home.");
+				defenderReport.add(ruled(attacker) + "'s Warparty took nothing from you and is heading home.");
 			}
 			else {
 				reports.get(attacker)
 					.add("Your Warparty took " + plunder.described() + " from " + defender + share
 							+ " and is heading home.");
-				defenderReport
-					.add(attacker + "'s Warparty took " + plunder.described() + " from you and is heading home.");
+				defenderReport.add(
+						ruled(attacker) + "'s Warparty took " + plunder.described() + " from you and is heading home.");
 			}
 		}
 	}
 
 	/**
-	 * Such as "Rome's and Egypt's Warparties", for the Nation they attacked.
+	 * Such as "Caesar of Rome's and Cleopatra of Egypt's Warparties", for the
+	 * Nation they attacked.
 	 */
 	private static String warpartiesOf(List<Arrival> arrivals) {
-		List<String> nations = arrivals.stream().map(arrival -> arrival.attacker().name() + "'s").distinct().toList();
+		List<String> nations = arrivals.stream()
+			.map(arrival -> arrival.attacker().ruled() + "'s")
+			.distinct()
+			.toList();
 		return joined(nations) + (arrivals.size() == 1 ? " Warparty" : " Warparties");
 	}
 
@@ -814,7 +822,7 @@ public class Game {
 					}
 					if (random.nextDouble() < chance) {
 						reports.get(scouting.name())
-							.add("Your Scouts discovered " + other.name() + "'s Warparty of " + listed(warparty.units())
+							.add("Your Scouts discovered " + other.ruled() + "'s Warparty of " + listed(warparty.units())
 									+ " " + whereabouts(warparty, scouting.name()) + ".");
 					}
 				}
@@ -850,8 +858,8 @@ public class Game {
 								new Encounter.Side(nation.name(), warparty.id(), warparty.units(), Encounter.Choice.NONE),
 								new Encounter.Side(other.name(), otherWarparty.id(), otherWarparty.units(),
 										Encounter.Choice.NONE)));
-						reports.get(nation.name()).add(metLine(warparty, other.name(), otherWarparty));
-						reports.get(other.name()).add(metLine(otherWarparty, nation.name(), warparty));
+						reports.get(nation.name()).add(metLine(warparty, other.ruled(), otherWarparty));
+						reports.get(other.name()).add(metLine(otherWarparty, nation.ruled(), warparty));
 					}
 				}
 			}
@@ -859,8 +867,11 @@ public class Game {
 	}
 
 	/**
-	 * Such as "Your Warparty of Warrior ×2 heading to Carthage met Egypt's
-	 * Warparty of Archer ×3; choose whether to fight before this Turn ends."
+	 * Such as "Your Warparty of Warrior ×2 heading to Carthage met Cleopatra of
+	 * Egypt's Warparty of Archer ×3; choose whether to fight before this Turn
+	 * ends."
+	 *
+	 * @param other the other Nation, named by its Ruler
 	 */
 	private static String metLine(Warparty own, String other, Warparty theirs) {
 		return yourWarparty(own) + " met " + other
@@ -886,8 +897,8 @@ public class Game {
 			Warparty firstBefore = firstWarparty.get();
 			Warparty secondBefore = secondWarparty.get();
 			if (!encounter.fought()) {
-				reports.get(first.name()).add(separateWays(firstBefore, second.name(), secondBefore));
-				reports.get(second.name()).add(separateWays(secondBefore, first.name(), firstBefore));
+				reports.get(first.name()).add(separateWays(firstBefore, second.ruled(), secondBefore));
+				reports.get(second.name()).add(separateWays(secondBefore, first.ruled(), firstBefore));
 				continue;
 			}
 			Battle battle = Battle.fight(List.of(firstBefore.units()), secondBefore.units(), ruleset, random);
@@ -910,11 +921,11 @@ public class Game {
 	}
 
 	/**
-	 * Such as "Your Warparty of Warrior ×2 heading to Carthage fought Egypt's
-	 * Warparty of Archer ×3, as Egypt chose to fight. You lost Warrior ×1 and
-	 * Egypt lost no Units."
+	 * Such as "Your Warparty of Warrior ×2 heading to Carthage fought Cleopatra
+	 * of Egypt's Warparty of Archer ×3, as Egypt chose to fight. You lost
+	 * Warrior ×1 and Egypt lost no Units."
 	 */
-	private static void reportEncounter(Encounter.Side own, Encounter.Side other, Warparty ownWarparty,
+	private void reportEncounter(Encounter.Side own, Encounter.Side other, Warparty ownWarparty,
 			Warparty otherWarparty, Map<String, Integer> ownLost, Map<String, Integer> otherLost,
 			Map<String, List<String>> reports) {
 		String why = own.choice() == Encounter.Choice.FIGHT
@@ -922,15 +933,17 @@ public class Game {
 				: other.nation() + " chose";
 		reports.get(own.nation())
 			.add(yourWarparty(ownWarparty) + " fought "
-					+ other.nation() + "'s Warparty of " + listed(otherWarparty.units()) + ", as " + why
+					+ ruled(other.nation()) + "'s Warparty of " + listed(otherWarparty.units()) + ", as " + why
 					+ " to fight. You lost " + lost(ownLost) + " and " + other.nation() + " lost " + lost(otherLost)
 					+ ".");
 	}
 
 	/**
-	 * Such as "Your Warparty of Warrior ×2 heading to Carthage and Egypt's
-	 * Warparty of Archer ×3 went their separate ways, as neither of you chose
-	 * to fight."
+	 * Such as "Your Warparty of Warrior ×2 heading to Carthage and Cleopatra of
+	 * Egypt's Warparty of Archer ×3 went their separate ways, as neither of you
+	 * chose to fight."
+	 *
+	 * @param other the other Nation, named by its Ruler
 	 */
 	private static String separateWays(Warparty own, String other, Warparty theirs) {
 		return yourWarparty(own) + " and " + other
@@ -942,10 +955,10 @@ public class Game {
 	 * Tells both Nations that a Warparty was wiped out fighting in an
 	 * Encounter.
 	 */
-	private static void reportDestroyed(Warparty destroyed, String nation, String other,
+	private void reportDestroyed(Warparty destroyed, String nation, String other,
 			Map<String, List<String>> reports) {
 		reports.get(nation).add("Your Warparty " + whereabouts(destroyed, null) + " was destroyed.");
-		reports.get(other).add(nation + "'s Warparty was destroyed.");
+		reports.get(other).add(ruled(nation) + "'s Warparty was destroyed.");
 	}
 
 	/**
@@ -1107,7 +1120,7 @@ public class Game {
 		List<String> report = reports.get(catching.name());
 		String caught = caughtBy + " caught a Spy " + whereabouts(spy, catching.name());
 		if (captured == Captured.CONFESSES) {
-			report.add(caught + ", and it confessed that " + sender.name() + " sent it.");
+			report.add(caught + ", and it confessed that " + sender.ruled() + " sent it.");
 			catching.learn(sender.name(), catching.learnedOf(sender.name())
 				.withGold(sender.gold(), turn)
 				.withPopulation(sender.population(), turn)
@@ -1348,7 +1361,8 @@ public class Game {
 		pendingReport(nation)
 			.add("You Recalled your Warparty of " + listed(recalled.units()) + " heading to " + recalled.target() + ".");
 		if (recalled.awaitingBattle()) {
-			pendingReport(nation(recalled.target())).add(nation.name() + "'s Warparty turned back home before the Battle.");
+			pendingReport(nation(recalled.target()))
+				.add(nation.ruled() + "'s Warparty turned back home before the Battle.");
 			nation(recalled.target()).changed();
 		}
 		return ActionResult.ACCEPTED;
@@ -1404,8 +1418,9 @@ public class Game {
 			tributes.set(tributes.indexOf(tribute), tribute.answered(Tribute.Answer.REFUSED));
 			attacker.changed();
 			defender.changed();
-			pendingReport(attacker).add("You refused " + defender.name() + "'s Tribute of " + tribute.described() + ".");
-			pendingReport(defender).add(attacker.name() + " refused your Tribute of " + tribute.described() + ".");
+			pendingReport(attacker)
+				.add("You refused " + defender.ruled() + "'s Tribute of " + tribute.described() + ".");
+			pendingReport(defender).add(attacker.ruled() + " refused your Tribute of " + tribute.described() + ".");
 			return ActionResult.ACCEPTED;
 		}
 		if (!defender.canAfford(tribute.gold(), tribute.population())) {
@@ -1417,9 +1432,10 @@ public class Game {
 		attacker.gain(tribute.gold(), tribute.population(), 0);
 		defender.changed();
 		tributes.set(tributes.indexOf(tribute), tribute.answered(Tribute.Answer.ACCEPTED));
-		pendingReport(attacker).add("You accepted " + defender.name() + "'s Tribute of " + tribute.described()
-				+ ", and your Warparty of " + listed(warparty.get().units()) + " turned back home.");
-		pendingReport(defender).add(attacker.name() + " accepted your Tribute of " + tribute.described()
+		pendingReport(attacker).add("You accepted " + defender.ruled() + "'s Tribute of "
+				+ tribute.described() + ", and your Warparty of " + listed(warparty.get().units())
+				+ " turned back home.");
+		pendingReport(defender).add(attacker.ruled() + " accepted your Tribute of " + tribute.described()
 				+ ", and its Warparty turned back home before the Battle.");
 		return ActionResult.ACCEPTED;
 	}
@@ -1528,6 +1544,13 @@ public class Game {
 		List<Tribute> involved = tributes.stream().filter(tribute -> tribute.involves(nation)).toList();
 		List<Encounter> met = encounters.stream().filter(encounter -> encounter.involves(nation)).toList();
 		return own.view(turn, map, arrivals, involved, met, ruleset, winner);
+	}
+
+	/**
+	 * See {@link Nation#ruled}.
+	 */
+	private String ruled(String nation) {
+		return nation(nation).ruled();
 	}
 
 	private Nation nation(String name) {

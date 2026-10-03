@@ -32,7 +32,7 @@ class TravelTest {
 	}
 
 	void play(Ruleset ruleset) {
-		game = new Game(ruleset, List.of("Rome", "Carthage", "Egypt"), EVEN_LUCK);
+		game = new Game(ruleset, Identities.of("Rome", "Carthage", "Egypt"), EVEN_LUCK);
 	}
 
 	void armyOf(String nation, String unit, int count) {
@@ -141,7 +141,7 @@ class TravelTest {
 	@Test
 	void travelTurnEventsChangeATripBeyondTheBrackets() {
 		game = new Game(new Ruleset(List.of(soldier(100)), List.of(), List.of(), List.of(starter("Swollen river"))),
-				List.of("Rome", "Carthage"), ALWAYS);
+				Identities.of("Rome", "Carthage"), ALWAYS);
 		armyOf("Rome", "Soldier", 1);
 		game.endTurn();
 		game.act("Rome", new Action.SendWarparty("Carthage", Map.of("Soldier", 1)));

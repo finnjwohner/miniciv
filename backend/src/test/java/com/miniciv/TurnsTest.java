@@ -173,14 +173,17 @@ class TurnsTest {
 	}
 
 	/**
-	 * A Nation on the Map as a Player receives it, with nothing learned of it.
+	 * A Nation on the Map as a Player receives it, with nothing learned of it,
+	 * and the Ruler, colour and emblem {@link #readyUp} gives a Player at the
+	 * given seat.
 	 */
-	static Map<String, Object> onMap(String nation, String standing) {
+	static Map<String, Object> onMap(String nation, int seat, String standing) {
 		Map<String, Object> facts = new HashMap<>();
 		for (String fact : List.of("gold", "population", "research", "army", "buildings", "defense")) {
 			facts.put(fact, null);
 		}
-		return Map.of("name", nation, "standing", standing, "facts", facts);
+		return Map.of("name", nation, "ruler", "Ruler " + (seat + 1), "colour", IdentityTest.COLOURS.get(seat),
+				"emblem", IdentityTest.EMBLEMS.get(seat), "standing", standing, "facts", facts);
 	}
 
 	/**
@@ -201,7 +204,7 @@ class TurnsTest {
 		view.put("gold", gold);
 		view.put("population", population);
 		view.put("research", research);
-		view.put("map", List.of(onMap("Rome", "IN_GAME"), onMap("Carthage", "IN_GAME")));
+		view.put("map", List.of(onMap("Rome", 0, "IN_GAME"), onMap("Carthage", 1, "IN_GAME")));
 		view.put("availableBuildings", List.of(Map.of("name", "Farm", "gold", 30, "turns", 2, "populationPerTurn", 1,
 				"goldPerTurn", 0, "goldPerPopulation", 0.0, "researchPerTurn", 0, "defense", 0)));
 		view.put("buildings", Map.of());

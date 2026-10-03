@@ -31,10 +31,10 @@ class SpiesTest {
 	 */
 	static final RandomGenerator ALWAYS_GOLD = luck(0);
 
-	Game game = new Game(RULESET, List.of("Rome", "Carthage", "Egypt"), EVEN_LUCK);
+	Game game = new Game(RULESET, Identities.of("Rome", "Carthage", "Egypt"), EVEN_LUCK);
 
 	void play(RandomGenerator luck, String... nations) {
-		game = new Game(RULESET, List.of(nations), luck);
+		game = new Game(RULESET, Identities.of(nations), luck);
 	}
 
 	/**
@@ -143,7 +143,7 @@ class SpiesTest {
 	@Test
 	void aSpyAbroadDesertsWhenItsUpkeepCannotBePaid() {
 		UnitType costly = new UnitType("Spy", 0, 1, 1, 40, 0, List.of(), false, true);
-		game = new Game(new Ruleset(List.of(costly), List.of(FARM), List.of()), List.of("Rome", "Carthage"), EVEN_LUCK);
+		game = new Game(new Ruleset(List.of(costly), List.of(FARM), List.of()), Identities.of("Rome", "Carthage"), EVEN_LUCK);
 		game.act("Rome", new Action.TrainUnits("Spy", 1));
 		game.endTurn();
 		sendSpy("Rome", "Carthage");
@@ -305,7 +305,7 @@ class SpiesTest {
 	@Test
 	void aSpyInANationThatIsConqueredHeadsHomeAndRejoinsTheArmy() {
 		UnitType giant = new UnitType("Giant", 10, 1, 1, 1, 100, List.of());
-		game = new Game(new Ruleset(List.of(giant, SPY), List.of(), List.of()), List.of("Rome", "Carthage", "Egypt"),
+		game = new Game(new Ruleset(List.of(giant, SPY), List.of(), List.of()), Identities.of("Rome", "Carthage", "Egypt"),
 				EVEN_LUCK);
 		armyOf("Rome", "Spy", 1);
 		armyOf("Egypt", "Giant", 1);
