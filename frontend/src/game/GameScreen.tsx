@@ -43,6 +43,7 @@ function GameScreen({
   onStartBuilding,
   onRepairBuilding,
   onRebuildBuilding,
+  onSellBuilding,
   onTrainUnits,
   onSendWarparty,
   onRecallWarparty,
@@ -61,6 +62,7 @@ function GameScreen({
   onStartBuilding: (building: string) => void
   onRepairBuilding: (building: string) => void
   onRebuildBuilding: (building: string) => void
+  onSellBuilding: (building: string) => void
   onTrainUnits: (unit: string, count: number) => void
   onSendWarparty: (target: string, units: Record<string, number>) => void
   onRecallWarparty: (warparty: number) => void
@@ -158,6 +160,7 @@ function GameScreen({
               onStart={from('build', onStartBuilding)}
               onRepair={from('build', onRepairBuilding)}
               onRebuild={from('build', onRebuildBuilding)}
+              onSell={from('build', onSellBuilding)}
             />
             <TrainPanel nation={nation} rejection={rejectionIn('train')} onTrain={from('train', onTrainUnits)} />
             <TechTreePanel
