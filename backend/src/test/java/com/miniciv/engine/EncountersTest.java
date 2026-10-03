@@ -199,9 +199,9 @@ class EncountersTest {
 		game.endTurn();
 
 		assertThat(game.viewOf("Rome").warparties())
-			.containsExactly(new Warparty(1, "Carthage", Map.of("Warrior", 1), 3, false, 1, 2));
+			.containsExactly(new Warparty(1, "Carthage", Map.of("Warrior", 1), 3, false, 1, 2, Plunder.NONE, 6));
 		assertThat(game.viewOf("Carthage").warparties())
-			.containsExactly(new Warparty(1, "Rome", Map.of("Warrior", 1), 3, false, 1, 2));
+			.containsExactly(new Warparty(1, "Rome", Map.of("Warrior", 1), 3, false, 1, 2, Plunder.NONE, 6));
 		assertThat(game.viewOf("Rome").encounters()).isEmpty();
 		assertThat(report("Rome")).contains("Your Warparty of Warrior ×2 heading to Carthage fought Hannibal of Carthage's"
 				+ " Warparty of Warrior ×2, as Carthage chose to fight. You lost Warrior ×1 and Carthage lost Warrior ×1.");

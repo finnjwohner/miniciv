@@ -8,12 +8,19 @@ import org.junit.jupiter.api.Test;
 import static com.miniciv.engine.GameTest.incomeReport;
 import static com.miniciv.engine.GameTest.EVEN_LUCK;
 import static com.miniciv.engine.GameTest.RULESET;
+import static com.miniciv.engine.GameTest.Rigged;
 import static com.miniciv.engine.GameTest.luck;
+import static com.miniciv.engine.TravelTest.soldier;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 import static org.assertj.core.api.Assertions.tuple;
 
 class RecallTest {
+
+	/**
+	 * Game content with only Units of Strength 1.
+	 */
+	static final Ruleset SOLDIERS = new Ruleset(List.of(soldier(1)), List.of(), List.of(), List.of());
 
 	Game game = new Game(RULESET, Identities.of("Rome", "Carthage"), EVEN_LUCK);
 
@@ -157,6 +164,83 @@ class RecallTest {
 		assertThat(game.viewOf("Rome").warparties()).singleElement().extracting(Warparty::homeward).isEqualTo(true);
 
 		assertThat(recall("Rome", 1)).isEqualTo(ActionResult.rejected("That Warparty is already heading home."));
+	}
+
+	/**
+	 * A Warparty of Units with Strength 1 each, sent with the given number and
+	 * having travelled the given Turns, then left with the given number.
+	 */
+	static Warparty travelledAndLeftWith(int sent, int travelled, int left) {
+		Warparty warparty = Warparty.sent(1, "Carthage", Map.of("Soldier", sent), SOLDIERS);
+		for (int i = 0; i < travelled; i++) {
+			warparty = warparty.travelled();
+		}
+		return warparty.with(Map.of("Soldier", left), SOLDIERS);
+	}
+
+	@Test
+	void aWarpartyThatHasLostNoStrengthTakesAsLongToGetHomeAsItHasTravelled() {
+		assertThat(travelledAndLeftWith(50, 4, 50).turnedBack().turnsLeft()).isEqualTo(4);
+	}
+
+	@Test
+	void aWarpartyThatHasLostStrengthWithinItsBracketTakesAsLongToGetHomeAsItHasTravelled() {
+		assertThat(travelledAndLeftWith(80, 4, 50).turnedBack().turnsLeft()).isEqualTo(4);
+	}
+
+	@Test
+	void aWarpartyThatHasLostStrengthAcrossABracketGetsHomeFasterInProportion() {
+		// 4 Turns × 3 Turns for Strength 5 ÷ 6 Turns for Strength 50
+		assertThat(travelledAndLeftWith(50, 4, 5).turnedBack().turnsLeft()).isEqualTo(2);
+	}
+
+	@Test
+	void theFasterTripHomeIsRoundedUp() {
+		// 4 Turns × 4 Turns for Strength 20 ÷ 6 Turns for Strength 50 = 2⅔
+		assertThat(travelledAndLeftWith(50, 4, 20).turnedBack().turnsLeft()).isEqualTo(3);
+	}
+
+	/**
+	 * Has Rome send Soldier ×50 to Carthage and Carthage send Soldier ×67 to
+	 * Rome, and has them fight as they meet, leaving Rome's Warparty weaker
+	 * than when it was sent.
+	 */
+	void romeLosesStrengthInAnEncounter(String... nations) {
+		Rigged luck = new Rigged();
+		game = new Game(SOLDIERS,
+				Identities.of(nations), luck);
+		armyOf("Rome", "Soldier", 50);
+		armyOf("Carthage", "Soldier", 67);
+		game.act("Rome", new Action.SendWarparty("Carthage", Map.of("Soldier", 50)));
+		game.act("Carthage", new Action.SendWarparty("Rome", Map.of("Soldier", 67)));
+		luck.then(0);
+		game.endTurn();
+		game.act("Rome", new Action.AnswerEncounter(1, true));
+		game.endTurn();
+	}
+
+	@Test
+	void aWarpartyRecalledAfterLosingStrengthInAnEncounterGetsHomeFaster() {
+		romeLosesStrengthInAnEncounter("Rome", "Carthage");
+		assertThat(game.viewOf("Rome").warparties()).singleElement()
+			.extracting(Warparty::strength, Warparty::turnsTravelled)
+			.containsExactly(5.0, 2);
+
+		recall("Rome", 1);
+
+		// 2 Turns × 3 Turns for Strength 5 ÷ 6 Turns for Strength 50
+		assertThat(game.viewOf("Rome").warparties()).singleElement().extracting(Warparty::turnsLeft).isEqualTo(1);
+	}
+
+	@Test
+	void warpartiesHeadingToARemovedNationTurnHomeFasterIfTheyHaveLostStrength() {
+		romeLosesStrengthInAnEncounter("Rome", "Carthage", "Egypt");
+
+		game.remove("Carthage");
+
+		assertThat(game.viewOf("Rome").warparties()).singleElement()
+			.extracting(Warparty::homeward, Warparty::turnsLeft)
+			.containsExactly(true, 1);
 	}
 
 }

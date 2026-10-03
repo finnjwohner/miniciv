@@ -100,9 +100,11 @@ export type Training = { unit: string; count: number; readyOnTurn: number }
  * before it, and is heading back.
  * `turnsLeft` is how many more Turns must resolve before it gets where it is heading;
  * 0 once it has arrived at its target and waits for the Battle at the end of this Turn.
- * `turnsTravelled` is how many Turns it travelled toward its target, which a Recall takes to get home.
+ * `turnsTravelled` is how many Turns it travelled toward its target, which a Recall takes to get home,
+ * less in proportion if it has lost Strength since it was sent.
  * `plunder` is the Gold and Research it took from its target and is carrying home.
- * `strength` is its Units' Strength added up, without counters, which set how long it travels.
+ * `strength` is its Units' Strength added up, without counters, which set how long it travels;
+ * `strengthSent` is its Strength when it was sent, before any losses on the way.
  */
 export type Warparty = {
   id: number
@@ -113,6 +115,7 @@ export type Warparty = {
   turnsLeft: number
   turnsTravelled: number
   plunder: { gold: number; research: number }
+  strengthSent: number
 }
 /** A Warparty whose Strength is at least `strength`, but below the next bracket's, travels `turns` Turns. */
 export type TravelBracket = { strength: number; turns: number }
@@ -123,6 +126,18 @@ export function travelTurns(brackets: TravelBracket[], strength: number): number
     (turns, bracket) => (strength >= bracket.strength ? bracket.turns : turns),
     brackets[0]?.turns ?? 0,
   )
+}
+
+/**
+ * How many Turns a Warparty would take to get home if Recalled now: as many as it has travelled, less in
+ * proportion if its Strength has fallen into a faster bracket since it was sent, rounded up; at least one.
+ */
+export function recallTurns(brackets: TravelBracket[], warparty: Warparty): number {
+  const turns = Math.ceil(
+    (warparty.turnsTravelled * travelTurns(brackets, warparty.strength)) /
+      travelTurns(brackets, warparty.strengthSent),
+  )
+  return Math.max(1, Math.min(warparty.turnsTravelled, turns))
 }
 
 /**
