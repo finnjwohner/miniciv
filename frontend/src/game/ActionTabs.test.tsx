@@ -1,26 +1,6 @@
 import { fireEvent, screen, within } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
-import type { Spy, Warparty } from '../api'
-import { MY_PLAYER_ID, nationView, renderGame, roomView, TURN } from '../test/fixtures'
-
-const warparty: Warparty = {
-  id: 1,
-  target: 'Egypt',
-  units: { Warrior: 2 },
-  strength: 6,
-  homeward: false,
-  turnsLeft: 1,
-  turnsTravelled: 1,
-  plunder: { gold: 0, research: 0 },
-  strengthSent: 6,
-}
-
-const spy: Spy = { id: 2, unit: 'Spy', target: 'Egypt', homeward: false, turnsLeft: 0, turnsTravelled: 2 }
-
-/** The tab named `name`, whatever its badge says. */
-function tab(name: string) {
-  return screen.getByRole('tab', { name: new RegExp(`^${name}`) })
-}
+import { MY_PLAYER_ID, nationView, renderGame, roomView, spy, tab, TURN, warparty } from '../test/fixtures'
 
 describe('ActionTabs', () => {
   it('badges each tab with what is going on in it', () => {
@@ -32,8 +12,8 @@ describe('ActionTabs', () => {
           { unit: 'Archer', count: 2, readyOnTurn: 5 },
           { unit: 'Warrior', count: 1, readyOnTurn: 4 },
         ],
-        warparties: [warparty, { ...warparty, id: 3 }],
-        spies: [spy],
+        warparties: [warparty(), warparty({ id: 3 })],
+        spies: [spy()],
       }),
     })
 
