@@ -256,7 +256,7 @@ a:focus-visible {
   color: var(--bad);
 }
 
-/* A Nation's status: ready, not ready, you */
+/* A small bordered label, such as a Nation's status or a decision's urgency */
 .tag {
   display: inline-flex;
   font-family: var(--font-body);
@@ -727,6 +727,14 @@ a:focus-visible {
   gap: var(--space);
   margin: 0;
   color: var(--accent);
+}
+
+/* A Dilemma choice: a full-width button, its name on the left and any tag on the right. */
+.decision__choice {
+  width: 100%;
+  justify-content: space-between;
+  text-align: left;
+  overflow-wrap: anywhere;
 }
 
 /* Resources */
