@@ -91,7 +91,12 @@ export function TurnPanel({
             <div className={paused ? 'turn__timer turn__timer--paused' : 'turn__timer'} aria-label="Time left">
               {countdown}
             </div>
-            <button className="button--primary turn__end" onClick={() => onDone(game.turn)} disabled={!me || me.done}>
+            <button
+              className="button--primary turn__end"
+              data-cue="endTurn"
+              onClick={() => onDone(game.turn)}
+              disabled={!me || me.done}
+            >
               {me?.done ? 'Waiting for the others…' : 'End Turn'}
             </button>
           </div>
