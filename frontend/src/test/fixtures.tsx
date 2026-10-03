@@ -1,7 +1,7 @@
 // A Game in progress, as the server would send it, for tests to render and adjust.
-import { render } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import type { ComponentProps } from 'react'
-import type { BuildingType, Facts, GameView, NationView, PlayerView, UnitType } from '../api'
+import type { BuildingType, Facts, GameView, NationView, PlayerView, Spy, UnitType, Warparty } from '../api'
 import GameScreen from '../game/GameScreen'
 import type { ReceivedRoom } from '../useRoom'
 
@@ -167,6 +167,32 @@ export function renderGame(props: Partial<ComponentProps<typeof GameScreen>> = {
   return { ...result, rerenderGame: (overrides: Partial<ComponentProps<typeof GameScreen>>) => result.rerender(gameScreen(overrides)) }
 }
 
+/** Rome's Warparty of two Warriors travelling to Egypt, a Turn from arriving. */
+export function warparty(overrides: Partial<Warparty> = {}): Warparty {
+  return {
+    id: 1,
+    target: 'Egypt',
+    units: { Warrior: 2 },
+    strength: 6,
+    homeward: false,
+    turnsLeft: 1,
+    turnsTravelled: 1,
+    plunder: { gold: 0, research: 0 },
+    strengthSent: 6,
+    ...overrides,
+  }
+}
+
+/** Rome's Spy in place at Egypt. */
+export function spy(overrides: Partial<Spy> = {}): Spy {
+  return { id: 2, unit: 'Spy', target: 'Egypt', homeward: false, turnsLeft: 0, turnsTravelled: 2, ...overrides }
+}
+
+/** The action tab named `name`, whatever its badge says. */
+export function tab(name: string) {
+  return screen.getByRole('tab', { name: new RegExp(`^${name}`) })
+}
+
 function player(nation: typeof ROME): Omit<PlayerView, 'id'> {
   return { nationName: nation.name, ruler: nation.ruler, colour: nation.colour, emblem: nation.emblem, ready: true, done: false }
 }
@@ -179,6 +205,7 @@ function building(type: Pick<BuildingType, 'name' | 'gold' | 'turns'> & Partial<
   return { populationPerTurn: 0, goldPerTurn: 0, goldPerPopulation: 0, researchPerTurn: 0, defense: 0, ...type }
 }
 
-function unit(type: Omit<UnitType, 'counters' | 'scout' | 'spy'> & Partial<UnitType>): UnitType {
+/** A Unit type, with no counters and neither Scout nor Spy unless given. */
+export function unit(type: Omit<UnitType, 'counters' | 'scout' | 'spy'> & Partial<UnitType>): UnitType {
   return { counters: [], scout: false, spy: false, ...type }
 }
