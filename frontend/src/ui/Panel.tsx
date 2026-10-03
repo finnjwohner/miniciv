@@ -1,9 +1,9 @@
-import type { ReactNode } from 'react'
+import { useId, type ReactNode } from 'react'
 import { Icon, type IconName } from './Icon'
 
 /**
- * A titled box: the building block of every screen. `actions` sit at the right of the title bar;
- * `className` places or highlights the box.
+ * A titled box, named by its title: the building block of every screen. `actions` sit at the right of
+ * the title bar; `className` places or highlights the box.
  */
 export function Panel({
   title,
@@ -18,10 +18,11 @@ export function Panel({
   className?: string
   children: ReactNode
 }) {
+  const titleId = useId()
   return (
-    <section className={className ? `panel ${className}` : 'panel'}>
+    <section className={className ? `panel ${className}` : 'panel'} aria-labelledby={titleId}>
       <header className="panel__bar">
-        <h2 className="panel__title">
+        <h2 className="panel__title" id={titleId}>
           {icon && <Icon name={icon} size={12} />}
           {title}
         </h2>

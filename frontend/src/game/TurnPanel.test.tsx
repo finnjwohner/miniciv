@@ -9,7 +9,7 @@ function sectionHeadings() {
     .map((heading) => heading.textContent)
 }
 
-describe('TurnPanel', () => {
+describe('TurnReportPanel', () => {
   it('shows each section of the Turn Report under its heading, in order, hiding empty ones', () => {
     renderGame({
       nation: nationView({
