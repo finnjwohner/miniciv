@@ -23,7 +23,7 @@ class EncountersTest {
 	 */
 	Rigged luck = new Rigged();
 
-	Game game = new Game(RULESET, List.of("Rome", "Carthage", "Egypt"), luck);
+	Game game = new Game(RULESET, Identities.of("Rome", "Carthage", "Egypt"), luck);
 
 	List<String> report(String nation) {
 		return game.viewOf(nation).turnReport().lines();
@@ -71,9 +71,9 @@ class EncountersTest {
 		assertThat(game.viewOf("Rome").encounters()).containsExactly(met);
 		assertThat(game.viewOf("Carthage").encounters()).containsExactly(met);
 		assertThat(game.viewOf("Egypt").encounters()).isEmpty();
-		assertThat(report("Rome")).contains("Your Warparty of Warrior ×3 heading to Carthage met Carthage's Warparty"
+		assertThat(report("Rome")).contains("Your Warparty of Warrior ×3 heading to Carthage met Hannibal of Carthage's Warparty"
 				+ " of Warrior ×1; choose whether to fight before this Turn ends.");
-		assertThat(report("Carthage")).contains("Your Warparty of Warrior ×1 heading to Rome met Rome's Warparty of"
+		assertThat(report("Carthage")).contains("Your Warparty of Warrior ×1 heading to Rome met Caesar of Rome's Warparty of"
 				+ " Warrior ×3; choose whether to fight before this Turn ends.");
 		assertThat(report("Egypt")).noneMatch(line -> line.contains("met"));
 	}
@@ -124,7 +124,7 @@ class EncountersTest {
 		assertThat(game.viewOf("Rome").warparties()).extracting(Warparty::homeward).containsExactly(true, false);
 		assertThat(game.viewOf("Rome").encounters()).containsExactly(new Encounter(
 				side("Rome", 1, Map.of("Warrior", 1), NONE), side("Carthage", 1, Map.of("Warrior", 1), NONE)));
-		assertThat(report("Rome")).contains("Your Warparty of Warrior ×1 heading home from Egypt met Carthage's"
+		assertThat(report("Rome")).contains("Your Warparty of Warrior ×1 heading home from Egypt met Hannibal of Carthage's"
 				+ " Warparty of Warrior ×1; choose whether to fight before this Turn ends.");
 	}
 
@@ -180,9 +180,9 @@ class EncountersTest {
 		assertThat(game.viewOf("Carthage").warparties())
 			.containsExactly(new Warparty(1, "Rome", Map.of("Warrior", 1), 3, false, 1, 2));
 		assertThat(game.viewOf("Rome").encounters()).isEmpty();
-		assertThat(report("Rome")).contains("Your Warparty of Warrior ×3 heading to Carthage and Carthage's"
+		assertThat(report("Rome")).contains("Your Warparty of Warrior ×3 heading to Carthage and Hannibal of Carthage's"
 				+ " Warparty of Warrior ×1 went their separate ways, as neither of you chose to fight.");
-		assertThat(report("Carthage")).contains("Your Warparty of Warrior ×1 heading to Rome and Rome's"
+		assertThat(report("Carthage")).contains("Your Warparty of Warrior ×1 heading to Rome and Caesar of Rome's"
 				+ " Warparty of Warrior ×3 went their separate ways, as neither of you chose to fight.");
 	}
 
@@ -203,9 +203,9 @@ class EncountersTest {
 		assertThat(game.viewOf("Carthage").warparties())
 			.containsExactly(new Warparty(1, "Rome", Map.of("Warrior", 1), 3, false, 1, 2));
 		assertThat(game.viewOf("Rome").encounters()).isEmpty();
-		assertThat(report("Rome")).contains("Your Warparty of Warrior ×2 heading to Carthage fought Carthage's"
+		assertThat(report("Rome")).contains("Your Warparty of Warrior ×2 heading to Carthage fought Hannibal of Carthage's"
 				+ " Warparty of Warrior ×2, as Carthage chose to fight. You lost Warrior ×1 and Carthage lost Warrior ×1.");
-		assertThat(report("Carthage")).contains("Your Warparty of Warrior ×2 heading to Rome fought Rome's"
+		assertThat(report("Carthage")).contains("Your Warparty of Warrior ×2 heading to Rome fought Caesar of Rome's"
 				+ " Warparty of Warrior ×2, as you chose to fight. You lost Warrior ×1 and Rome lost Warrior ×1.");
 
 		game.endTurn();
@@ -226,11 +226,11 @@ class EncountersTest {
 			.containsExactly(new Warparty(1, "Carthage", Map.of("Warrior", 3), 9, false, 1, 2));
 		assertThat(game.viewOf("Carthage").warparties()).isEmpty();
 		assertThat(report("Rome")).contains(
-				"Your Warparty of Warrior ×3 heading to Carthage fought Carthage's Warparty of Warrior ×1, as you both"
+				"Your Warparty of Warrior ×3 heading to Carthage fought Hannibal of Carthage's Warparty of Warrior ×1, as you both"
 						+ " chose to fight. You lost no Units and Carthage lost Warrior ×1.",
-				"Carthage's Warparty was destroyed.");
+				"Hannibal of Carthage's Warparty was destroyed.");
 		assertThat(report("Carthage")).contains(
-				"Your Warparty of Warrior ×1 heading to Rome fought Rome's Warparty of Warrior ×3, as you both chose to"
+				"Your Warparty of Warrior ×1 heading to Rome fought Caesar of Rome's Warparty of Warrior ×3, as you both chose to"
 						+ " fight. You lost Warrior ×1 and Rome lost no Units.",
 				"Your Warparty heading to Rome was destroyed.");
 	}

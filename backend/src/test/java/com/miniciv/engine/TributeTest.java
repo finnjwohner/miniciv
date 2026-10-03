@@ -12,7 +12,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class TributeTest {
 
-	Game game = new Game(RULESET, List.of("Rome", "Carthage"), EVEN_LUCK);
+	Game game = new Game(RULESET, Identities.of("Rome", "Carthage"), EVEN_LUCK);
 
 	/**
 	 * Has a Warparty of Warrior ×2 from Rome arrive at Carthage, to be fought
@@ -106,7 +106,7 @@ class TributeTest {
 
 	@Test
 	void tributeOfferedToANationRemovedFromTheGameIsCancelled() {
-		game = new Game(RULESET, List.of("Rome", "Carthage", "Egypt"), EVEN_LUCK);
+		game = new Game(RULESET, Identities.of("Rome", "Carthage", "Egypt"), EVEN_LUCK);
 		romeArrivesAtCarthage();
 		offer("Carthage", "Rome", 1, 10, 0);
 
@@ -138,10 +138,10 @@ class TributeTest {
 		game.endTurn();
 
 		assertThat(report("Rome")).contains(
-				"You accepted Carthage's Tribute of 20 Gold and 3 Population, and your Warparty of Warrior ×2 turned back home.")
+				"You accepted Hannibal of Carthage's Tribute of 20 Gold and 3 Population, and your Warparty of Warrior ×2 turned back home.")
 			.noneMatch(line -> line.contains("fought"));
 		assertThat(report("Carthage")).contains(
-				"Rome accepted your Tribute of 20 Gold and 3 Population, and its Warparty turned back home before the Battle.")
+				"Caesar of Rome accepted your Tribute of 20 Gold and 3 Population, and its Warparty turned back home before the Battle.")
 			.noneMatch(line -> line.contains("fought") || line.contains("met no Army"));
 		assertThat(game.viewOf("Rome").tributes()).isEmpty();
 	}
@@ -173,10 +173,10 @@ class TributeTest {
 		assertThat(answer("Rome", 1, true))
 			.isEqualTo(ActionResult.rejected("No Tribute awaits your answer for that Warparty."));
 		game.endTurn();
-		assertThat(report("Rome")).contains("You refused Carthage's Tribute of 20 Gold.",
+		assertThat(report("Rome")).contains("You refused Hannibal of Carthage's Tribute of 20 Gold.",
 				"Your Warparty of Warrior ×2 met no Army at Carthage.");
-		assertThat(report("Carthage")).contains("Rome refused your Tribute of 20 Gold.",
-				"Rome's Warparty of Warrior ×2 met no Army at your Nation.");
+		assertThat(report("Carthage")).contains("Caesar of Rome refused your Tribute of 20 Gold.",
+				"Caesar of Rome's Warparty of Warrior ×2 met no Army at your Nation.");
 		assertThat(game.viewOf("Carthage").gold()).isLessThan(gold);
 	}
 
@@ -186,11 +186,11 @@ class TributeTest {
 
 		game.endTurn();
 
-		assertThat(report("Rome")).contains("You did not answer Carthage's Tribute of 2 Population in time.",
+		assertThat(report("Rome")).contains("You did not answer Hannibal of Carthage's Tribute of 2 Population in time.",
 				"Your Warparty of Warrior ×2 met no Army at Carthage.");
 		assertThat(report("Carthage")).contains(
-				"Rome did not answer your Tribute of 2 Population in time, so the Battle went ahead.",
-				"Rome's Warparty of Warrior ×2 met no Army at your Nation.");
+				"Caesar of Rome did not answer your Tribute of 2 Population in time, so the Battle went ahead.",
+				"Caesar of Rome's Warparty of Warrior ×2 met no Army at your Nation.");
 		assertThat(game.viewOf("Carthage").tributes()).isEmpty();
 	}
 

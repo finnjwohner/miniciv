@@ -47,7 +47,7 @@ class EventsTest {
 	void play(RandomGenerator luck, Event... events) {
 		List<UnitType> units = Stream.concat(RULESET.units().stream(), Stream.of(RECRUIT)).toList();
 		game = new Game(new Ruleset(units, RULESET.buildings(), List.of(), List.of(events)),
-				List.of("Rome", "Carthage"), luck);
+				Identities.of("Rome", "Carthage"), luck);
 	}
 
 	List<String> report(String nation) {
@@ -73,6 +73,24 @@ class EventsTest {
 				"A good harvest filled your granaries: your Nation gained 3 Population.");
 		assertThat(game.viewOf("Rome").population()).isEqualTo(17);
 		assertThat(game.viewOf("Carthage").population()).isEqualTo(17);
+	}
+
+	@Test
+	void eventIncomeAndOwnConstructionLinesDoNotNameTheRuler() {
+		play(ALWAYS, starter("Good harvest"));
+		game.act("Rome", new Action.StartBuilding("Farm"));
+		game.act("Rome", new Action.TrainUnits("Warrior", 1));
+
+		List<String> lines = new ArrayList<>();
+		for (int turn = 1; turn <= 3; turn++) {
+			game.endTurn();
+			lines.addAll(report("Rome"));
+		}
+
+		assertThat(lines).contains("Your Farm has been built.", "Warrior ×1 finished training and joined your Army.",
+				"A good harvest filled your granaries: your Nation gained 3 Population.");
+		assertThat(lines).anyMatch(line -> line.startsWith("Your Population earned"))
+			.noneMatch(line -> line.contains("Caesar"));
 	}
 
 	@Test

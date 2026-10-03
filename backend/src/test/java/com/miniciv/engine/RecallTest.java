@@ -15,7 +15,7 @@ import static org.assertj.core.api.Assertions.tuple;
 
 class RecallTest {
 
-	Game game = new Game(RULESET, List.of("Rome", "Carthage"), EVEN_LUCK);
+	Game game = new Game(RULESET, Identities.of("Rome", "Carthage"), EVEN_LUCK);
 
 	List<String> report(String nation) {
 		return game.viewOf(nation).turnReport().lines();
@@ -83,14 +83,14 @@ class RecallTest {
 		game.act("Rome", new Action.SendWarparty("Carthage", Map.of("Warrior", 2)));
 		game.endTurn();
 		assertThat(report("Rome"))
-			.contains("A Warparty from Carthage arrived at your Nation; the Battle will be fought as this Turn ends.");
+			.contains("Hannibal of Carthage's Warparty arrived at your Nation; the Battle will be fought as this Turn ends.");
 
 		recall("Rome", 1);
 		game.endTurn();
 
 		assertThat(report("Rome")).containsSubsequence("You Recalled your Warparty of Warrior ×2 heading to Carthage.",
 				"Your Warparty came home from Carthage and Warrior ×2 rejoined your Army.",
-				"Your Army of Warrior ×2 fought Carthage's Warparty of Warrior ×2. You lost Warrior ×1 and Carthage lost Warrior ×1.");
+				"Your Army of Warrior ×2 fought Hannibal of Carthage's Warparty of Warrior ×2. You lost Warrior ×1 and Carthage lost Warrior ×1.");
 		assertThat(game.viewOf("Rome").army()).containsExactly(entry("Warrior", 1));
 	}
 
@@ -108,7 +108,7 @@ class RecallTest {
 
 		assertThat(report("Rome")).containsExactly("You Recalled your Warparty of Warrior ×2 heading to Carthage.",
 				incomeReport(12), "Your Units' upkeep cost 2 Gold.");
-		assertThat(report("Carthage")).containsExactly("Rome's Warparty turned back home before the Battle.",
+		assertThat(report("Carthage")).containsExactly("Caesar of Rome's Warparty turned back home before the Battle.",
 				incomeReport(18));
 		assertThat(game.viewOf("Rome").warparties())
 			.containsExactly(new Warparty(1, "Carthage", Map.of("Warrior", 2), 6, true, 2, 3));
@@ -117,7 +117,7 @@ class RecallTest {
 	@Test
 	void theTripHomeCountsTheTurnsAWarpartyWasDelayed() {
 		game = new Game(new Ruleset(RULESET.units(), RULESET.buildings(), List.of(),
-				List.of(EventsTest.starter("Dust storm"))), List.of("Rome", "Carthage"), luck(0, -1));
+				List.of(EventsTest.starter("Dust storm"))), Identities.of("Rome", "Carthage"), luck(0, -1));
 		armyOf("Rome", "Warrior", 2);
 		game.act("Rome", new Action.SendWarparty("Carthage", Map.of("Warrior", 2)));
 		game.endTurn();

@@ -28,10 +28,10 @@ class CatchingSpiesTest {
 
 	static final RandomGenerator CAUGHT_AND_CONFESSES = luck(draw(0), draw(0.9));
 
-	Game game = new Game(RULESET, List.of("Rome", "Carthage", "Egypt"), EVEN_LUCK);
+	Game game = new Game(RULESET, Identities.of("Rome", "Carthage", "Egypt"), EVEN_LUCK);
 
 	void play(RandomGenerator luck, String... nations) {
-		game = new Game(RULESET, List.of(nations), luck);
+		game = new Game(RULESET, Identities.of(nations), luck);
 	}
 
 	List<String> report(String nation) {
@@ -106,7 +106,7 @@ class CatchingSpiesTest {
 		NationView rome = game.viewOf("Rome");
 		int turn = game.turn() - 1;
 		assertThat(report("Carthage")).containsSubsequence(
-				"Your Spies caught a Spy in your Nation, and it confessed that Rome sent it.",
+				"Your Spies caught a Spy in your Nation, and it confessed that Caesar of Rome sent it.",
 				"From its confession, Rome has " + rome.gold() + " Gold, " + rome.population() + " Population and "
 						+ rome.research() + " Research; Rome's Army is Spy ×1 and Warrior ×1; Rome has built Walls ×1, "
 						+ "and its Defense is 10.");
@@ -266,7 +266,7 @@ class CatchingSpiesTest {
 
 		assertThat(game.viewOf("Rome").spies()).isEmpty();
 		assertThat(report("Carthage")).contains(
-				"Your Warparty of Warrior ×1 heading to Egypt caught a Spy heading to Egypt, and it confessed that Rome sent it.");
+				"Your Warparty of Warrior ×1 heading to Egypt caught a Spy heading to Egypt, and it confessed that Caesar of Rome sent it.");
 		assertThat(report("Carthage")).anyMatch(line -> line.startsWith("From its confession, Rome has "));
 		assertThat(onMapOf("Carthage", "Rome").facts().gold()).isNotNull();
 	}
@@ -315,7 +315,7 @@ class CatchingSpiesTest {
 
 		assertThat(caught).anyMatch(line -> line.endsWith("died before saying who sent it."))
 			.anyMatch(line -> line.endsWith("would not say who sent it."))
-			.anyMatch(line -> line.endsWith("confessed that Rome sent it."));
+			.anyMatch(line -> line.endsWith("confessed that Caesar of Rome sent it."));
 	}
 
 }

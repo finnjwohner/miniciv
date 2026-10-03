@@ -359,9 +359,17 @@ a:focus-visible {
 }
 
 /* A Nation's emblem, drawn in its colour */
-.banner {
+.nation-emblem {
   display: inline-flex;
   flex-shrink: 0;
+}
+
+/* A Nation's name after its emblem */
+.nation-name {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--space) * 0.5);
+  font-weight: 600;
 }
 
 /* A row of choices, such as colours or emblems; taken ones are greyed out, the chosen one marked */
@@ -776,6 +784,25 @@ a:focus-visible {
 
 .nation-card--you {
   border-color: var(--accent);
+}
+
+.nations .nation-card {
+  border-left-width: calc(var(--line) * 3);
+}
+
+.nation-card__title {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.nation-card__ruler {
+  display: block;
+  margin-top: calc(var(--space) * 0.5);
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: var(--text-muted);
 }
 
 .panel .nation-card__name {

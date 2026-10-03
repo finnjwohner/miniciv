@@ -6,6 +6,8 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
 
+import com.miniciv.engine.NationIdentity;
+
 /**
  * A person taking part in a Room, and later its Game. The token is secret to
  * the Player's browser; the id is public.
@@ -76,6 +78,13 @@ class Player {
 
 	String emblem() {
 		return emblem;
+	}
+
+	/**
+	 * Who the Player's Nation is, as they chose in the Room.
+	 */
+	NationIdentity identity() {
+		return new NationIdentity(nationName, ruler, colour, emblem);
 	}
 
 	/**

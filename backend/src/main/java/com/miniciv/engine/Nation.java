@@ -18,7 +18,7 @@ import java.util.function.ToIntFunction;
  */
 class Nation {
 
-	private final String name;
+	private final NationIdentity identity;
 
 	private int gold;
 
@@ -108,15 +108,23 @@ class Nation {
 
 	private int version = 1;
 
-	Nation(String name, int gold, int population, int research) {
-		this.name = name;
+	Nation(NationIdentity identity, int gold, int population, int research) {
+		this.identity = identity;
 		this.gold = gold;
 		this.population = population;
 		this.research = research;
 	}
 
 	String name() {
-		return name;
+		return identity.name();
+	}
+
+	/**
+	 * The Nation named by its Ruler, such as "Caesar of Rome", for what it
+	 * directly did to another Nation.
+	 */
+	String ruled() {
+		return identity.ruled();
 	}
 
 	/**
@@ -134,7 +142,7 @@ class Nation {
 			.filter(building -> hasAccessTo(building.name(), ruleset))
 			.toList();
 		List<UnitType> availableUnits = ruleset.units().stream().filter(unit -> hasAccessTo(unit.name(), ruleset)).toList();
-		return new NationView(version, turn, name, gold, population, research, map, availableBuildings,
+		return new NationView(version, turn, name(), gold, population, research, map, availableBuildings,
 				Collections.unmodifiableMap(new LinkedHashMap<>(buildings)), construction, repairs, defense(ruleset), damage(ruleset),
 				sellValues(ruleset),
 				availableUnits,
@@ -184,7 +192,7 @@ class Nation {
 	MapNation onMap(Facts learned) {
 		MapNation.Standing standing = conquered() ? MapNation.Standing.CONQUERED
 				: removed ? MapNation.Standing.REMOVED : MapNation.Standing.IN_GAME;
-		return new MapNation(name, standing, learned);
+		return new MapNation(identity, standing, learned);
 	}
 
 	/**
@@ -359,7 +367,7 @@ class Nation {
 				return delayed;
 			}
 		}
-		throw new IllegalArgumentException("Not a Warparty of " + name);
+		throw new IllegalArgumentException("Not a Warparty of " + name());
 	}
 
 	/**
@@ -884,7 +892,7 @@ class Nation {
 				return;
 			}
 		}
-		throw new IllegalArgumentException("Not a Warparty of " + name);
+		throw new IllegalArgumentException("Not a Warparty of " + name());
 	}
 
 	/**

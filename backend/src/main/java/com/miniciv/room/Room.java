@@ -217,7 +217,7 @@ public class Room {
 		player.ready(ready);
 		version++;
 		if (players.size() >= MIN_PLAYERS && players.stream().allMatch(Player::ready)) {
-			game = new Game(ruleset, players.stream().map(Player::nationName).toList(), new Random(SEEDS.nextLong()));
+			game = new Game(ruleset, players.stream().map(Player::identity).toList(), new Random(SEEDS.nextLong()));
 			turnEndsAt = clock.instant().plus(TURN_LENGTH);
 			settle();
 		}

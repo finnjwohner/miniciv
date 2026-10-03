@@ -3,16 +3,8 @@ import { inviteLink, type PlayerView, type RoomView } from './api'
 import { Rejection } from './game/controls'
 import { suggestRulerName } from './rulerNames'
 import { Emblem, Icon } from './ui/Icon'
+import { NationEmblem } from './ui/NationName'
 import { Panel } from './ui/Panel'
-
-/** A Nation's emblem drawn in its colour. */
-function Banner({ player, size = 24 }: { player: PlayerView; size?: number }) {
-  return (
-    <span className="banner" style={{ color: player.colour }}>
-      <Emblem emblem={player.emblem} size={size} />
-    </span>
-  )
-}
 
 /**
  * This Player's Nation: its Ruler's name, pre-filled with a suggestion that is saved straight away so the
@@ -58,7 +50,7 @@ function YourNation({
   }
 
   return (
-    <Panel title="Your Nation" icon="flag" actions={<Banner player={me} size={12} />}>
+    <Panel title="Your Nation" icon="flag" actions={<NationEmblem colour={me.colour} emblem={me.emblem} size={12} />}>
       <div className="stack">
         <Rejection reason={rejection} />
         <form
@@ -168,7 +160,7 @@ function RoomScreen({
               className={p.id === playerId ? 'roster__nation roster__nation--you' : 'roster__nation'}
               style={{ borderLeftColor: p.colour }}
             >
-              <Banner player={p} />
+              <NationEmblem colour={p.colour} emblem={p.emblem} />
               <span className="roster__name">
                 {p.nationName}
                 <span className="roster__ruler">{p.ruler ? `Ruled by ${p.ruler}` : 'No Ruler named yet'}</span>

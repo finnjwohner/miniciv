@@ -27,7 +27,7 @@ class TechTreeTest {
 	static final Ruleset RULESET = new Ruleset(List.of(WARRIOR, HORSEMAN), List.of(FARM, WALLS),
 			List.of(MASONRY, RIDING, CHIVALRY));
 
-	Game game = new Game(RULESET, List.of("Rome", "Carthage"), EVEN_LUCK);
+	Game game = new Game(RULESET, Identities.of("Rome", "Carthage"), EVEN_LUCK);
 
 	ActionResult unlock(String technology) {
 		return game.act("Rome", new Action.UnlockTechnology(technology));

@@ -1,20 +1,32 @@
 import { useState } from 'react'
 import { otherNations, travelTurns } from '../api'
 import type { Fact, MapNation, NationView, Spy, TravelBracket, Warparty } from '../api'
+import { NationEmblem } from '../ui/NationName'
 import { Panel } from '../ui/Panel'
 import { CountInput, Rejection, TargetSelect } from './controls'
 import { currentTarget, formatAmount, listCounts, plural } from './format'
+import { MapName } from './MapName'
 
-function describeWarparty(warparty: Warparty) {
+function describeWarparty(warparty: Warparty, map: MapNation[]) {
+  const target = <MapName name={warparty.target} map={map} />
   if (!warparty.homeward && warparty.turnsLeft === 0) {
-    return `at ${warparty.target}, fighting the Battle as this Turn ends`
+    return <>at {target}, fighting the Battle as this Turn ends</>
   }
   if (!warparty.homeward) {
-    return `travelling to ${warparty.target}, ${plural(warparty.turnsLeft, 'Turn')} left`
+    return (
+      <>
+        travelling to {target}, {plural(warparty.turnsLeft, 'Turn')} left
+      </>
+    )
   }
   const { gold, research } = warparty.plunder
   const plunder = gold > 0 || research > 0 ? `, carrying ${gold} Gold and ${research} Research` : ''
-  return `heading home from ${warparty.target}${plunder}, ${plural(warparty.turnsLeft, 'Turn')} left`
+  return (
+    <>
+      heading home from {target}
+      {plunder}, {plural(warparty.turnsLeft, 'Turn')} left
+    </>
+  )
 }
 
 /** The travel brackets, such as "0–9: 3 · 10–24: 4 · 25+: 5". */
@@ -99,7 +111,7 @@ export function ArmyPanel({
             <li key={w.id} className="row row--wrap">
               <span className="row__name">{listCounts(w.units)}</span>
               <span className="tag">Strength {formatAmount(w.strength)}</span>
-              <span className="row__meta">{describeWarparty(w)}</span>
+              <span className="row__meta">{describeWarparty(w, nation.map)}</span>
               {!w.homeward && (
                 <button onClick={() => onRecall(w.id)}>
                   Recall (home in {plural(Math.max(1, w.turnsTravelled), 'Turn')})
@@ -152,10 +164,21 @@ export function ArmyPanel({
   )
 }
 
-function describeSpy(spy: Spy) {
-  if (spy.homeward) return `heading home from ${spy.target}, ${plural(spy.turnsLeft, 'Turn')} left`
-  if (spy.turnsLeft === 0) return `in place at ${spy.target}, reporting now and then`
-  return `travelling to ${spy.target}, ${plural(spy.turnsLeft, 'Turn')} left`
+function describeSpy(spy: Spy, map: MapNation[]) {
+  const target = <MapName name={spy.target} map={map} />
+  if (spy.homeward) {
+    return (
+      <>
+        heading home from {target}, {plural(spy.turnsLeft, 'Turn')} left
+      </>
+    )
+  }
+  if (spy.turnsLeft === 0) return <>in place at {target}, reporting now and then</>
+  return (
+    <>
+      travelling to {target}, {plural(spy.turnsLeft, 'Turn')} left
+    </>
+  )
 }
 
 /** The Nation's Spies abroad, and a form to send a Spy from the Army to another Nation. */
@@ -185,7 +208,7 @@ export function SpiesPanel({
           {nation.spies.map((s) => (
             <li key={s.id} className="row row--wrap">
               <span className="row__name">{s.unit}</span>
-              <span className="row__meta">{describeSpy(s)}</span>
+              <span className="row__meta">{describeSpy(s, nation.map)}</span>
             </li>
           ))}
         </ul>
@@ -247,9 +270,9 @@ function KnownFacts({ facts }: { facts: MapNation['facts'] }) {
 }
 
 /**
- * A read-only placeholder Map of every Nation in the Game, drawn from this Player's view alone: their
- * own Nation in full, every other Nation by name with the Facts known of it, and which have been knocked
- * out or Removed.
+ * A read-only placeholder Map of every Nation in the Game, drawn from this Player's view alone: every
+ * Nation in its colour with its emblem and Ruler, their own Nation in full, every other Nation with the
+ * Facts known of it, and which have been knocked out or Removed.
  */
 export function MapPanel({ nation }: { nation: NationView }) {
   return (
@@ -258,9 +281,17 @@ export function MapPanel({ nation }: { nation: NationView }) {
         {nation.map.map((other) => {
           const you = other.name === nation.nation
           return (
-            <li key={other.name} className={you ? 'nation-card nation-card--you' : 'nation-card'}>
+            <li
+              key={other.name}
+              className={you ? 'nation-card nation-card--you' : 'nation-card'}
+              style={{ borderLeftColor: other.colour }}
+            >
               <h3 className="nation-card__name">
-                {other.name}
+                <NationEmblem colour={other.colour} emblem={other.emblem} />
+                <span className="nation-card__title">
+                  {other.name}
+                  <span className="nation-card__ruler">Ruled by {other.ruler}</span>
+                </span>
                 {you && <span className="tag tag--accent">you</span>}
                 {other.standing === 'CONQUERED' && <span className="tag tag--bad">knocked out</span>}
                 {other.standing === 'REMOVED' && <span className="tag tag--muted">removed</span>}
