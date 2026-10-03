@@ -22,6 +22,17 @@ class DilemmasTest {
 	static final Event OUTBREAK = new Event("Outbreak", Event.Subject.NATION, 0.5, null, null,
 			"Sickness broke out in your Nation", List.of(QUARANTINE, LET_IT_SPREAD));
 
+	static final Event BANDITS = new Event("Bandits", Event.Subject.NATION, 0.5, null, null,
+			"Bandits are raiding your roads",
+			List.of(new Event.Choice("Hunt them down", false,
+					List.of(new Event.Outcome(0.75, new Event.Effects(0, -3, 0, 0, 0), "Your people hunted the bandits down"),
+							new Event.Outcome(0.25, new Event.Effects(0, -6, 0, 0, 0), "The bandits ambushed your hunters"))),
+					new Event.Choice("Ignore them", true,
+							List.of(new Event.Outcome(0.8, new Event.Effects(-30, 0, 0, 0, 0),
+									"You ignored the bandits and they plundered freely"),
+									new Event.Outcome(0.2, new Event.Effects(10, 0, 0, 0, 0),
+											"You ignored the bandits, who fell out and left their loot behind")))));
+
 	Game game;
 
 	void play(RandomGenerator luck, Event... events) {
@@ -52,7 +63,8 @@ class DilemmasTest {
 		assertThat(report("Rome")).containsExactly(BASE_INCOME_REPORT,
 				"Sickness broke out in your Nation; choose what to do before this Turn ends.");
 		assertThat(game.viewOf("Rome").dilemmas())
-			.containsExactly(new Dilemma("Outbreak", "Sickness broke out in your Nation", List.of(QUARANTINE, LET_IT_SPREAD), null));
+			.containsExactly(new Dilemma("Outbreak", "Sickness broke out in your Nation",
+					List.of(new Dilemma.Choice("Quarantine", false), new Dilemma.Choice("Let it spread", true)), null));
 		assertThat(game.viewOf("Rome").population()).isEqualTo(12);
 	}
 
@@ -114,6 +126,54 @@ class DilemmasTest {
 	}
 
 	@Test
+	void theChosenChoicePicksOneOfItsOutcomesByChanceAndTheTurnReportTellsIt() {
+		GameTest.Rigged luck = new GameTest.Rigged();
+		luck.then(0, 0);
+		play(luck, BANDITS);
+		game.endTurn();
+		game.act("Rome", new Action.AnswerDilemma("Bandits", "Hunt them down"));
+		// Rome's outcome, then its Population as authored; Carthage's outcome,
+		// then its Gold as authored.
+		luck.then(0.8, 0.5, 0.1, 0.5);
+
+		game.endTurn();
+
+		assertThat(report("Rome")).first().isEqualTo("The bandits ambushed your hunters: your Nation lost 6 Population.");
+		assertThat(report("Carthage")).first()
+			.isEqualTo("You did not choose in time what to do about Bandits. "
+					+ "You ignored the bandits and they plundered freely: your Nation lost 30 Gold.");
+	}
+
+	@Test
+	void theWorstChoiceCanTurnOutWellAndLuckVariesTheOutcomesEffects() {
+		GameTest.Rigged luck = new GameTest.Rigged();
+		luck.then(0, 0);
+		play(luck, BANDITS);
+		game.endTurn();
+		game.act("Rome", new Action.AnswerDilemma("Bandits", "Hunt them down"));
+		// Rome's outcome, then its Population low; Carthage's outcome, then
+		// its Gold high.
+		luck.then(0, 0, 0.9, 0.99);
+
+		game.endTurn();
+
+		assertThat(report("Rome")).first().isEqualTo("Your people hunted the bandits down: your Nation lost 2 Population.");
+		assertThat(report("Carthage")).first()
+			.isEqualTo("You did not choose in time what to do about Bandits. "
+					+ "You ignored the bandits, who fell out and left their loot behind: your Nation gained 11 Gold.");
+	}
+
+	@Test
+	void thePlayerSeesAChoicesNameButNotItsOutcomesOrTheirOdds() {
+		play(ALWAYS, BANDITS);
+
+		game.endTurn();
+
+		assertThat(game.viewOf("Rome").dilemmas()).containsExactly(new Dilemma("Bandits", "Bandits are raiding your roads",
+				List.of(new Dilemma.Choice("Hunt them down", false), new Dilemma.Choice("Ignore them", true)), null));
+	}
+
+	@Test
 	void aDilemmaCanOnlyBeAnsweredOnceAndOnlyWithAChoiceItOffers() {
 		play(firstDraws(2), OUTBREAK);
 		game.endTurn();
@@ -139,7 +199,7 @@ class DilemmasTest {
 		assertThat(report("Rome")).containsExactly(incomeReport(14),
 				"Sickness broke out in your Nation; choose what to do before this Turn ends.");
 		assertThat(game.viewOf("Rome").dilemmas()).singleElement()
-			.extracting(dilemma -> dilemma.choices().stream().map(Event.Choice::name).toList())
+			.extracting(dilemma -> dilemma.choices().stream().map(Dilemma.Choice::name).toList())
 			.isEqualTo(List.of("Quarantine", "Call the healers", "Let it spread"));
 
 		game.endTurn();

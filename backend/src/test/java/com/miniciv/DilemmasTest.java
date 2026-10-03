@@ -111,13 +111,10 @@ class DilemmasTest {
 		Map<String, Object> outbreak = new HashMap<>();
 		outbreak.put("name", "Outbreak");
 		outbreak.put("text", "Sickness broke out in your Nation");
-		outbreak.put("choices", List.of(
-				Map.of("name", "Quarantine", "effects",
-						Map.of("gold", -15, "population", 0, "research", 0, "damageDefense", 0, "travelTurns", 0), "worst",
-						false, "text", "You quarantined the sick"),
-				Map.of("name", "Let it spread", "effects",
-						Map.of("gold", 0, "population", -8, "research", 0, "damageDefense", 0, "travelTurns", 0), "worst",
-						true, "text", "You let the sickness spread")));
+		// Only the choices' names and which applies if the Player does not
+		// choose; never what they lead to.
+		outbreak.put("choices", List.of(Map.of("name", "Quarantine", "worst", false),
+				Map.of("name", "Let it spread", "worst", true)));
 		outbreak.put("chosen", null);
 		assertThat(view.get("dilemmas")).isEqualTo(List.of(outbreak));
 

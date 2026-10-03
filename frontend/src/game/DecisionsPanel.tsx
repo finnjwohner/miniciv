@@ -1,19 +1,8 @@
 import { useState, type ReactNode } from 'react'
-import type { Dilemma, Effects, Encounter, NationView, Tribute } from '../api'
+import type { Dilemma, Encounter, NationView, Tribute } from '../api'
 import { Panel } from '../ui/Panel'
 import { CountInput, Rejection } from './controls'
 import { listCounts } from './format'
-
-/** Such as "−15 Gold, −2 Population", or "no effect". */
-function describeChoiceEffects(effects: Effects) {
-  const changes = []
-  const signed = (amount: number) => (amount > 0 ? `+${amount}` : `−${-amount}`)
-  if (effects.gold !== 0) changes.push(`${signed(effects.gold)} Gold`)
-  if (effects.population !== 0) changes.push(`${signed(effects.population)} Population`)
-  if (effects.research !== 0) changes.push(`${signed(effects.research)} Research`)
-  if (effects.damageDefense > 0) changes.push(`−${effects.damageDefense} Defense`)
-  return changes.length > 0 ? changes.join(', ') : 'no effect'
-}
 
 /** Such as "20 Gold and 3 Population". */
 function describeTribute(tribute: Tribute) {
@@ -68,10 +57,7 @@ function DilemmaDecision({
             >
               {choice.name}
             </button>
-            <span className="row__meta">
-              {describeChoiceEffects(choice.effects)}
-              {choice.worst && ' (applies if you do not choose)'}
-            </span>
+            {choice.worst && <span className="row__meta">applies if you do not choose</span>}
           </li>
         ))}
       </ul>

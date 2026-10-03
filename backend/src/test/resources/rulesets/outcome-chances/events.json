@@ -1,0 +1,11 @@
+[
+  { "name": "Bandits", "subject": "Nation", "chance": 0.04, "text": "Bandits are raiding your roads",
+    "choices": [
+      { "name": "Hunt them down",
+        "outcomes": [
+          { "chance": 0.6, "effects": { "population": -3 }, "text": "Your people hunted the bandits down" },
+          { "chance": 0.3, "effects": { "population": -6 }, "text": "The bandits ambushed your hunters" }
+        ] },
+      { "name": "Ignore them", "worst": true, "effects": { "gold": -30 }, "text": "The bandits plundered freely" }
+    ] }
+]

@@ -386,7 +386,8 @@ class Nation {
 		}
 
 		Dilemma view() {
-			return new Dilemma(dilemma.name(), dilemma.text(), dilemma.choices(),
+			return new Dilemma(dilemma.name(), dilemma.text(),
+					dilemma.choices().stream().map(choice -> new Dilemma.Choice(choice.name(), choice.worst())).toList(),
 					chosen == null ? null : chosen.name());
 		}
 

@@ -64,18 +64,77 @@ public record Event(String name, Subject subject, double chance, Conditions when
 	}
 
 	/**
-	 * One of the choices a Dilemma offers.
+	 * One of the choices a Dilemma offers, which leads to one of its outcomes
+	 * by chance: either the single outcome its own effects and text describe,
+	 * or one of the outcomes it lists.
 	 *
 	 * @param name what the Player picks it by, unique within the Dilemma
-	 * @param effects what it changes when it applies
+	 * @param effects what it changes when it applies, if it lists no outcomes
 	 * @param worst whether it is the one that applies if the Player does not
 	 *        choose before the Turn ends
 	 * @param text how the Turn Report describes it, such as "You quarantined
-	 *        the sick", followed by its effects
+	 *        the sick", followed by its effects, if it lists no outcomes
+	 * @param outcomes what it may lead to, whose chances total 1; empty if it
+	 *        has a single outcome of its own effects and text
 	 */
-	public record Choice(String name, Effects effects, boolean worst, String text) {
+	public record Choice(String name, Effects effects, boolean worst, String text, List<Outcome> outcomes) {
 
 		public Choice {
+			effects = effects == null ? Effects.NONE : effects;
+			outcomes = outcomes == null ? List.of() : List.copyOf(outcomes);
+		}
+
+		/**
+		 * A choice with a single outcome of its own effects and text.
+		 */
+		public Choice(String name, Effects effects, boolean worst, String text) {
+			this(name, effects, worst, text, List.of());
+		}
+
+		/**
+		 * A choice that may lead to any of the given outcomes.
+		 */
+		public Choice(String name, boolean worst, List<Outcome> outcomes) {
+			this(name, null, worst, null, outcomes);
+		}
+
+		/**
+		 * The outcome this choice leads to, by chance: luck below the first
+		 * outcome's chance picks it, luck below the first two's picks the
+		 * second, and so on. A choice of a single outcome draws no luck.
+		 */
+		Outcome outcome(RandomGenerator random) {
+			if (outcomes.isEmpty()) {
+				return new Outcome(1, effects, text);
+			}
+			if (outcomes.size() == 1) {
+				return outcomes.getFirst();
+			}
+			double luck = random.nextDouble();
+			double total = 0;
+			for (Outcome outcome : outcomes) {
+				total += outcome.chance();
+				if (luck < total) {
+					return outcome;
+				}
+			}
+			return outcomes.getLast();
+		}
+
+	}
+
+	/**
+	 * One of the things a Dilemma choice may lead to.
+	 *
+	 * @param chance how likely the choice is to lead to it, above 0 and at most
+	 *        1
+	 * @param effects what it changes
+	 * @param text how the Turn Report describes it, such as "The bandits
+	 *        ambushed your hunters", followed by its effects
+	 */
+	public record Outcome(double chance, Effects effects, String text) {
+
+		public Outcome {
 			effects = effects == null ? Effects.NONE : effects;
 		}
 
@@ -257,15 +316,54 @@ public record Event(String name, Subject subject, double chance, Conditions when
 				problems.add(subjectName + " offers more than one choice called " + choice.name() + ".");
 			}
 			String choiceName = subjectName + "'s choice " + choice.name();
-			if (choice.text() == null || choice.text().isBlank()) {
-				problems.add(choiceName + " has no text to describe it.");
+			if (choice.outcomes().isEmpty()) {
+				if (choice.text() == null || choice.text().isBlank()) {
+					problems.add(choiceName + " has no text to describe it.");
+				}
+				if (choice.effects().travelTurns() != 0) {
+					problems.add(choiceName + " cannot change travelTurns.");
+				}
+				if (choice.effects().damageDefense() < 0) {
+					problems.add(choiceName + " cannot damage Defense by less than 0.");
+				}
 			}
-			if (choice.effects().travelTurns() != 0) {
-				problems.add(choiceName + " cannot change travelTurns.");
+			else {
+				problems.addAll(outcomeProblems(choiceName, choice));
 			}
-			if (choice.effects().damageDefense() < 0) {
-				problems.add(choiceName + " cannot damage Defense by less than 0.");
+		}
+		return problems;
+	}
+
+	/**
+	 * What is wrong with the outcomes a Dilemma choice lists, if anything.
+	 */
+	private static List<String> outcomeProblems(String choiceName, Choice choice) {
+		List<String> problems = new ArrayList<>();
+		if (!choice.effects().equals(Effects.NONE)) {
+			problems.add(choiceName + " has outcomes, so its effects belong to its outcomes.");
+		}
+		if (choice.text() != null) {
+			problems.add(choiceName + " has outcomes, so its text belongs to its outcomes.");
+		}
+		double total = 0;
+		for (Outcome outcome : choice.outcomes()) {
+			total += outcome.chance();
+			if (!(outcome.chance() > 0 && outcome.chance() <= 1)) {
+				problems.add(choiceName + " has an outcome without a chance above 0 and at most 1.");
 			}
+			if (outcome.text() == null || outcome.text().isBlank()) {
+				problems.add(choiceName + " has an outcome with no text to describe it.");
+			}
+			if (outcome.effects().travelTurns() != 0) {
+				problems.add(choiceName + " has an outcome that changes travelTurns.");
+			}
+			if (outcome.effects().damageDefense() < 0) {
+				problems.add(choiceName + " has an outcome that damages Defense by less than 0.");
+			}
+		}
+		// Chances such as 0.1 cannot be added exactly.
+		if (Math.abs(total - 1) > 1e-9) {
+			problems.add(choiceName + " has outcome chances totalling " + Math.round(total * 1e6) / 1e6 + ", not 1.");
 		}
 		return problems;
 	}

@@ -217,4 +217,50 @@ class RulesetTest {
 			.withMessageContaining("Event Flood offers choices, so its effects belong to its choices");
 	}
 
+	static Event.Outcome outcome(double chance) {
+		return new Event.Outcome(chance, null, "It turned out so");
+	}
+
+	@Test
+	void aChoicesOutcomeChancesMustTotalOne() {
+		Event flood = dilemma("Flood", Event.Subject.NATION, null, choice("Flee", true),
+				new Event.Choice("Dig", false, List.of(outcome(0.5), outcome(0.4))),
+				new Event.Choice("Pray", false, List.of(outcome(0.7), outcome(0.4))));
+		Event fire = dilemma("Fire", Event.Subject.NATION, null, choice("Flee", true),
+				new Event.Choice("Fight", false, List.of(outcome(0.1), outcome(0.2), outcome(0.7))));
+
+		assertThatExceptionOfType(InvalidRuleset.class)
+			.isThrownBy(() -> new Ruleset(List.of(), List.of(), List.of(), List.of(flood, fire)))
+			.withMessageContaining("Event Flood's choice Dig has outcome chances totalling 0.9, not 1")
+			.withMessageContaining("Event Flood's choice Pray has outcome chances totalling 1.1, not 1")
+			.withMessageNotContaining("Fire");
+	}
+
+	@Test
+	void aChoicesOutcomesHaveAChanceAndTextAndSuitANation() {
+		Event.Choice dig = new Event.Choice("Dig", false,
+				List.of(new Event.Outcome(0, null, "It turned out so"), new Event.Outcome(1.5, null, " "),
+						new Event.Outcome(-0.5, new Event.Effects(0, 0, 0, -1, 2), "It went wrong")));
+		Event flood = dilemma("Flood", Event.Subject.NATION, null, choice("Flee", true), dig);
+
+		assertThatExceptionOfType(InvalidRuleset.class)
+			.isThrownBy(() -> new Ruleset(List.of(), List.of(), List.of(), List.of(flood)))
+			.withMessageContaining("Event Flood's choice Dig has an outcome without a chance above 0 and at most 1")
+			.withMessageContaining("Event Flood's choice Dig has an outcome with no text to describe it")
+			.withMessageContaining("Event Flood's choice Dig has an outcome that changes travelTurns")
+			.withMessageContaining("Event Flood's choice Dig has an outcome that damages Defense by less than 0");
+	}
+
+	@Test
+	void aChoiceWithOutcomesHasNoEffectsOrTextOfItsOwn() {
+		Event.Choice dig = new Event.Choice("Dig", new Event.Effects(0, -1, 0, 0, 0), false, "You dug",
+				List.of(outcome(1)));
+		Event flood = dilemma("Flood", Event.Subject.NATION, null, choice("Flee", true), dig);
+
+		assertThatExceptionOfType(InvalidRuleset.class)
+			.isThrownBy(() -> new Ruleset(List.of(), List.of(), List.of(), List.of(flood)))
+			.withMessageContaining("Event Flood's choice Dig has outcomes, so its effects belong to its outcomes")
+			.withMessageContaining("Event Flood's choice Dig has outcomes, so its text belongs to its outcomes");
+	}
+
 }
