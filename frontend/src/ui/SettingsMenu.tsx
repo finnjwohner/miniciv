@@ -1,6 +1,7 @@
-import { useEffect, useId, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useSettings } from '../settings'
 import { Icon } from './Icon'
+import { Panel } from './Panel'
 
 /**
  * The gear at the top right of every screen and the Settings pop-up it opens. Escape, the gear again or
@@ -11,7 +12,6 @@ export function SettingsMenu() {
   const [open, setOpen] = useState(false)
   const menu = useRef<HTMLDivElement>(null)
   const gear = useRef<HTMLButtonElement>(null)
-  const titleId = useId()
 
   useEffect(() => {
     if (!open) return
@@ -45,13 +45,8 @@ export function SettingsMenu() {
         <Icon name="gear" size={24} />
       </button>
       {open && (
-        <div className="settings__popup panel" role="dialog" aria-labelledby={titleId}>
-          <header className="panel__bar">
-            <h2 className="panel__title" id={titleId}>
-              Settings
-            </h2>
-          </header>
-          <div className="panel__body stack">
+        <Panel title="Settings" className="settings__popup" role="dialog">
+          <div className="stack">
             <label className="toggle">
               <input
                 type="checkbox"
@@ -80,7 +75,7 @@ export function SettingsMenu() {
               Reduce motion
             </label>
           </div>
-        </div>
+        </Panel>
       )}
     </div>
   )
