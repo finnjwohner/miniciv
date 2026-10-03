@@ -7,7 +7,7 @@ export type Settings = { sound: boolean; volume: number; reducedMotion: boolean 
 type SettingsContextValue = {
   settings: Settings
   changeSettings: (change: Partial<Settings>) => void
-  play: (cue: Cue) => void
+  play: (cue: Cue, after?: number) => void
 }
 
 /** What a SettingsProvider gives the screens below it. */
@@ -25,7 +25,7 @@ export function useSettings() {
   return { settings, changeSettings }
 }
 
-/** Plays a cue, if sound is on, at the chosen volume. */
+/** Plays a cue, if sound is on, at the chosen volume, now or a number of seconds after. */
 export function useCue() {
   return useSettingsContext().play
 }

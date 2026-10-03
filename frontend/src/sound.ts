@@ -30,10 +30,10 @@ export function isCue(name: string): name is Cue {
   return Object.hasOwn(CUES, name)
 }
 
-/** Plays `cue` through `context` at `volume`, from 0 (silent) to 1 (full). */
-export function playCue(context: AudioContext, cue: Cue, volume: number) {
+/** Plays `cue` through `context` at `volume`, from 0 (silent) to 1 (full), `after` seconds from now. */
+export function playCue(context: AudioContext, cue: Cue, volume: number, after = 0) {
   if (volume <= 0) return
-  const now = context.currentTime
+  const now = context.currentTime + after
   for (const { frequency, at, length, wave, loudness } of CUES[cue]) {
     const start = now + at
     const end = start + length

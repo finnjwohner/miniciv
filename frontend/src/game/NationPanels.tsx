@@ -3,26 +3,42 @@ import type { BuildingDamage, BuildingType, NationView, TechTreeEntry, UnitType 
 import { Icon, type IconName } from '../ui/Icon'
 import { Panel } from '../ui/Panel'
 import { CountInput } from './controls'
-import { plural } from './format'
+import { formatChange, plural } from './format'
+import { rowClass, useCountUp, useFreshRows } from './turnStart'
 
-function Stat({ icon, label, value }: { icon: IconName; label: string; value: number }) {
+/**
+ * One resource, counting to its `value` from before it changed by `change` as it mounts, with the change
+ * floating up from it in green or red, unless motion is reduced.
+ */
+function Stat({ icon, label, value, change = 0 }: { icon: IconName; label: string; value: number; change?: number }) {
+  const { shown, counting } = useCountUp(value, change)
   return (
     <div className="stat">
       <Icon name={icon} />
       <span className="stat__label">{label}</span>
-      <span className="stat__value">{value}</span>
+      <span className="stat__value">{shown}</span>
+      {counting && (
+        <span className={`stat__float stat__float--${change > 0 ? 'good' : 'bad'}`} aria-hidden="true">
+          {formatChange(change)}
+        </span>
+      )}
     </div>
   )
 }
 
-/** The Nation's Gold, Population, Research and Defense, and the Gold its Units cost each Turn. */
+/**
+ * The Nation's Gold, Population, Research and Defense, and the Gold its Units cost each Turn. As each new
+ * Turn arrives, Gold, Population and Research count from before the Turn resolved to their new values.
+ */
 export function ResourcesPanel({ nation }: { nation: NationView }) {
+  const [firstTurn] = useState(nation.turn)
+  const netChange = nation.turn !== firstTurn ? nation.turnReport?.netChange : undefined
   return (
     <Panel title={nation.nation} icon="flag" className="dash__resources">
-      <div className="stats">
-        <Stat icon="coins" label="Gold" value={nation.gold} />
-        <Stat icon="human" label="Population" value={nation.population} />
-        <Stat icon="lightbulb" label="Research" value={nation.research} />
+      <div className="stats" key={nation.turn}>
+        <Stat icon="coins" label="Gold" value={nation.gold} change={netChange?.gold} />
+        <Stat icon="human" label="Population" value={nation.population} change={netChange?.population} />
+        <Stat icon="lightbulb" label="Research" value={nation.research} change={netChange?.research} />
         <Stat icon="shield" label="Defense" value={nation.defense} />
       </div>
       <p className="muted">Upkeep, at home and abroad: {nation.upkeep} Gold per Turn</p>
@@ -106,7 +122,8 @@ function Damage({
 /**
  * The Buildings the Nation can construct, then the ones it has, with a button to Sell each type it may
  * Sell one of, and the ones it is constructing, Repairing or Rebuilding, the same ones merged into one row.
- * The buttons to construct come first so they stay put as construction starts.
+ * The buttons to construct come first so they stay put as construction starts. Rows new in this Nation
+ * view flash.
  */
 export function BuildPanel({
   nation,
@@ -124,6 +141,14 @@ export function BuildPanel({
   onSell: (building: string) => void
 }) {
   const owned = Object.entries(nation.buildings)
+  // Each row in progress is known by the Turn it finishes on, so it stays the same row as its Turns left count down.
+  const construction = mergeAlike(nation.construction, (c) => ['construction', c.building, nation.turn + c.turnsLeft])
+  const repairs = mergeAlike(nation.repairs, (r) => ['repair', r.building, r.rebuild, nation.turn + r.turnsLeft])
+  const isFresh = useFreshRows(nation.version, [
+    ...owned.map(([name]) => name),
+    ...construction.map(({ key }) => key),
+    ...repairs.map(({ key }) => key),
+  ])
   return (
     <Panel title="Build" icon="building" rejection={rejection}>
       <h3>Construct</h3>
@@ -149,7 +174,7 @@ export function BuildPanel({
             const damage = nation.damage.find((d) => d.building === name)
             const sellValue = nation.sellValues[name]
             return [
-              <li key={name} className="row">
+              <li key={name} className={rowClass(isFresh(name))}>
                 <span className="row__name">{name}</span>
                 <span className="row__meta">×{count}</span>
                 {sellValue !== undefined && (
@@ -169,8 +194,8 @@ export function BuildPanel({
               ),
             ]
           })}
-          {mergeAlike(nation.construction, (c) => [c.building, c.turnsLeft]).map(({ key, item: c, count }) => (
-            <li key={`construction-${key}`} className="row">
+          {construction.map(({ key, item: c, count }) => (
+            <li key={key} className={rowClass(isFresh(key))}>
               <span className="row__name">
                 {c.building} ×{count}
               </span>
@@ -178,8 +203,8 @@ export function BuildPanel({
               <span className="row__meta">{plural(c.turnsLeft, 'Turn')} left</span>
             </li>
           ))}
-          {mergeAlike(nation.repairs, (r) => [r.building, r.rebuild, r.turnsLeft]).map(({ key, item: r, count }) => (
-            <li key={`repair-${key}`} className="row">
+          {repairs.map(({ key, item: r, count }) => (
+            <li key={key} className={rowClass(isFresh(key))}>
               <span className="row__name">
                 {r.building} ×{count}
               </span>
@@ -234,7 +259,7 @@ function TrainUnit({
 
 /**
  * The Unit types the Nation can train, then the Units in training, merged by Unit type and Turns left, so
- * the Train buttons stay put.
+ * the Train buttons stay put; rows new in this Nation view flash.
  */
 export function TrainPanel({
   nation,
@@ -245,6 +270,8 @@ export function TrainPanel({
   rejection: string | null
   onTrain: (unit: string, count: number) => void
 }) {
+  const training = mergeAlike(nation.training, (t) => [t.unit, t.readyOnTurn], (t) => t.count)
+  const isFresh = useFreshRows(nation.version, training.map(({ key }) => key))
   return (
     <Panel title="Train" icon="sword" rejection={rejection}>
       <h3>Units</h3>
@@ -258,8 +285,8 @@ export function TrainPanel({
         <p className="muted">No Units in training.</p>
       ) : (
         <ul className="list">
-          {mergeAlike(nation.training, (t) => [t.unit, t.readyOnTurn], (t) => t.count).map(({ key, item: t, count }) => (
-            <li key={key} className="row">
+          {training.map(({ key, item: t, count }) => (
+            <li key={key} className={rowClass(isFresh(key))}>
               <span className="row__name">
                 {t.unit} ×{count}
               </span>

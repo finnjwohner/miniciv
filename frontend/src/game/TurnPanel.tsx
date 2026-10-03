@@ -4,7 +4,7 @@ import { useCue, useSettings } from '../settings'
 import { Icon } from '../ui/Icon'
 import { NationName } from '../ui/NationName'
 import { Panel } from '../ui/Panel'
-import { formatCountdown } from './format'
+import { formatChange, formatCountdown } from './format'
 
 /** How a Player stands in the Game, as a tag beside their Nation. */
 function PlayerStanding({ player, game }: { player: PlayerView; game: GameView }) {
@@ -55,7 +55,7 @@ function NetChangeLine({ netChange }: { netChange: NetChange }) {
           <Fragment key={resource}>
             {i > 0 && ' · '}
             <span className={amount > 0 ? 'report__gain' : 'report__loss'}>
-              {`${amount > 0 ? '+' : '−'}${Math.abs(amount)} ${name}`}
+              {`${formatChange(amount)} ${name}`}
             </span>
           </Fragment>
         )

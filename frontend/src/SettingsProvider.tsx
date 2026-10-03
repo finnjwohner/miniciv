@@ -33,8 +33,8 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const play = useCallback(
-    (cue: Cue) => {
-      if (settings.sound && audio.current) playCue(audio.current, cue, settings.volume)
+    (cue: Cue, after = 0) => {
+      if (settings.sound && audio.current) playCue(audio.current, cue, settings.volume, after)
     },
     [settings.sound, settings.volume],
   )

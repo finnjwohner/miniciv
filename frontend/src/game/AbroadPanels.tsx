@@ -6,6 +6,7 @@ import { Panel } from '../ui/Panel'
 import { CountInput, TargetSelect } from './controls'
 import { currentTarget, formatAmount, listCounts, plural } from './format'
 import { MapName } from './MapName'
+import { rowClass, useFreshRows } from './turnStart'
 
 function describeWarparty(warparty: Warparty, map: MapNation[]) {
   const target = <MapName name={warparty.target} map={map} />
@@ -43,7 +44,8 @@ function describeBrackets(brackets: TravelBracket[]) {
 /**
  * A form to send Units from the Army to another Nation previewing the Warparty's Strength and travel
  * Turns, then the Army at home and its total Strength, and the Nation's Warparties abroad with their
- * Strength, destination and Turns left, each not yet heading home with a button to Recall it.
+ * Strength, destination and Turns left, each not yet heading home with a button to Recall it. A Unit
+ * type new to the Army flashes.
  */
 export function ArmyPanel({
   nation,
@@ -64,6 +66,7 @@ export function ArmyPanel({
   const army = Object.entries(nation.army)
   const strengthOf = (name: string, count: number) => (types.get(name)?.strength ?? 0) * count
   const strength = army.reduce((total, [name, count]) => total + strengthOf(name, count), 0)
+  const isFresh = useFreshRows(nation.version, army.map(([name]) => name))
   const sendable = army.filter(([name]) => !types.get(name)?.scout && !types.get(name)?.spy)
   const units: Record<string, number> = {}
   for (const [name, owned] of sendable) {
@@ -128,7 +131,7 @@ export function ArmyPanel({
       ) : (
         <ul className="list">
           {army.map(([name, count]) => (
-            <li key={name} className="row">
+            <li key={name} className={rowClass(isFresh(name))}>
               <span className="row__name">
                 {name} ×{count}
               </span>
