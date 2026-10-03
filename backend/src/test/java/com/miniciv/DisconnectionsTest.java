@@ -104,8 +104,8 @@ class DisconnectionsTest {
 		carthage = players.get(1);
 		egypt = players.size() > 2 ? players.get(2) : null;
 		updates = carthage.stomp().subscribe("/topic/rooms/" + code);
-		for (Connected player : players) {
-			player.stomp().send("/app/rooms/" + code + "/ready", Map.of("token", player.token(), "ready", true));
+		for (int seat = 0; seat < players.size(); seat++) {
+			TurnsTest.readyUp(players.get(seat).stomp(), code, players.get(seat).token(), seat);
 		}
 		for (Connected player : players) {
 			assertThat(player.privately().next().get("turn")).isEqualTo(1);

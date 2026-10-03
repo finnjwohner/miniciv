@@ -1,6 +1,18 @@
 // Talks to the server's REST API and remembers which Rooms this browser has joined.
 
-export type PlayerView = { id: string; nationName: string; ready: boolean; done: boolean }
+/**
+ * A Player as everyone in the Room sees them: their Nation, its Ruler (empty until named), and the
+ * colour and emblem they picked, each unique in the Room.
+ */
+export type PlayerView = {
+  id: string
+  nationName: string
+  ruler: string
+  colour: string
+  emblem: string
+  ready: boolean
+  done: boolean
+}
 /**
  * A Nation whose Player is disconnected; `millisLeft` is how much longer, when the server sent it,
  * they may stay disconnected before their Nation is removed.
@@ -21,8 +33,18 @@ export type GameView = {
   winner: string | null
   waitingFor: Waiting[]
 }
-/** Room-wide state; `version` rises with every change. */
-export type RoomView = { code: string; version: number; players: PlayerView[]; game: GameView | null }
+/**
+ * Room-wide state; `version` rises with every change. `colours` and `emblems` are what a Player may
+ * pick for their Nation; emblems are pixel icon names.
+ */
+export type RoomView = {
+  code: string
+  version: number
+  colours: string[]
+  emblems: string[]
+  players: PlayerView[]
+  game: GameView | null
+}
 
 /** What happened to a Nation as a Turn resolved. */
 export type TurnReport = { turn: number; lines: string[] }

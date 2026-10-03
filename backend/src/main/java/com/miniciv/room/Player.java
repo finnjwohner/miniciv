@@ -18,6 +18,15 @@ class Player {
 
 	private final String nationName;
 
+	/**
+	 * The name of the Nation's Ruler; empty until the Player names them.
+	 */
+	private String ruler = "";
+
+	private String colour;
+
+	private String emblem;
+
 	private boolean ready;
 
 	private boolean done;
@@ -39,8 +48,10 @@ class Player {
 	 */
 	private Instant disconnectedSince;
 
-	Player(String nationName) {
+	Player(String nationName, String colour, String emblem) {
 		this.nationName = nationName;
+		this.colour = colour;
+		this.emblem = emblem;
 	}
 
 	String id() {
@@ -53,6 +64,27 @@ class Player {
 
 	String nationName() {
 		return nationName;
+	}
+
+	String ruler() {
+		return ruler;
+	}
+
+	String colour() {
+		return colour;
+	}
+
+	String emblem() {
+		return emblem;
+	}
+
+	/**
+	 * Names the Nation's Ruler and sets its colour and emblem.
+	 */
+	void identify(String ruler, String colour, String emblem) {
+		this.ruler = ruler;
+		this.colour = colour;
+		this.emblem = emblem;
 	}
 
 	boolean ready() {

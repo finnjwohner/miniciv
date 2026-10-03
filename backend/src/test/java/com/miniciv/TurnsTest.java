@@ -107,8 +107,19 @@ class TurnsTest {
 	}
 
 	void readyBoth() {
-		rome.stomp().send("/app/rooms/" + code + "/ready", Map.of("token", rome.token(), "ready", true));
-		carthage.stomp().send("/app/rooms/" + code + "/ready", Map.of("token", carthage.token(), "ready", true));
+		readyUp(rome.stomp(), code, rome.token(), 0);
+		readyUp(carthage.stomp(), code, carthage.token(), 1);
+	}
+
+	/**
+	 * Names a Player's Ruler, keeping the colour and emblem a Player joining
+	 * the Room at the given seat, counting from 0, is given, and readies them
+	 * up.
+	 */
+	static void readyUp(StompConnection stomp, String code, String token, int seat) {
+		stomp.send("/app/rooms/" + code + "/identity", Map.of("token", token, "ruler", "Ruler " + (seat + 1), "colour",
+				IdentityTest.COLOURS.get(seat), "emblem", IdentityTest.EMBLEMS.get(seat)));
+		stomp.send("/app/rooms/" + code + "/ready", Map.of("token", token, "ready", true));
 	}
 
 	Map<?, ?> join(String nationName) {
@@ -518,7 +529,7 @@ class TurnsTest {
 		joinRomeAndCarthage();
 		egypt = connect(join("Egypt"));
 		readyBoth();
-		egypt.stomp().send("/app/rooms/" + code + "/ready", Map.of("token", egypt.token(), "ready", true));
+		readyUp(egypt.stomp(), code, egypt.token(), 2);
 		rome.privately().next();
 		carthage.privately().next();
 		egypt.privately().next();

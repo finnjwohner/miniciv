@@ -83,7 +83,7 @@ class EncountersTest {
 		rome = join("Rome");
 		carthage = join("Carthage");
 		for (TurnsTest.Connected player : List.of(rome, carthage)) {
-			send(player, "/ready", Map.of("token", player.token(), "ready", true));
+			TurnsTest.readyUp(player.stomp(), code, player.token(), player == rome ? 0 : 1);
 		}
 		for (TurnsTest.Connected player : List.of(rome, carthage)) {
 			player.privately().next();
