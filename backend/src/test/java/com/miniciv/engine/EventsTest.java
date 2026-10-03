@@ -121,14 +121,50 @@ class EventsTest {
 	}
 
 	@Test
+	void aCometSightingBringsResearchFromTurnFour() {
+		play(ALWAYS, starter("Comet sighting"));
+
+		for (int turn = 1; turn <= 4; turn++) {
+			game.endTurn();
+		}
+
+		assertThat(report("Rome"))
+			.contains("A comet blazed across the sky, and your astronomers learned from it: your Nation gained 9 Research.");
+	}
+
+	@Test
+	void everyShippedTurnGatedNationEventFirstHappensOnItsTurn() {
+		List<Event> gated = STARTER.stream()
+			.filter(event -> event.subject() == Event.Subject.NATION && event.when().turnAtLeast() != null)
+			.toList();
+		assertThat(gated).extracting(Event::name).contains("Famine", "Great fire", "Drought", "Cracked foundations");
+
+		for (Event event : gated) {
+			// Only its Turn gate, so that its other conditions cannot hide one.
+			play(ALWAYS, new Event(event.name(), event.subject(), event.chance(),
+					new Event.Conditions(event.when().turnAtLeast(), null, null, null, null, null, null),
+					event.effects(), event.text(), event.choices()));
+			for (int turn = 1; turn <= event.when().turnAtLeast(); turn++) {
+				game.endTurn();
+				boolean gateReached = turn == event.when().turnAtLeast();
+				for (String nation : List.of("Rome", "Carthage")) {
+					assertThat(report(nation).stream().anyMatch(line -> line.startsWith(event.text())))
+						.as(event.name() + " on Turn " + turn)
+						.isEqualTo(gateReached);
+				}
+			}
+		}
+	}
+
+	@Test
 	void anEventTakesNoMoreGoldPopulationOrResearchThanTheNationHas() {
-		play(ALWAYS, new Event("Famine", Event.Subject.NATION, 1, null, new Event.Effects(5, -100, -100, 0, 0),
-				"Famine struck"));
+		play(ALWAYS, new Event("Pestilence", Event.Subject.NATION, 1, null, new Event.Effects(5, -100, -100, 0, 0),
+				"Pestilence struck"));
 
 		game.endTurn();
 
 		assertThat(report("Rome")).containsExactly(BASE_INCOME_REPORT,
-				"Famine struck: your Nation gained 4 Gold and lost 12 Population and 3 Research.");
+				"Pestilence struck: your Nation gained 4 Gold and lost 12 Population and 3 Research.");
 		NationView rome = game.viewOf("Rome");
 		assertThat(rome.gold()).isEqualTo(64);
 		assertThat(rome.population()).isZero();

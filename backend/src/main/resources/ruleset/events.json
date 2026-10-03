@@ -15,12 +15,28 @@
     "effects": { "research": -10 }, "text": "Fire took the scrolls of your library" },
   { "name": "Earthquake", "subject": "Nation", "chance": 0.03, "when": { "turnAtLeast": 5, "defenseAtLeast": 1 },
     "effects": { "damageDefense": 5 }, "text": "An earthquake shook your Nation" },
+  { "name": "Comet sighting", "subject": "Nation", "chance": 0.04, "when": { "turnAtLeast": 4 },
+    "effects": { "research": 10 }, "text": "A comet blazed across the sky, and your astronomers learned from it" },
+  { "name": "Bountiful fishing", "subject": "Nation", "chance": 0.05, "when": { "turnAtLeast": 3 },
+    "effects": { "gold": 10, "population": 3 }, "text": "Your fishermen brought in a bountiful catch" },
+  { "name": "Royal wedding", "subject": "Nation", "chance": 0.03, "when": { "turnAtLeast": 6 },
+    "effects": { "gold": -25, "population": 6 }, "text": "Your Nation celebrated a royal wedding" },
+  { "name": "Gold rush", "subject": "Nation", "chance": 0.02, "when": { "turnAtLeast": 8 },
+    "effects": { "gold": 60 }, "text": "Prospectors struck gold in your rivers" },
+  { "name": "Famine", "subject": "Nation", "chance": 0.03, "when": { "turnAtLeast": 10, "populationAtLeast": 25 },
+    "effects": { "population": -12 }, "text": "Famine gripped your Nation" },
+  { "name": "Great fire", "subject": "Nation", "chance": 0.02, "when": { "turnAtLeast": 12, "goldAtLeast": 120 },
+    "effects": { "gold": -40, "damageDefense": 4 }, "text": "A great fire swept through your capital" },
   { "name": "Dust storm", "subject": "Warparty", "chance": 0.1,
     "effects": { "travelTurns": 1 }, "text": "A dust storm swept the plains" },
   { "name": "Swollen river", "subject": "Warparty", "chance": 0.04, "when": { "turnAtLeast": 3 },
     "effects": { "travelTurns": 2 }, "text": "A swollen river forced a long way round" },
   { "name": "Local guides", "subject": "Warparty", "chance": 0.06,
     "effects": { "travelTurns": -1 }, "text": "Local guides showed the way through the hills" },
+  { "name": "Favourable winds", "subject": "Warparty", "chance": 0.05, "when": { "turnAtLeast": 5 },
+    "effects": { "travelTurns": -1 }, "text": "Favourable winds sped the march" },
+  { "name": "Blocked mountain pass", "subject": "Warparty", "chance": 0.03, "when": { "turnAtLeast": 8 },
+    "effects": { "travelTurns": 2 }, "text": "A rockfall blocked the mountain pass" },
   { "name": "Rumours of war", "subject": "Nation", "chance": 0.5, "when": { "approachingUnitsAtLeast": 8 },
     "text": "Rumours spread of a large army marching on your Nation" },
   { "name": "Outbreak", "subject": "Nation", "chance": 0.05, "when": { "turnAtLeast": 3, "populationAtLeast": 14 },
@@ -137,6 +153,109 @@
       { "name": "Leave them be", "worst": true, "outcomes": [
         { "chance": 0.75, "effects": { "damageDefense": 6 }, "text": "You left your defensive Buildings to crumble" },
         { "chance": 0.25, "text": "You left your defensive Buildings be, and they held for now" }
+      ] }
+    ] },
+  { "name": "Border dispute", "subject": "Nation", "chance": 0.03, "when": { "turnAtLeast": 5 },
+    "text": "A neighbour is disputing your borders",
+    "choices": [
+      { "name": "Negotiate", "outcomes": [
+        { "chance": 0.8, "effects": { "gold": -20 }, "text": "You negotiated a settlement" },
+        { "chance": 0.2, "effects": { "gold": -35 }, "text": "You negotiated a settlement, but paid dearly for it" }
+      ] },
+      { "name": "Stand firm", "outcomes": [
+        { "chance": 0.7, "text": "You stood firm, and your neighbour backed down" },
+        { "chance": 0.3, "effects": { "population": -4 },
+          "text": "You stood firm, and fighting broke out along the border" }
+      ] },
+      { "name": "Concede land", "worst": true, "outcomes": [
+        { "chance": 0.8, "effects": { "population": -6 },
+          "text": "You conceded land, and lost the people living on it" },
+        { "chance": 0.2, "effects": { "population": -3 }, "text": "You conceded land, but few lived on it" }
+      ] }
+    ] },
+  { "name": "Drought", "subject": "Nation", "chance": 0.03, "when": { "turnAtLeast": 7 },
+    "text": "Drought is drying up your rivers",
+    "choices": [
+      { "name": "Dig wells", "outcomes": [
+        { "chance": 0.75, "effects": { "gold": -25 }, "text": "You dug wells" },
+        { "chance": 0.25, "effects": { "gold": -40 }, "text": "You dug wells, but had to dig deep to find water" }
+      ] },
+      { "name": "Ration water", "outcomes": [
+        { "chance": 0.8, "effects": { "population": -2 }, "text": "You rationed water" },
+        { "chance": 0.2, "effects": { "population": -4 }, "text": "You rationed water, but not strictly enough" }
+      ] },
+      { "name": "Pray for rain", "worst": true, "outcomes": [
+        { "chance": 0.7, "effects": { "population": -10 }, "text": "You prayed for rain, and none came" },
+        { "chance": 0.3, "text": "You prayed for rain, and the skies opened" }
+      ] }
+    ] },
+  { "name": "Festival petition", "subject": "Nation", "chance": 0.04, "when": { "turnAtLeast": 5, "goldAtLeast": 60 },
+    "text": "Your people are petitioning you for a festival",
+    "choices": [
+      { "name": "Grand festival", "outcomes": [
+        { "chance": 0.8, "effects": { "gold": -40, "population": 6 }, "text": "You held a grand festival" },
+        { "chance": 0.2, "effects": { "gold": -40, "population": 3 },
+          "text": "You held a grand festival, but rain spoiled it" }
+      ] },
+      { "name": "Modest festival", "outcomes": [
+        { "chance": 0.8, "effects": { "gold": -15, "population": 2 }, "text": "You held a modest festival" },
+        { "chance": 0.2, "effects": { "gold": -15 }, "text": "You held a modest festival, but few came" }
+      ] },
+      { "name": "Refuse", "worst": true, "outcomes": [
+        { "chance": 0.75, "effects": { "population": -4 },
+          "text": "You refused the petition, and some of your people left in disgust" },
+        { "chance": 0.25, "text": "You refused the petition, and the grumbling soon died down" }
+      ] }
+    ] },
+  { "name": "Foreign envoy", "subject": "Nation", "chance": 0.03, "when": { "turnAtLeast": 6 },
+    "text": "An envoy from a distant land has arrived at your court",
+    "choices": [
+      { "name": "Lavish gifts", "outcomes": [
+        { "chance": 0.75, "effects": { "gold": -30, "research": 15 },
+          "text": "You showered the envoy with gifts, and they shared their learning" },
+        { "chance": 0.25, "effects": { "gold": -30, "research": 5 },
+          "text": "You showered the envoy with gifts, but they had little to teach" }
+      ] },
+      { "name": "Modest gifts", "outcomes": [
+        { "chance": 0.8, "effects": { "gold": -10 }, "text": "You sent the envoy home with modest gifts" },
+        { "chance": 0.2, "effects": { "gold": -20 }, "text": "You gave the envoy modest gifts, and they demanded more" }
+      ] },
+      { "name": "Send them away", "worst": true, "outcomes": [
+        { "chance": 0.6, "text": "You sent the envoy away" },
+        { "chance": 0.4, "effects": { "gold": -25, "population": -4 },
+          "text": "You sent the envoy away, and their people raided your borders in revenge" }
+      ] }
+    ] },
+  { "name": "Deserter's secrets", "subject": "Nation", "chance": 0.03, "when": { "turnAtLeast": 8 },
+    "text": "A deserter from a distant land offers to sell you its secrets",
+    "choices": [
+      { "name": "Pay for them", "outcomes": [
+        { "chance": 0.7, "effects": { "gold": -25, "research": 15 }, "text": "You paid the deserter for their secrets" },
+        { "chance": 0.3, "effects": { "gold": -25 }, "text": "You paid the deserter, but their secrets were worthless" }
+      ] },
+      { "name": "Turn them away", "worst": true, "outcomes": [
+        { "chance": 0.8, "text": "You turned the deserter away" },
+        { "chance": 0.2, "effects": { "research": -5 },
+          "text": "You turned the deserter away, and your scholars wasted time chasing the rumours they spread" }
+      ] }
+    ] },
+  { "name": "Cracked foundations", "subject": "Nation", "chance": 0.03, "when": { "turnAtLeast": 10, "defenseAtLeast": 10 },
+    "text": "Your engineers have found cracks in the foundations of your defensive Buildings",
+    "choices": [
+      { "name": "Reinforce", "outcomes": [
+        { "chance": 0.8, "effects": { "gold": -30 }, "text": "You reinforced the foundations" },
+        { "chance": 0.2, "effects": { "gold": -45 },
+          "text": "You reinforced the foundations, but the cracks ran deeper than your engineers thought" }
+      ] },
+      { "name": "Patch them up", "outcomes": [
+        { "chance": 0.65, "effects": { "gold": -10 }, "text": "You patched up the cracks" },
+        { "chance": 0.35, "effects": { "gold": -10, "damageDefense": 4 },
+          "text": "You patched up the cracks, but one of your defensive Buildings gave way anyway" }
+      ] },
+      { "name": "Leave them", "worst": true, "outcomes": [
+        { "chance": 0.75, "effects": { "damageDefense": 10 },
+          "text": "You left the cracks, and your defensive Buildings gave way" },
+        { "chance": 0.25, "text": "You left the cracks, and they held for now" }
       ] }
     ] }
 ]
