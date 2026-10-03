@@ -204,8 +204,8 @@ class GameTest {
 						new MapNation(Identities.of("Egypt"), MapNation.Standing.IN_GAME)),
 				List.of(FARM, GRANARY, BANK, WALLS, MOAT), Map.of(), List.of(), List.of(), 0, List.of(), Map.of(),
 				List.of(WARRIOR, ARCHER, HORSEMAN, SCOUT), Map.of(), List.of(), List.of(), List.of(), TravelBracket.ALL, 3, 0, List.of(), List.of(), List.of(), List.of(),
-				new TurnReport(1, List.of(BASE_INCOME_REPORT)), List.of(), null,
-				null));
+				new TurnReport(1, List.of(new TurnReport.Section(TurnReport.Kind.RESOURCES, List.of(BASE_INCOME_REPORT)))),
+				List.of(), null, null));
 	}
 
 	@Test
@@ -751,9 +751,8 @@ class GameTest {
 		assertThat(game.viewOf("Rome").warparties()).isEmpty();
 		assertThat(game.viewOf("Carthage").army()).containsExactly(entry("Warrior", 2));
 		assertThat(game.viewOf("Carthage").turnReport().lines()).containsSequence(
-				"Warrior ×3 finished training and joined your Army.",
 				"Your Army of Warrior ×3 fought Caesar of Rome's Warparty of Warrior ×2. You lost Warrior ×1 and Rome lost Warrior ×2.",
-				"Caesar of Rome's Warparty was destroyed.");
+				"Caesar of Rome's Warparty was destroyed.", "Warrior ×3 finished training and joined your Army.");
 	}
 
 	@Test
@@ -1277,9 +1276,10 @@ class GameTest {
 		assertThat(carthage.conqueredBy()).isEqualTo("Rome");
 		assertThat(carthage.population()).isZero();
 		assertThat(carthage.warparties()).isEmpty();
-		assertThat(carthage.turnReport().lines()).containsExactly("Caesar of Rome's Warparty of Giant ×1 met no Army at your Nation.",
-				"Caesar of Rome's Warparty reduced your Population by " + carthagePopulation + ", doubled as you had no Army or Defense.",
-				"Caesar of Rome's Warparty conquered your Nation, seizing " + seized + ". You are knocked out of the Game.");
+		assertThat(carthage.turnReport().lines()).containsExactly(
+				"Caesar of Rome's Warparty conquered your Nation, seizing " + seized + ". You are knocked out of the Game.",
+				"Caesar of Rome's Warparty of Giant ×1 met no Army at your Nation.",
+				"Caesar of Rome's Warparty reduced your Population by " + carthagePopulation + ", doubled as you had no Army or Defense.");
 		NationView rome = game.viewOf("Rome");
 		assertThat(rome.gold()).isEqualTo(romeGold + seizedGold + romePopulation - 1);
 		assertThat(rome.research()).isEqualTo(romeResearch + seizedResearch + 3);
@@ -1401,10 +1401,10 @@ class GameTest {
 		assertThat(game.winner()).contains("Rome");
 		NationView rome = game.viewOf("Rome");
 		assertThat(rome.winner()).isEqualTo("Rome");
-		assertThat(rome.turnReport().lines()).last().isEqualTo("You have won the Game.");
+		assertThat(rome.turnReport().lines()).contains("You have won the Game.");
 		NationView egypt = game.viewOf("Egypt");
 		assertThat(egypt.winner()).isEqualTo("Rome");
-		assertThat(egypt.turnReport().lines()).last().isEqualTo("Rome has won the Game.");
+		assertThat(egypt.turnReport().lines()).contains("Rome has won the Game.");
 		NationView carthage = game.viewOf("Carthage");
 		assertThat(carthage.winner()).isEqualTo("Rome");
 		assertThat(carthage.version()).isGreaterThan(carthageVersion);
@@ -1597,11 +1597,11 @@ class GameTest {
 		assertThat(carthage.conqueredBy()).isEqualTo("Rome and Egypt");
 		assertThat(game.conquered()).containsExactly("Carthage");
 		assertThat(carthage.turnReport().lines()).containsExactly(
+				"Caesar of Rome's and Cleopatra of Egypt's Warparties conquered your Nation, seizing " + seized
+						+ ". You are knocked out of the Game.",
 				"Caesar of Rome's Warparty of Giant ×1 and Cleopatra of Egypt's Warparty of Giant ×1 met no Army at your Nation.",
 				"Caesar of Rome's and Cleopatra of Egypt's Warparties reduced your Population by " + carthagePopulation
-						+ ", doubled as you had no Army or Defense.",
-				"Caesar of Rome's and Cleopatra of Egypt's Warparties conquered your Nation, seizing " + seized
-						+ ". You are knocked out of the Game.");
+						+ ", doubled as you had no Army or Defense.");
 		NationView rome = game.viewOf("Rome");
 		assertThat(rome.gold()).isEqualTo(romeGold + romeShare + romePopulation - 1);
 		assertThat(rome.warparties()).containsExactly(new Warparty(1, "Carthage", Map.of("Giant", 1), 100, true, 7, 7));

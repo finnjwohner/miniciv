@@ -60,8 +60,8 @@ class DilemmasTest {
 
 		game.endTurn();
 
-		assertThat(report("Rome")).containsExactly(BASE_INCOME_REPORT,
-				"Sickness broke out in your Nation; choose what to do before this Turn ends.");
+		assertThat(report("Rome")).containsExactly(
+				"Sickness broke out in your Nation; choose what to do before this Turn ends.", BASE_INCOME_REPORT);
 		assertThat(game.viewOf("Rome").dilemmas())
 			.containsExactly(new Dilemma("Outbreak", "Sickness broke out in your Nation",
 					List.of(new Dilemma.Choice("Quarantine", false), new Dilemma.Choice("Let it spread", true)), null));
@@ -196,8 +196,8 @@ class DilemmasTest {
 			assertThat(report("Rome")).containsExactly(incomeReport(10 + 2 * (turn - 1)));
 		}
 		game.endTurn();
-		assertThat(report("Rome")).containsExactly(incomeReport(14),
-				"Sickness broke out in your Nation; choose what to do before this Turn ends.");
+		assertThat(report("Rome")).containsExactly(
+				"Sickness broke out in your Nation; choose what to do before this Turn ends.", incomeReport(14));
 		assertThat(game.viewOf("Rome").dilemmas()).singleElement()
 			.extracting(dilemma -> dilemma.choices().stream().map(Dilemma.Choice::name).toList())
 			.isEqualTo(List.of("Quarantine", "Call the healers", "Let it spread"));

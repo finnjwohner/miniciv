@@ -274,7 +274,9 @@ class DisconnectionsTest {
 		done(carthage, 1);
 		done(egypt, 1);
 		Map<?, ?> report = (Map<?, ?>) carthage.privately().next().get("turnReport");
-		assertThat((List<?>) report.get("lines")).first().isEqualTo(REMOVAL_REPORT);
+		Map<?, ?> alerts = (Map<?, ?>) ((List<?>) report.get("sections")).getFirst();
+		assertThat(alerts.get("kind")).isEqualTo("DECISIONS_AND_ALERTS");
+		assertThat((List<?>) alerts.get("lines")).first().isEqualTo(REMOVAL_REPORT);
 	}
 
 	@Test
