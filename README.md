@@ -45,4 +45,13 @@ cd backend && ./mvnw test -Dtest=HealthEndpointTest         # a single test clas
 
 When skipping the frontend build, `FrontendServingTest` only passes if `frontend/dist` has already been built.
 
-Frontend checks: `npm run build` (type-checks) and `npm run lint` in `frontend/`.
+Frontend checks, in `frontend/`:
+
+```sh
+npm test                                   # all frontend tests (Vitest + Testing Library)
+npm test -- src/game/GameScreen.test.tsx   # a single test file
+npm run build                              # type-checks and builds
+npm run lint
+```
+
+Frontend tests render screens and check what a Player sees. Start from the Game in progress in `src/test/fixtures.tsx`, adjusting it per test, e.g. `renderGame({ nation: nationView({ dilemmas: [] }) })`.
