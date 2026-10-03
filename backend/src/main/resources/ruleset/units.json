@@ -4,7 +4,7 @@
   { "name": "Horseman", "gold": 35, "population": 2, "turns": 2, "upkeep": 2, "strength": 4, "counters": ["Archer"] },
   { "name": "Crossbowman", "gold": 45, "population": 2, "turns": 2, "upkeep": 2, "strength": 5, "counters": ["Knight", "Horseman"] },
   { "name": "Knight", "gold": 65, "population": 3, "turns": 3, "upkeep": 3, "strength": 7, "counters": ["Archer"] },
-  { "name": "Catapult", "gold": 70, "population": 3, "turns": 4, "upkeep": 4, "strength": 6 },
+  { "name": "Catapult", "gold": 50, "population": 3, "turns": 4, "upkeep": 4, "strength": 6 },
   { "name": "Scout", "gold": 15, "population": 1, "turns": 1, "upkeep": 1, "scout": true },
   { "name": "Spy", "gold": 40, "population": 1, "turns": 2, "upkeep": 2, "strength": 0.1, "spy": true }
 ]

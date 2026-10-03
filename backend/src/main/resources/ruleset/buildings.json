@@ -6,7 +6,7 @@
   { "name": "Harbour", "gold": 70, "turns": 3, "goldPerTurn": 5 },
   { "name": "Library", "gold": 50, "turns": 3, "researchPerTurn": 2 },
   { "name": "University", "gold": 100, "turns": 4, "researchPerTurn": 4 },
-  { "name": "Observatory", "gold": 90, "turns": 4, "researchPerTurn": 3 },
+  { "name": "Observatory", "gold": 60, "turns": 3, "researchPerTurn": 3 },
   { "name": "Bank", "gold": 100, "turns": 4, "goldPerPopulation": 0.5 },
   { "name": "Palisade", "gold": 40, "turns": 2, "defense": 6 },
   { "name": "Walls", "gold": 80, "turns": 4, "defense": 15 },

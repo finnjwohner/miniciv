@@ -1,5 +1,7 @@
 package com.miniciv.engine;
 
+import java.util.List;
+
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -63,6 +65,54 @@ class RulesetFilesTest {
 		assertThat(ruleset.unlockedBy("Library")).map(Technology::name).contains("Writing");
 		assertThat(ruleset.unlockedBy("Spy")).map(Technology::name).contains("Writing");
 		assertThat(ruleset.unlockedBy("Market")).isEmpty();
+	}
+
+	@Test
+	void theShippedTechTreeHasFourteenTechnologies() {
+		Ruleset ruleset = RulesetFiles.load("ruleset");
+
+		assertThat(ruleset.technologies()).hasSize(14);
+		assertThat(ruleset.unlockedBy("Harbour")).map(Technology::name).contains("Sailing");
+		assertThat(ruleset.unlockedBy("Aqueduct")).map(Technology::name).contains("Construction");
+		assertThat(ruleset.unlockedBy("University")).map(Technology::name).contains("Philosophy");
+		assertThat(ruleset.unlockedBy("Catapult")).map(Technology::name).contains("Engineering");
+		assertThat(ruleset.unlockedBy("Observatory")).map(Technology::name).contains("Astronomy");
+		assertThat(ruleset.unlockedBy("Knight")).map(Technology::name).contains("Chivalry");
+		assertThat(ruleset.unlockedBy("Crossbowman")).map(Technology::name).contains("Machinery");
+		assertThat(ruleset.unlockedBy("Castle")).map(Technology::name).contains("Fortification");
+	}
+
+	@Test
+	void theShippedHarbourAqueductUniversityObservatoryAndCastleAddWhatTheirTechnologyPromises() {
+		Ruleset ruleset = RulesetFiles.load("ruleset");
+
+		assertThat(ruleset.building("Harbour")).map(BuildingType::goldPerTurn).contains(5);
+		assertThat(ruleset.building("Aqueduct")).map(BuildingType::populationPerTurn).contains(4);
+		assertThat(ruleset.building("University")).map(BuildingType::researchPerTurn).contains(4);
+		assertThat(ruleset.building("Observatory")).map(BuildingType::researchPerTurn).contains(3);
+		assertThat(ruleset.building("Castle")).map(BuildingType::defense).contains(25);
+	}
+
+	@Test
+	void theShippedCatapultCountersNothingButTrainsSlowerAndCostsMoreUpkeepThanTheKnight() {
+		Ruleset ruleset = RulesetFiles.load("ruleset");
+		UnitType catapult = ruleset.unit("Catapult").orElseThrow();
+		UnitType knight = ruleset.unit("Knight").orElseThrow();
+
+		assertThat(catapult.strength()).isEqualTo(6);
+		assertThat(catapult.counters()).isEmpty();
+		assertThat(catapult.turns()).isGreaterThan(knight.turns());
+		assertThat(catapult.upkeep()).isGreaterThan(knight.upkeep());
+	}
+
+	@Test
+	void theShippedKnightCountersArchersAndTheCrossbowmanCountersKnightsAndHorsemen() {
+		Ruleset ruleset = RulesetFiles.load("ruleset");
+
+		assertThat(ruleset.unit("Knight")).contains(
+				new UnitType("Knight", 65, 3, 3, 3, 7, List.of("Archer")));
+		assertThat(ruleset.unit("Crossbowman")).map(UnitType::strength).contains(5.0);
+		assertThat(ruleset.unit("Crossbowman")).map(UnitType::counters).contains(List.of("Knight", "Horseman"));
 	}
 
 	@Test

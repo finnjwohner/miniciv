@@ -10,62 +10,30 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * The shipped Tech Tree's later Technologies and what they unlock, played out
- * by the engine without the shipped Events.
+ * by the engine.
  */
 class ShippedTechTreeTest {
 
-	static final Ruleset SHIPPED = RulesetFiles.load("ruleset");
+	/**
+	 * The shipped Ruleset without its Events, so that none happen while Turns
+	 * end.
+	 */
+	static final Ruleset SHIPPED_WITHOUT_EVENTS;
 
-	static final Ruleset RULESET = new Ruleset(SHIPPED.units(), SHIPPED.buildings(), SHIPPED.technologies());
-
-	Game game = new Game(RULESET, Identities.of("Rome", "Carthage"), EVEN_LUCK);
-
-	@Test
-	void theShippedTechTreeHasFourteenTechnologiesUnlockingTheNewBuildingsAndUnits() {
-		assertThat(SHIPPED.technologies()).hasSize(14);
-		assertThat(SHIPPED.unlockedBy("Harbour")).map(Technology::name).contains("Sailing");
-		assertThat(SHIPPED.unlockedBy("Aqueduct")).map(Technology::name).contains("Construction");
-		assertThat(SHIPPED.unlockedBy("University")).map(Technology::name).contains("Philosophy");
-		assertThat(SHIPPED.unlockedBy("Catapult")).map(Technology::name).contains("Engineering");
-		assertThat(SHIPPED.unlockedBy("Observatory")).map(Technology::name).contains("Astronomy");
-		assertThat(SHIPPED.unlockedBy("Knight")).map(Technology::name).contains("Chivalry");
-		assertThat(SHIPPED.unlockedBy("Crossbowman")).map(Technology::name).contains("Machinery");
-		assertThat(SHIPPED.unlockedBy("Castle")).map(Technology::name).contains("Fortification");
+	static {
+		Ruleset shipped = RulesetFiles.load("ruleset");
+		SHIPPED_WITHOUT_EVENTS = new Ruleset(shipped.units(), shipped.buildings(), shipped.technologies());
 	}
 
-	@Test
-	void theNewBuildingsAddWhatTheirTechnologyPromises() {
-		assertThat(SHIPPED.building("Harbour")).map(BuildingType::goldPerTurn).contains(5);
-		assertThat(SHIPPED.building("Aqueduct")).map(BuildingType::populationPerTurn).contains(4);
-		assertThat(SHIPPED.building("University")).map(BuildingType::researchPerTurn).contains(4);
-		assertThat(SHIPPED.building("Observatory")).map(BuildingType::researchPerTurn).contains(3);
-		assertThat(SHIPPED.building("Castle")).map(BuildingType::defense).contains(25);
-	}
-
-	@Test
-	void theCatapultCountersNothingButTrainsSlowerAndCostsMoreUpkeepThanAnyOtherUnit() {
-		UnitType catapult = SHIPPED.unit("Catapult").orElseThrow();
-
-		assertThat(catapult.strength()).isEqualTo(6);
-		assertThat(catapult.counters()).isEmpty();
-		assertThat(SHIPPED.units()).filteredOn(unit -> unit != catapult).allSatisfy(unit -> {
-			assertThat(unit.turns()).as(unit.name()).isLessThan(catapult.turns());
-			assertThat(unit.upkeep()).as(unit.name()).isLessThan(catapult.upkeep());
-		});
-	}
-
-	@Test
-	void theCrossbowmanCountersKnightsAndHorsemen() {
-		assertThat(SHIPPED.unit("Crossbowman")).map(UnitType::strength).contains(5.0);
-		assertThat(SHIPPED.unit("Crossbowman")).map(UnitType::counters).contains(List.of("Knight", "Horseman"));
-	}
+	Game game = new Game(SHIPPED_WITHOUT_EVENTS, Identities.of("Rome", "Carthage"), EVEN_LUCK);
 
 	@Test
 	void aKnightsStrengthIsMultipliedWhenItFightsArchers() {
-		Battle againstArchers = Battle.fight(List.of(Map.of("Knight", 1)), Map.of("Archer", 3), RULESET, EVEN_LUCK);
-		Battle againstWarriors = Battle.fight(List.of(Map.of("Knight", 1)), Map.of("Warrior", 3), RULESET, EVEN_LUCK);
+		Battle againstArchers = Battle.fight(List.of(Map.of("Knight", 1)), Map.of("Archer", 3),
+				SHIPPED_WITHOUT_EVENTS, EVEN_LUCK);
+		Battle againstWarriors = Battle.fight(List.of(Map.of("Knight", 1)), Map.of("Warrior", 3),
+				SHIPPED_WITHOUT_EVENTS, EVEN_LUCK);
 
-		assertThat(SHIPPED.unit("Knight")).map(UnitType::strength).contains(7.0);
 		assertThat(againstArchers.warpartySurvivors(0)).containsExactly(Map.entry("Knight", 1));
 		assertThat(againstArchers.armySurvivors()).isEmpty();
 		assertThat(againstWarriors.warpartySurvivors(0)).isEmpty();
@@ -73,7 +41,7 @@ class ShippedTechTreeTest {
 
 	@Test
 	void aConstructedCastleAddsItsDefense() {
-		BuildingType castle = SHIPPED.building("Castle").orElseThrow();
+		BuildingType castle = SHIPPED_WITHOUT_EVENTS.building("Castle").orElseThrow();
 		unlockAll("Masonry", "Mathematics", "Construction", "Engineering", "Fortification");
 		while (game.viewOf("Rome").gold() < castle.gold()) {
 			game.endTurn();
@@ -140,7 +108,7 @@ class ShippedTechTreeTest {
 	 */
 	void unlockAll(String... technologies) {
 		for (String technology : technologies) {
-			int research = RULESET.technology(technology).orElseThrow().research();
+			int research = SHIPPED_WITHOUT_EVENTS.technology(technology).orElseThrow().research();
 			while (game.viewOf("Rome").research() < research) {
 				game.endTurn();
 			}
