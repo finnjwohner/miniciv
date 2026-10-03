@@ -2,9 +2,19 @@ import { screen, within } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { nationView, renderGame } from '../test/fixtures'
 
+/** The Turn Report panel. */
+function turnReport() {
+  return within(screen.getByRole('region', { name: 'Turn Report' }))
+}
+
+/** The Turn Report's net-change line: the paragraph naming a resource, if there is one. */
+function netChangeLine() {
+  return turnReport().queryByText((_, element) => element?.tagName === 'P' && /Gold|Population|Research/.test(element.textContent ?? ''))
+}
+
 /** The Turn Report's section headings, in the order shown. */
 function sectionHeadings() {
-  return within(screen.getByRole('region', { name: 'Turn Report' }))
+  return turnReport()
     .getAllByRole('heading', { level: 4 })
     .map((heading) => heading.textContent)
 }
@@ -44,16 +54,6 @@ describe('TurnReportPanel', () => {
   })
 })
 
-/** The Turn Report panel. */
-function turnReport() {
-  return within(screen.getByRole('region', { name: 'Turn Report' }))
-}
-
-/** The Turn Report's net-change line: the paragraph naming a resource, if there is one. */
-function netChangeLine() {
-  return turnReport().queryByText((_, element) => element?.tagName === 'P' && /Gold|Population|Research/.test(element.textContent ?? ''))
-}
-
 describe('net change', () => {
   it('heads the Turn Report with how the resources moved, leaving out those that did not change', () => {
     renderGame({
@@ -86,8 +86,8 @@ describe('net change', () => {
       nation: nationView({ turnReport: { turn: 2, netChange: { gold: 14, population: 0, research: -2 }, sections: [] } }),
     })
 
-    expect(turnReport().getByText('+14 Gold')).toHaveClass('net--gain')
-    expect(turnReport().getByText('−2 Research')).toHaveClass('net--loss')
+    expect(turnReport().getByText('+14 Gold')).toHaveClass('report__gain')
+    expect(turnReport().getByText('−2 Research')).toHaveClass('report__loss')
   })
 
   it('is hidden when nothing changed', () => {

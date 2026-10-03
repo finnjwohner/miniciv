@@ -92,13 +92,18 @@ public record TurnReport(int turn, NetChange netChange, List<Section> sections) 
 		private final Map<Kind, List<String>> lines = new EnumMap<>(Kind.class);
 
 		/**
-		 * The Nation's Gold, Population and Research just before the Turn
-		 * started resolving.
+		 * The Nation's Gold just before the Turn started resolving.
 		 */
 		private int gold;
 
+		/**
+		 * The Nation's Population just before the Turn started resolving.
+		 */
 		private int population;
 
+		/**
+		 * The Nation's Research just before the Turn started resolving.
+		 */
 		private int research;
 
 		void add(Kind kind, String line) {
@@ -109,7 +114,7 @@ public record TurnReport(int turn, NetChange netChange, List<Section> sections) 
 		 * Notes what the Nation has as the Turn starts resolving, for the net
 		 * change.
 		 */
-		void resolving(Nation nation) {
+		void startResolving(Nation nation) {
 			gold = nation.gold();
 			population = nation.population();
 			research = nation.research();

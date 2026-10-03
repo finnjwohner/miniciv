@@ -662,11 +662,11 @@ input[type='range'] {
   color: var(--text-muted);
 }
 
-.net--gain {
+.report__gain {
   color: var(--good);
 }
 
-.net--loss {
+.report__loss {
   color: var(--bad);
 }
 
