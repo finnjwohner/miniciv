@@ -315,7 +315,7 @@ public class Game {
 		inPlay.forEach(nation -> reports.put(nation.name(),
 				pendingReports.getOrDefault(nation.name(), new TurnReport.Draft())));
 		pendingReports.clear();
-		inPlay.forEach(nation -> reports.get(nation.name()).resolving(nation));
+		inPlay.forEach(nation -> reports.get(nation.name()).startResolving(nation));
 		for (Tribute lapsed : tributes) {
 			if (lapsed.answer() == Tribute.Answer.NONE && nation(lapsed.to()).warparty(lapsed.warparty())
 				.filter(Warparty::awaitingBattle)

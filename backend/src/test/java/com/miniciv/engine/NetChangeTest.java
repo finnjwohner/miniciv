@@ -92,7 +92,7 @@ class NetChangeTest {
 	void tributeAcceptedDuringTheTurnDoesNotCountForEitherSide() {
 		armyOf("Rome", "Warrior", 2);
 		arrived("Rome", "Carthage", Map.of("Warrior", 2));
-		game.act("Carthage", new Action.OfferTribute("Rome", 1, 20, 3));
+		assertThat(game.act("Carthage", new Action.OfferTribute("Rome", 1, 20, 3))).isEqualTo(ActionResult.ACCEPTED);
 		assertThat(game.act("Rome", new Action.AnswerTribute(1, true))).isEqualTo(ActionResult.ACCEPTED);
 		int romePopulation = game.viewOf("Rome").population();
 		int carthagePopulation = game.viewOf("Carthage").population();

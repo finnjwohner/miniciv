@@ -29,7 +29,7 @@ One step of the Game, at most two minutes long not counting time Paused, in whic
 _Avoid_: Round, tick
 
 **Turn Report**:
-The short text description each Player receives at the start of a Turn of what happened as the previous Turn resolved, grouped into sections by kind (alerts, warfare, completions, Events, Spies and Scouts, resources).
+The short text description each Player receives at the start of a Turn of what happened as the previous Turn resolved, headed by how its Nation's Gold, Population and Research moved and grouped into sections by kind (alerts, warfare, completions, Events, Spies and Scouts, resources).
 _Avoid_: Log, summary, news
 
 **Map**:

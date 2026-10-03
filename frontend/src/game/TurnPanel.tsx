@@ -32,7 +32,7 @@ const SECTION_HEADINGS: Record<TurnReportKind, string> = {
 }
 
 /** Each resource as the net-change line names it, in the order it names them. */
-const RESOURCES: [keyof NetChange, string][] = [
+const RESOURCE_NAMES: [keyof NetChange, string][] = [
   ['gold', 'Gold'],
   ['population', 'Population'],
   ['research', 'Research'],
@@ -43,7 +43,7 @@ const RESOURCES: [keyof NetChange, string][] = [
  * gains in green and losses in red, leaving out those that did not change; nothing if none did.
  */
 function NetChangeLine({ netChange }: { netChange: NetChange }) {
-  const changed = RESOURCES.filter(([resource]) => netChange[resource] !== 0)
+  const changed = RESOURCE_NAMES.filter(([resource]) => netChange[resource] !== 0)
   if (changed.length === 0) return null
   return (
     <p className="report__net">
@@ -52,7 +52,7 @@ function NetChangeLine({ netChange }: { netChange: NetChange }) {
         return (
           <Fragment key={resource}>
             {i > 0 && ' · '}
-            <span className={amount > 0 ? 'net--gain' : 'net--loss'}>
+            <span className={amount > 0 ? 'report__gain' : 'report__loss'}>
               {`${amount > 0 ? '+' : '−'}${Math.abs(amount)} ${name}`}
             </span>
           </Fragment>
