@@ -10,7 +10,7 @@ function sectionHeadings() {
 }
 
 describe('TurnPanel', () => {
-  it('shows each section of the Turn Report under its heading, in the fixed order, hiding empty ones', () => {
+  it('shows each section of the Turn Report under its heading, in order, hiding empty ones', () => {
     renderGame({
       nation: nationView({
         turnReport: {

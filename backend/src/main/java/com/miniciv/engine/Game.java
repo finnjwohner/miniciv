@@ -181,7 +181,7 @@ public class Game {
 
 	/**
 	 * What each Nation still in the Game is to be told in its next Turn Report
-	 * of what happened during the Turn: removals and Recalls.
+	 * of what happened during the Turn: removals, Recalls and Tribute answered.
 	 */
 	private final Map<String, TurnReport.Draft> pendingReports = new LinkedHashMap<>();
 

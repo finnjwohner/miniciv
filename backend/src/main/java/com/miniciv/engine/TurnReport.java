@@ -52,6 +52,7 @@ public record TurnReport(int turn, List<Section> sections) {
 	/**
 	 * One section of a Turn Report.
 	 *
+	 * @param kind what the section tells of
 	 * @param lines what happened, in the order it happened
 	 */
 	public record Section(Kind kind, List<String> lines) {

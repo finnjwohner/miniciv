@@ -1,4 +1,3 @@
-import { TURN_REPORT_KINDS } from '../api'
 import type { GameView, NationView, PlayerView, TurnReport, TurnReportKind } from '../api'
 import { Icon } from '../ui/Icon'
 import { NationName } from '../ui/NationName'
@@ -31,12 +30,9 @@ const SECTION_HEADINGS: Record<TurnReportKind, string> = {
   RESOURCES: 'Resources',
 }
 
-/** The Turn Report's sections with something in them, each under its heading, in the fixed order. */
+/** The Turn Report's sections with something in them, each under its heading, in the order sent. */
 function ReportSections({ report }: { report: TurnReport | null }) {
-  const sections = TURN_REPORT_KINDS.flatMap((kind) => {
-    const lines = report?.sections.find((section) => section.kind === kind)?.lines ?? []
-    return lines.length > 0 ? [{ kind, lines }] : []
-  })
+  const sections = report?.sections.filter((section) => section.lines.length > 0) ?? []
   if (sections.length === 0) return <p className="muted">Nothing has happened yet.</p>
   return sections.map(({ kind, lines }) => (
     <div key={kind} className="report__section">
