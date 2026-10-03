@@ -1,4 +1,5 @@
-import type { GameView, PlayerView, TurnReport, TurnReportKind } from '../api'
+import { Fragment } from 'react'
+import type { GameView, NetChange, PlayerView, TurnReport, TurnReportKind } from '../api'
 import { Icon } from '../ui/Icon'
 import { NationName } from '../ui/NationName'
 import { Panel } from '../ui/Panel'
@@ -30,6 +31,37 @@ const SECTION_HEADINGS: Record<TurnReportKind, string> = {
   RESOURCES: 'Resources',
 }
 
+/** Each resource as the net-change line names it, in the order it names them. */
+const RESOURCES: [keyof NetChange, string][] = [
+  ['gold', 'Gold'],
+  ['population', 'Population'],
+  ['research', 'Research'],
+]
+
+/**
+ * How the Nation's resources moved as the last Turn resolved, such as "+14 Gold · −2 Research",
+ * gains in green and losses in red, leaving out those that did not change; nothing if none did.
+ */
+function NetChangeLine({ netChange }: { netChange: NetChange }) {
+  const changed = RESOURCES.filter(([resource]) => netChange[resource] !== 0)
+  if (changed.length === 0) return null
+  return (
+    <p className="report__net">
+      {changed.map(([resource, name], i) => {
+        const amount = netChange[resource]
+        return (
+          <Fragment key={resource}>
+            {i > 0 && ' · '}
+            <span className={amount > 0 ? 'net--gain' : 'net--loss'}>
+              {`${amount > 0 ? '+' : '−'}${Math.abs(amount)} ${name}`}
+            </span>
+          </Fragment>
+        )
+      })}
+    </p>
+  )
+}
+
 /** The Turn Report's sections with something in them, each under its heading, in the order sent. */
 function ReportSections({ report }: { report: TurnReport | null }) {
   const sections = report?.sections.filter((section) => section.lines.length > 0) ?? []
@@ -48,10 +80,14 @@ function ReportSections({ report }: { report: TurnReport | null }) {
   ))
 }
 
-/** What happened as the last Turn resolved, by section, filling the space left and scrolling within it. */
+/**
+ * What happened as the last Turn resolved: how the resources moved, then by section, filling the
+ * space left and scrolling within it.
+ */
 export function TurnReportPanel({ report }: { report: TurnReport | null }) {
   return (
     <Panel title="Turn Report" icon="book" className="dash__report">
+      {report && <NetChangeLine netChange={report.netChange} />}
       <ReportSections report={report} />
     </Panel>
   )

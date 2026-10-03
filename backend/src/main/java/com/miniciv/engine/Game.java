@@ -315,6 +315,7 @@ public class Game {
 		inPlay.forEach(nation -> reports.put(nation.name(),
 				pendingReports.getOrDefault(nation.name(), new TurnReport.Draft())));
 		pendingReports.clear();
+		inPlay.forEach(nation -> reports.get(nation.name()).resolving(nation));
 		for (Tribute lapsed : tributes) {
 			if (lapsed.answer() == Tribute.Answer.NONE && nation(lapsed.to()).warparty(lapsed.warparty())
 				.filter(Warparty::awaitingBattle)
@@ -419,7 +420,7 @@ public class Game {
 			reports.forEach((nation, report) -> report
 				.add(DECISIONS_AND_ALERTS, nation.equals(winner) ? "You have won the Game." : winner + " has won the Game."));
 		}
-		inPlay.forEach(nation -> nation.turnReport(reports.get(nation.name()).of(turn)));
+		inPlay.forEach(nation -> nation.turnReport(reports.get(nation.name()).of(turn, nation)));
 		turn++;
 	}
 

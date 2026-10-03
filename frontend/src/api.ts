@@ -50,8 +50,10 @@ export type RoomView = {
 export type TurnReportKind = 'DECISIONS_AND_ALERTS' | 'WARFARE' | 'COMPLETED' | 'EVENTS' | 'SPIES_AND_SCOUTS' | 'RESOURCES'
 /** One section of a Turn Report: what happened of one kind, in the order it happened. */
 export type TurnReportSection = { kind: TurnReportKind; lines: string[] }
-/** What happened to a Nation as a Turn resolved: the sections with something in them, in their fixed order. */
-export type TurnReport = { turn: number; sections: TurnReportSection[] }
+/** How a Nation's Gold, Population and Research moved as a Turn resolved, not counting what it spent during the Turn. */
+export type NetChange = { gold: number; population: number; research: number }
+/** What happened to a Nation as a Turn resolved: how its resources moved, and the sections with something in them, in their fixed order. */
+export type TurnReport = { turn: number; netChange: NetChange; sections: TurnReportSection[] }
 /** A kind of Building; once complete it adds its Population, Gold and Research every Turn, and raises Defense while standing. */
 export type BuildingType = {
   name: string

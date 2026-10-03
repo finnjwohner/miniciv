@@ -112,6 +112,7 @@ export function nationView(overrides: Partial<NationView> = {}): NationView {
     ],
     turnReport: {
       turn: 2,
+      netChange: { gold: 12, population: 6, research: 3 },
       sections: [
         { kind: 'COMPLETED', lines: ['Your Farm has been built.'] },
         { kind: 'EVENTS', lines: ['A good harvest filled your granaries: your Nation gained 4 Population.'] },

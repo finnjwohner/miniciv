@@ -657,6 +657,19 @@ input[type='range'] {
   gap: calc(var(--space) * 1.5);
 }
 
+.report__net {
+  margin: 0 0 calc(var(--space) * 1.5);
+  color: var(--text-muted);
+}
+
+.net--gain {
+  color: var(--good);
+}
+
+.net--loss {
+  color: var(--bad);
+}
+
 .report__section + .report__section {
   margin-top: calc(var(--space) * 1.5);
 }
