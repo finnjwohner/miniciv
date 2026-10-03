@@ -21,8 +21,6 @@
     "effects": { "travelTurns": 2 }, "text": "A swollen river forced a long way round" },
   { "name": "Local guides", "subject": "Warparty", "chance": 0.06,
     "effects": { "travelTurns": -1 }, "text": "Local guides showed the way through the hills" },
-  { "name": "Straggling Warparty", "subject": "Warparty", "chance": 0.08, "when": { "unitsAtLeast": 10 },
-    "effects": { "travelTurns": 1 }, "text": "Your great Warparty straggled along the road" },
   { "name": "Rumours of war", "subject": "Nation", "chance": 0.5, "when": { "approachingUnitsAtLeast": 8 },
     "text": "Rumours spread of a large army marching on your Nation" },
   { "name": "Outbreak", "subject": "Nation", "chance": 0.05, "when": { "turnAtLeast": 3, "populationAtLeast": 14 },

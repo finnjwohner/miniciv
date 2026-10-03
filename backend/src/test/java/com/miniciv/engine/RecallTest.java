@@ -39,12 +39,12 @@ class RecallTest {
 		game.endTurn();
 		game.endTurn();
 		assertThat(game.viewOf("Rome").warparties())
-			.containsExactly(new Warparty(1, "Carthage", Map.of("Warrior", 2), false, 1, 2));
+			.containsExactly(new Warparty(1, "Carthage", Map.of("Warrior", 2), 6, false, 1, 2));
 
 		assertThat(recall("Rome", 1)).isEqualTo(ActionResult.ACCEPTED);
 
 		assertThat(game.viewOf("Rome").warparties())
-			.containsExactly(new Warparty(1, "Carthage", Map.of("Warrior", 2), true, 2, 2));
+			.containsExactly(new Warparty(1, "Carthage", Map.of("Warrior", 2), 6, true, 2, 2));
 		game.endTurn();
 		assertThat(report("Rome")).contains("You Recalled your Warparty of Warrior ×2 heading to Carthage.");
 		assertThat(report("Carthage")).containsExactly(incomeReport(16));
@@ -67,7 +67,7 @@ class RecallTest {
 		recall("Rome", 1);
 
 		assertThat(game.viewOf("Rome").warparties())
-			.containsExactly(new Warparty(1, "Carthage", Map.of("Warrior", 2), true, 1, 0));
+			.containsExactly(new Warparty(1, "Carthage", Map.of("Warrior", 2), 6, true, 1, 0));
 		game.endTurn();
 		assertThat(game.viewOf("Rome").army()).containsExactly(entry("Warrior", 2));
 	}
@@ -111,7 +111,7 @@ class RecallTest {
 		assertThat(report("Carthage")).containsExactly("Rome's Warparty turned back home before the Battle.",
 				incomeReport(18));
 		assertThat(game.viewOf("Rome").warparties())
-			.containsExactly(new Warparty(1, "Carthage", Map.of("Warrior", 2), true, 2, 3));
+			.containsExactly(new Warparty(1, "Carthage", Map.of("Warrior", 2), 6, true, 2, 3));
 	}
 
 	@Test

@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { otherNations } from '../api'
-import type { Fact, MapNation, NationView, Spy, Warparty } from '../api'
+import { otherNations, travelTurns } from '../api'
+import type { Fact, MapNation, NationView, Spy, TravelBracket, Warparty } from '../api'
 import { Panel } from '../ui/Panel'
 import { CountInput, Rejection, TargetSelect } from './controls'
 import { currentTarget, formatAmount, listCounts, plural } from './format'
@@ -17,9 +17,21 @@ function describeWarparty(warparty: Warparty) {
   return `heading home from ${warparty.target}${plunder}, ${plural(warparty.turnsLeft, 'Turn')} left`
 }
 
+/** The travel brackets, such as "0–9: 3 · 10–24: 4 · 25+: 5". */
+function describeBrackets(brackets: TravelBracket[]) {
+  return brackets
+    .map((bracket, i) => {
+      const next = brackets[i + 1]
+      const range = next ? `${bracket.strength}–${next.strength - 1}` : `${bracket.strength}+`
+      return `${range}: ${bracket.turns}`
+    })
+    .join(' · ')
+}
+
 /**
- * The Army at home and its total Strength, the Nation's Warparties abroad, each not yet heading home with
- * a button to Recall it, and a form to send Units from the Army to another Nation.
+ * The Army at home and its total Strength, the Nation's Warparties abroad with their Strength,
+ * destination and Turns left, each not yet heading home with a button to Recall it, and a form to send
+ * Units from the Army to another Nation previewing the Warparty's Strength and travel Turns.
  */
 export function ArmyPanel({
   nation,
@@ -46,6 +58,7 @@ export function ArmyPanel({
     const count = Math.min(chosen[name] ?? 0, owned)
     if (count > 0) units[name] = count
   }
+  const sending = Object.entries(units).reduce((total, [name, count]) => total + strengthOf(name, count), 0)
   const send = () => {
     onSend(target, units)
     setChosen({})
@@ -85,6 +98,7 @@ export function ArmyPanel({
           {nation.warparties.map((w) => (
             <li key={w.id} className="row row--wrap">
               <span className="row__name">{listCounts(w.units)}</span>
+              <span className="tag">Strength {formatAmount(w.strength)}</span>
               <span className="row__meta">{describeWarparty(w)}</span>
               {!w.homeward && (
                 <button onClick={() => onRecall(w.id)}>
@@ -123,7 +137,15 @@ export function ArmyPanel({
               Send Warparty
             </button>
           </div>
-          <p className="muted">Takes {plural(nation.travelTurns, 'Turn')} to arrive, and as long to come home.</p>
+          <p>
+            {Object.keys(units).length === 0
+              ? 'Choose Units to send.'
+              : `Strength ${formatAmount(sending)} · arrives in ${plural(travelTurns(nation.travelBrackets, sending), 'Turn')}`}
+          </p>
+          <p className="muted">
+            Turns to arrive by Strength: {describeBrackets(nation.travelBrackets)}. The trip home takes the
+            bracket for the Strength that survives, longer when carrying a large haul.
+          </p>
         </div>
       )}
     </Panel>
@@ -180,7 +202,7 @@ export function SpiesPanel({
               Send Spy
             </button>
           </div>
-          <p className="muted">Takes {plural(nation.travelTurns, 'Turn')} to arrive, then stays there.</p>
+          <p className="muted">Takes {plural(nation.spyTravelTurns, 'Turn')} to arrive, then stays there.</p>
         </div>
       )}
     </Panel>

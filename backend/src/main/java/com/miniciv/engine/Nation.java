@@ -127,7 +127,7 @@ class Nation {
 		version++;
 	}
 
-	NationView view(int turn, List<MapNation> map, int travelTurns, List<ArrivedWarparty> arrivals,
+	NationView view(int turn, List<MapNation> map, List<ArrivedWarparty> arrivals,
 			List<Tribute> tributes, List<Encounter> encounters, Ruleset ruleset, String winner) {
 		List<BuildingType> availableBuildings = ruleset.buildings()
 			.stream()
@@ -138,7 +138,7 @@ class Nation {
 				Collections.unmodifiableMap(new LinkedHashMap<>(buildings)), construction, repairs, defense(ruleset), damage(ruleset),
 				sellValues(ruleset),
 				availableUnits,
-				Collections.unmodifiableMap(new LinkedHashMap<>(army)), training, warparties, spies, travelTurns, upkeep(ruleset),
+				Collections.unmodifiableMap(new LinkedHashMap<>(army)), training, warparties, spies, TravelBracket.ALL, Spy.TRAVEL_TURNS, upkeep(ruleset),
 				arrivals, tributes, encounters, techTree(ruleset), turnReport, awaitingChoice(winner),
 				conqueredBy, winner);
 	}
@@ -712,7 +712,7 @@ class Nation {
 	 *
 	 * @param units how many of each Unit type to send
 	 */
-	ActionResult sendWarparty(String target, Map<String, Integer> units, int travelTurns) {
+	ActionResult sendWarparty(String target, Map<String, Integer> units, Ruleset ruleset) {
 		for (Map.Entry<String, Integer> chosen : units.entrySet()) {
 			int owned = army.getOrDefault(chosen.getKey(), 0);
 			if (owned == 0) {
@@ -730,7 +730,7 @@ class Nation {
 			}
 		}
 		sent.forEach((unit, count) -> army.computeIfPresent(unit, (u, owned) -> owned == count ? null : owned - count));
-		warparties.add(new Warparty(nextWarpartyId++, target, sent, false, travelTurns, 0));
+		warparties.add(Warparty.sent(nextWarpartyId++, target, sent, ruleset));
 		version++;
 		return ActionResult.ACCEPTED;
 	}
@@ -738,13 +738,13 @@ class Nation {
 	/**
 	 * Takes a Spy out of the Army and sets it travelling to another Nation.
 	 */
-	ActionResult sendSpy(String target, Ruleset ruleset, int travelTurns) {
+	ActionResult sendSpy(String target, Ruleset ruleset) {
 		Optional<String> spy = army.keySet().stream().filter(unit -> ruleset.unit(unit).orElseThrow().spy()).findFirst();
 		if (spy.isEmpty()) {
 			return ActionResult.rejected("Your Army has no Spy.");
 		}
 		army.computeIfPresent(spy.get(), (unit, owned) -> owned == 1 ? null : owned - 1);
-		spies.add(new Spy(nextSpyId++, spy.get(), target, false, travelTurns, 0));
+		spies.add(new Spy(nextSpyId++, spy.get(), target, false, Spy.TRAVEL_TURNS, 0));
 		version++;
 		return ActionResult.ACCEPTED;
 	}
@@ -868,15 +868,18 @@ class Nation {
 	 * surviving Units and its plunder; one with no survivors disappears.
 	 *
 	 * @param warparty the Warparty, as {@link #awaitingBattle()} gave it
+	 * @param haul what it carries home, whether plundered or seized in a
+	 *        Conquest
 	 */
-	void foughtBattle(Warparty warparty, Map<String, Integer> survivors, Plunder plunder, int travelTurns) {
+	void foughtBattle(Warparty warparty, Map<String, Integer> survivors, Plunder plunder, Plunder haul,
+			Ruleset ruleset) {
 		for (var it = warparties.listIterator(); it.hasNext();) {
 			if (it.next() == warparty) {
 				if (survivors.isEmpty()) {
 					it.remove();
 				}
 				else {
-					it.set(warparty.headingHome(survivors, plunder, travelTurns));
+					it.set(warparty.headingHome(survivors, plunder, haul, ruleset));
 				}
 				return;
 			}
@@ -891,13 +894,13 @@ class Nation {
 	 *
 	 * @param warparty the Warparty, as {@link #warparty(int)} gave it
 	 */
-	void foughtEncounter(Warparty warparty, Map<String, Integer> survivors) {
+	void foughtEncounter(Warparty warparty, Map<String, Integer> survivors, Ruleset ruleset) {
 		int at = warparties.indexOf(warparty);
 		if (survivors.isEmpty()) {
 			warparties.remove(at);
 		}
 		else {
-			warparties.set(at, warparty.with(survivors));
+			warparties.set(at, warparty.with(survivors, ruleset));
 		}
 		version++;
 	}
@@ -1135,7 +1138,7 @@ class Nation {
 				desertions.add(new Desertion(warparty, null, deserted.get(i + 1)));
 			}
 			if (!groups.get(i + 1).isEmpty()) {
-				warparties.add(warparty.with(groups.get(i + 1)));
+				warparties.add(warparty.with(groups.get(i + 1), ruleset));
 			}
 		}
 		List<Spy> spiesBefore = List.copyOf(spies);

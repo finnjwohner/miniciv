@@ -176,9 +176,9 @@ class EncountersTest {
 		game.endTurn();
 
 		assertThat(game.viewOf("Rome").warparties())
-			.containsExactly(new Warparty(1, "Carthage", Map.of("Warrior", 3), false, 1, 2));
+			.containsExactly(new Warparty(1, "Carthage", Map.of("Warrior", 3), 9, false, 1, 2));
 		assertThat(game.viewOf("Carthage").warparties())
-			.containsExactly(new Warparty(1, "Rome", Map.of("Warrior", 1), false, 1, 2));
+			.containsExactly(new Warparty(1, "Rome", Map.of("Warrior", 1), 3, false, 1, 2));
 		assertThat(game.viewOf("Rome").encounters()).isEmpty();
 		assertThat(report("Rome")).contains("Your Warparty of Warrior ×3 heading to Carthage and Carthage's"
 				+ " Warparty of Warrior ×1 went their separate ways, as neither of you chose to fight.");
@@ -199,9 +199,9 @@ class EncountersTest {
 		game.endTurn();
 
 		assertThat(game.viewOf("Rome").warparties())
-			.containsExactly(new Warparty(1, "Carthage", Map.of("Warrior", 1), false, 1, 2));
+			.containsExactly(new Warparty(1, "Carthage", Map.of("Warrior", 1), 3, false, 1, 2));
 		assertThat(game.viewOf("Carthage").warparties())
-			.containsExactly(new Warparty(1, "Rome", Map.of("Warrior", 1), false, 1, 2));
+			.containsExactly(new Warparty(1, "Rome", Map.of("Warrior", 1), 3, false, 1, 2));
 		assertThat(game.viewOf("Rome").encounters()).isEmpty();
 		assertThat(report("Rome")).contains("Your Warparty of Warrior ×2 heading to Carthage fought Carthage's"
 				+ " Warparty of Warrior ×2, as Carthage chose to fight. You lost Warrior ×1 and Carthage lost Warrior ×1.");
@@ -223,7 +223,7 @@ class EncountersTest {
 		game.endTurn();
 
 		assertThat(game.viewOf("Rome").warparties())
-			.containsExactly(new Warparty(1, "Carthage", Map.of("Warrior", 3), false, 1, 2));
+			.containsExactly(new Warparty(1, "Carthage", Map.of("Warrior", 3), 9, false, 1, 2));
 		assertThat(game.viewOf("Carthage").warparties()).isEmpty();
 		assertThat(report("Rome")).contains(
 				"Your Warparty of Warrior ×3 heading to Carthage fought Carthage's Warparty of Warrior ×1, as you both"
@@ -244,7 +244,7 @@ class EncountersTest {
 		assertThat(game.act("Rome", new Action.RecallWarparty(1))).isEqualTo(ActionResult.ACCEPTED);
 
 		assertThat(game.viewOf("Rome").warparties())
-			.containsExactly(new Warparty(1, "Carthage", Map.of("Warrior", 3), true, 2, 2));
+			.containsExactly(new Warparty(1, "Carthage", Map.of("Warrior", 3), 9, true, 2, 2));
 	}
 
 	@Test

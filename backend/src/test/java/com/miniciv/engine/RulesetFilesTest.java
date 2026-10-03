@@ -38,6 +38,13 @@ class RulesetFilesTest {
 	}
 
 	@Test
+	void theShippedRulesetHasNoStragglingWarpartyAsBigWarpartiesAlreadyTravelLonger() {
+		Ruleset ruleset = RulesetFiles.load("ruleset");
+
+		assertThat(ruleset.events()).extracting(Event::name).doesNotContain("Straggling Warparty");
+	}
+
+	@Test
 	void theShippedBankAddsHalfAGoldPerPopulation() {
 		Ruleset ruleset = RulesetFiles.load("ruleset");
 
