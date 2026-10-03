@@ -48,6 +48,9 @@ class RoomController {
 	record RebuildBuildingRequest(String token, String building) {
 	}
 
+	record SellBuildingRequest(String token, String building) {
+	}
+
 	record TrainUnitsRequest(String token, String unit, int count) {
 	}
 
@@ -173,6 +176,18 @@ class RoomController {
 	@SendToUser(destinations = "/queue/rejections", broadcast = false)
 	Rejection rebuildBuilding(@DestinationVariable String code, RebuildBuildingRequest request) {
 		ActionResult result = rooms.act(code, request.token(), new Action.RebuildBuilding(request.building()));
+		return result.accepted() ? null : new Rejection(result.reason());
+	}
+
+	/**
+	 * Sells one of a Building type's standing Buildings for Gold; the Player's
+	 * changed view arrives on {@code /user/queue/game}, or the reason it was
+	 * rejected on {@code /user/queue/rejections}.
+	 */
+	@MessageMapping("/rooms/{code}/sales")
+	@SendToUser(destinations = "/queue/rejections", broadcast = false)
+	Rejection sellBuilding(@DestinationVariable String code, SellBuildingRequest request) {
+		ActionResult result = rooms.act(code, request.token(), new Action.SellBuilding(request.building()));
 		return result.accepted() ? null : new Rejection(result.reason());
 	}
 
