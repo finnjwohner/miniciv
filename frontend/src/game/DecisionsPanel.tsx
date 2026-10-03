@@ -48,17 +48,17 @@ function DilemmaDecision({
           ? `You chose ${dilemma.chosen}; it applies as the Turn ends.`
           : 'Choose before the Turn ends, or the worst choice applies.'}
       </p>
-      <ul className="list">
+      <ul className="list" aria-label={`Choices for ${dilemma.name}`}>
         {dilemma.choices.map((choice) => (
-          <li key={choice.name} className="row">
+          <li key={choice.name}>
             <button
-              className={dilemma.chosen === choice.name ? 'button--chosen' : undefined}
+              className={dilemma.chosen === choice.name ? 'decision__choice button--chosen' : 'decision__choice'}
               onClick={() => onAnswer(dilemma.name, choice.name)}
               disabled={dilemma.chosen !== null}
             >
               {choice.name}
+              {choice.worst && <span className="tag tag--warn">if you don't choose</span>}
             </button>
-            {choice.worst && <span className="row__meta">applies if you do not choose</span>}
           </li>
         ))}
       </ul>

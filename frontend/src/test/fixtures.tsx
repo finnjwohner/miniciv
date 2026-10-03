@@ -113,7 +113,7 @@ export function nationView(overrides: Partial<NationView> = {}): NationView {
     dilemmas: [
       {
         name: 'Flooded river',
-        text: 'The river has burst its banks near your fields.',
+        text: 'The river has burst its banks near your fields',
         choices: [
           { name: 'Build levees', worst: false },
           { name: 'Let it flood', worst: true },
