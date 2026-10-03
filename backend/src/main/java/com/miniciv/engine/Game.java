@@ -326,6 +326,8 @@ public class Game {
 		settleEncounters(reports);
 		for (Nation nation : inPlay) {
 			List<String> report = reports.get(nation.name());
+			// The choice that applies draws luck for its effects, Nation by
+			// Nation and Dilemma by Dilemma.
 			for (Nation.FacedDilemma faced : nation.settleDilemmas()) {
 				Event.Choice choice = faced.applying();
 				String outcome = announced(choice.text(), befall(choice.effects(), nation));
@@ -757,9 +759,9 @@ public class Game {
 	 * Rolls every Event, in the order listed, for each Nation still in the
 	 * Game in order or each of its travelling Warparties in the order sent,
 	 * that the Event's conditions hold for, drawing once from the seeded random
-	 * source for each. One that happens takes effect at once and is announced
-	 * in the Turn Report of the Nation it happened to, or that sent the
-	 * Warparty.
+	 * source for each. One that happens takes effect at once, as luck varies
+	 * it (see {@link Event.Effects#varied}), and is announced in the Turn
+	 * Report of the Nation it happened to, or that sent the Warparty.
 	 */
 	private void rollEvents(Map<String, List<String>> reports) {
 		for (Event event : ruleset.events()) {
@@ -1182,11 +1184,13 @@ public class Game {
 	}
 
 	/**
-	 * Applies an Event's or a Dilemma choice's effects to a Nation.
+	 * Applies an Event's or a Dilemma choice's effects to a Nation, as luck
+	 * varies them.
 	 *
 	 * @return what changed, such as "your Nation gained 4 Population"
 	 */
-	private List<String> befall(Event.Effects effects, Nation nation) {
+	private List<String> befall(Event.Effects authored, Nation nation) {
+		Event.Effects effects = authored.varied(random);
 		List<String> changes = new ArrayList<>();
 		Nation.Change change = nation.change(effects.gold(), effects.population(), effects.research());
 		Map<String, Integer> changed = new LinkedHashMap<>();

@@ -5,6 +5,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.random.RandomGenerator;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
@@ -148,6 +149,36 @@ public record Event(String name, Subject subject, double chance, Conditions when
 	public record Effects(int gold, int population, int research, int damageDefense, int travelTurns) {
 
 		static final Effects NONE = new Effects(0, 0, 0, 0, 0);
+
+		/**
+		 * These effects as luck varies them, drawing once from the given random
+		 * source for each Gold, Population, Research and Defense-damage effect
+		 * that is not 0, in that order; travel Turns never vary.
+		 */
+		Effects varied(RandomGenerator random) {
+			return new Effects(varied(gold, random), varied(population, random), varied(research, random),
+					varied(damageDefense, random), travelTurns);
+		}
+
+		private static int varied(int authored, RandomGenerator random) {
+			return authored == 0 ? 0 : variedBy(random.nextDouble(), authored);
+		}
+
+		/**
+		 * An effect as luck varies it: by up to a tenth of it either way,
+		 * rounded down, but by at least 1 either way or not at all, so small
+		 * effects still vary; never to 0, and never from a gain to a loss or
+		 * back. Luck of 0 makes it smallest, 0.5 leaves it as authored, and
+		 * luck near 1 makes it largest.
+		 *
+		 * @param luck drawn from the seeded random source, at least 0 and below
+		 *        1
+		 */
+		private static int variedBy(double luck, int authored) {
+			int spread = Math.max(1, Math.abs(authored) / 10);
+			int change = (int) (luck * (2 * spread + 1)) - spread;
+			return Integer.signum(authored) * Math.max(1, Math.abs(authored) + change);
+		}
 
 	}
 
