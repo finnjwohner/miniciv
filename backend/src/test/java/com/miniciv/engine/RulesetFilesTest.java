@@ -40,6 +40,46 @@ class RulesetFilesTest {
 	}
 
 	@Test
+	void theShippedRulesetHasTheLaterGameEventsAndDilemmas() {
+		Ruleset ruleset = RulesetFiles.load("ruleset");
+
+		assertThat(ruleset.events()).filteredOn(event -> !event.dilemma())
+			.extracting(Event::name)
+			.contains("Comet sighting", "Bountiful fishing", "Royal wedding", "Gold rush", "Famine", "Great fire",
+					"Favourable winds", "Blocked mountain pass");
+		assertThat(ruleset.events()).filteredOn(Event::dilemma)
+			.extracting(Event::name)
+			.contains("Border dispute", "Drought", "Festival petition", "Foreign envoy", "Deserter's secrets",
+					"Cracked foundations");
+	}
+
+	/**
+	 * Rough worth of each effect in Gold, for weighing Dilemma choices against
+	 * each other: a Population is worth the Gold it earns over a few Turns,
+	 * a Research about three Gold, and a point of Defense lost about six
+	 * Gold to repair or rebuild.
+	 */
+	static double worth(Event.Effects effects) {
+		return effects.gold() + 6.0 * effects.population() + 3.0 * effects.research() - 6.0 * effects.damageDefense();
+	}
+
+	static double expectedWorth(Event.Choice choice) {
+		return choice.outcomes().stream().mapToDouble(outcome -> outcome.chance() * worth(outcome.effects())).sum();
+	}
+
+	@Test
+	void everyShippedDilemmasWorstChoiceIsOnBalanceWorseThanEachOtherChoice() {
+		Ruleset ruleset = RulesetFiles.load("ruleset");
+
+		assertThat(ruleset.events()).filteredOn(Event::dilemma).allSatisfy(dilemma -> {
+			double worst = expectedWorth(dilemma.worstChoice());
+			assertThat(dilemma.choices()).filteredOn(choice -> !choice.worst())
+				.allSatisfy(choice -> assertThat(expectedWorth(choice)).as(dilemma.name() + ": " + choice.name())
+					.isGreaterThan(worst));
+		});
+	}
+
+	@Test
 	void theShippedRulesetHasNoStragglingWarpartyAsBigWarpartiesAlreadyTravelLonger() {
 		Ruleset ruleset = RulesetFiles.load("ruleset");
 
