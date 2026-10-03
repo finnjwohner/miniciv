@@ -28,55 +28,117 @@
   { "name": "Outbreak", "subject": "Nation", "chance": 0.05, "when": { "turnAtLeast": 3, "populationAtLeast": 14 },
     "text": "Sickness broke out in your Nation",
     "choices": [
-      { "name": "Quarantine", "effects": { "gold": -20, "population": -2 }, "text": "You quarantined the sick" },
-      { "name": "Call the healers", "effects": { "research": -10, "population": -4 },
-        "text": "Your healers spent their learning on the sick" },
-      { "name": "Let it spread", "worst": true, "effects": { "population": -10 },
-        "text": "You let the sickness spread" }
+      { "name": "Quarantine", "outcomes": [
+        { "chance": 0.8, "effects": { "gold": -20, "population": -2 }, "text": "You quarantined the sick" },
+        { "chance": 0.2, "effects": { "gold": -20, "population": -6 },
+          "text": "You quarantined the sick, but the sickness slipped past the guards" }
+      ] },
+      { "name": "Call the healers", "outcomes": [
+        { "chance": 0.7, "effects": { "research": -10, "population": -4 },
+          "text": "Your healers spent their learning on the sick" },
+        { "chance": 0.3, "effects": { "research": -10, "population": -1 },
+          "text": "Your healers spent their learning on the sick and found a cure" }
+      ] },
+      { "name": "Let it spread", "worst": true, "outcomes": [
+        { "chance": 0.75, "effects": { "population": -10 }, "text": "You let the sickness spread" },
+        { "chance": 0.25, "effects": { "population": -3 },
+          "text": "You let the sickness spread, but it soon burned itself out" }
+      ] }
     ] },
   { "name": "Bandits", "subject": "Nation", "chance": 0.04, "when": { "turnAtLeast": 3, "goldAtLeast": 30 },
     "text": "Bandits are raiding your roads",
     "choices": [
-      { "name": "Pay them off", "effects": { "gold": -20 }, "text": "You paid the bandits to move on" },
-      { "name": "Hunt them down", "effects": { "population": -3 }, "text": "Your people hunted the bandits down" },
-      { "name": "Ignore them", "worst": true, "effects": { "gold": -30, "population": -2 },
-        "text": "You ignored the bandits and they plundered freely" }
+      { "name": "Pay them off", "outcomes": [
+        { "chance": 0.8, "effects": { "gold": -20 }, "text": "You paid the bandits to move on" },
+        { "chance": 0.2, "effects": { "gold": -40 }, "text": "You paid the bandits, and they came back for more" }
+      ] },
+      { "name": "Hunt them down", "outcomes": [
+        { "chance": 0.6, "effects": { "population": -3 }, "text": "Your people hunted the bandits down" },
+        { "chance": 0.25, "effects": { "population": -6 }, "text": "The bandits ambushed your hunters" },
+        { "chance": 0.15, "effects": { "gold": 20, "population": -3 },
+          "text": "Your people hunted the bandits down and seized their loot" }
+      ] },
+      { "name": "Ignore them", "worst": true, "outcomes": [
+        { "chance": 0.8, "effects": { "gold": -30, "population": -2 },
+          "text": "You ignored the bandits and they plundered freely" },
+        { "chance": 0.2, "text": "You ignored the bandits, and they moved on to richer lands" }
+      ] }
     ] },
   { "name": "Travelling merchants", "subject": "Nation", "chance": 0.04, "when": { "turnAtLeast": 3, "goldAtLeast": 40 },
     "text": "Travelling merchants offer you books from distant lands",
     "choices": [
-      { "name": "Buy the books", "effects": { "gold": -30, "research": 15 }, "text": "You bought the merchants' books" },
-      { "name": "Turn them away", "worst": true, "text": "You turned the merchants away" }
+      { "name": "Buy the books", "outcomes": [
+        { "chance": 0.75, "effects": { "gold": -30, "research": 15 }, "text": "You bought the merchants' books" },
+        { "chance": 0.25, "effects": { "gold": -30, "research": 3 },
+          "text": "You bought the merchants' books, but most were forgeries" }
+      ] },
+      { "name": "Turn them away", "worst": true, "outcomes": [
+        { "chance": 0.8, "text": "You turned the merchants away" },
+        { "chance": 0.2, "effects": { "research": 5 },
+          "text": "You turned the merchants away, but a scholar among them stayed to teach" }
+      ] }
     ] },
   { "name": "Refugees", "subject": "Nation", "chance": 0.03, "when": { "turnAtLeast": 4, "goldAtLeast": 20 },
     "text": "Refugees fleeing war have gathered at your border",
     "choices": [
-      { "name": "Take them in", "effects": { "gold": -20, "population": 6 },
-        "text": "You fed and housed the refugees" },
-      { "name": "Close the border", "worst": true, "text": "You closed the border to the refugees" }
+      { "name": "Take them in", "outcomes": [
+        { "chance": 0.8, "effects": { "gold": -20, "population": 6 }, "text": "You fed and housed the refugees" },
+        { "chance": 0.2, "effects": { "gold": -20, "population": 2 },
+          "text": "You fed and housed the refugees, but most moved on before winter" }
+      ] },
+      { "name": "Close the border", "worst": true, "outcomes": [
+        { "chance": 0.8, "text": "You closed the border to the refugees" },
+        { "chance": 0.2, "effects": { "population": 3 },
+          "text": "You closed the border, but some refugees slipped across and settled" }
+      ] }
     ] },
   { "name": "Flood", "subject": "Nation", "chance": 0.03, "when": { "turnAtLeast": 4, "populationAtLeast": 10 },
     "text": "Heavy rains have the rivers rising",
     "choices": [
-      { "name": "Raise levees", "effects": { "gold": -25 }, "text": "You raised levees against the flood" },
-      { "name": "Evacuate the lowlands", "effects": { "population": -3 },
-        "text": "You evacuated the lowlands, though some were lost" },
-      { "name": "Hope it passes", "worst": true, "effects": { "gold": -10, "population": -6 },
-        "text": "You hoped the flood would pass, and it swept the lowlands away" }
+      { "name": "Raise levees", "outcomes": [
+        { "chance": 0.8, "effects": { "gold": -25 }, "text": "You raised levees against the flood" },
+        { "chance": 0.2, "effects": { "gold": -25, "population": -3 },
+          "text": "You raised levees, but the river broke through them" }
+      ] },
+      { "name": "Evacuate the lowlands", "outcomes": [
+        { "chance": 0.75, "effects": { "population": -3 }, "text": "You evacuated the lowlands, though some were lost" },
+        { "chance": 0.25, "text": "You evacuated the lowlands in time, and no one was lost" }
+      ] },
+      { "name": "Hope it passes", "worst": true, "outcomes": [
+        { "chance": 0.75, "effects": { "gold": -10, "population": -6 },
+          "text": "You hoped the flood would pass, and it swept the lowlands away" },
+        { "chance": 0.25, "text": "You hoped the flood would pass, and the rains stopped just in time" }
+      ] }
     ] },
   { "name": "Tax revolt", "subject": "Nation", "chance": 0.03, "when": { "turnAtLeast": 6, "goldAtLeast": 80 },
     "text": "Your people are protesting against your taxes",
     "choices": [
-      { "name": "Lower taxes", "effects": { "gold": -30 }, "text": "You lowered taxes" },
-      { "name": "Crush the revolt", "effects": { "population": -4 }, "text": "You crushed the revolt" },
-      { "name": "Ignore the protests", "worst": true, "effects": { "gold": -40, "population": -2 },
-        "text": "You ignored the protests and riots broke out" }
+      { "name": "Lower taxes", "outcomes": [
+        { "chance": 0.8, "effects": { "gold": -30 }, "text": "You lowered taxes" },
+        { "chance": 0.2, "effects": { "gold": -50 }, "text": "You lowered taxes, but the protesters demanded more" }
+      ] },
+      { "name": "Crush the revolt", "outcomes": [
+        { "chance": 0.7, "effects": { "population": -4 }, "text": "You crushed the revolt" },
+        { "chance": 0.3, "effects": { "gold": -10, "population": -8 },
+          "text": "You tried to crush the revolt, and it spread to your cities" }
+      ] },
+      { "name": "Ignore the protests", "worst": true, "outcomes": [
+        { "chance": 0.8, "effects": { "gold": -40, "population": -2 },
+          "text": "You ignored the protests and riots broke out" },
+        { "chance": 0.2, "text": "You ignored the protests, and they died down on their own" }
+      ] }
     ] },
   { "name": "Crumbling Buildings", "subject": "Nation", "chance": 0.04, "when": { "turnAtLeast": 5, "defenseAtLeast": 5 },
     "text": "Your engineers warn that your defensive Buildings are crumbling",
     "choices": [
-      { "name": "Pay the masons", "effects": { "gold": -20 }, "text": "You paid the masons to shore up your defensive Buildings" },
-      { "name": "Leave them be", "worst": true, "effects": { "damageDefense": 6 },
-        "text": "You left your defensive Buildings to crumble" }
+      { "name": "Pay the masons", "outcomes": [
+        { "chance": 0.8, "effects": { "gold": -20 }, "text": "You paid the masons to shore up your defensive Buildings" },
+        { "chance": 0.2, "effects": { "gold": -20, "damageDefense": 3 },
+          "text": "You paid the masons, but their work was shoddy" }
+      ] },
+      { "name": "Leave them be", "worst": true, "outcomes": [
+        { "chance": 0.75, "effects": { "damageDefense": 6 }, "text": "You left your defensive Buildings to crumble" },
+        { "chance": 0.25, "text": "You left your defensive Buildings be, and they held for now" }
+      ] }
     ] }
 ]

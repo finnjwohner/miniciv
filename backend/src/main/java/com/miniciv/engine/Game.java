@@ -326,14 +326,14 @@ public class Game {
 		settleEncounters(reports);
 		for (Nation nation : inPlay) {
 			List<String> report = reports.get(nation.name());
-			// The choice that applies draws luck for its effects, Nation by
-			// Nation and Dilemma by Dilemma.
+			// The choice that applies draws luck for its outcome, then for that
+			// outcome's effects, Nation by Nation and Dilemma by Dilemma.
 			for (Nation.FacedDilemma faced : nation.settleDilemmas()) {
-				Event.Choice choice = faced.applying();
-				String outcome = announced(choice.text(), befall(choice.effects(), nation));
+				Event.Outcome outcome = faced.applying().outcome(random);
+				String line = announced(outcome.text(), befall(outcome.effects(), nation));
 				report.add(faced.chosen() == null
-						? "You did not choose in time what to do about " + faced.dilemma().name() + ". " + outcome
-						: outcome);
+						? "You did not choose in time what to do about " + faced.dilemma().name() + ". " + line
+						: line);
 			}
 			for (String completed : nation.progressConstruction()) {
 				report.add("Your " + completed + " has been built.");
@@ -1184,7 +1184,7 @@ public class Game {
 	}
 
 	/**
-	 * Applies an Event's or a Dilemma choice's effects to a Nation, as luck
+	 * Applies an Event's or a Dilemma outcome's effects to a Nation, as luck
 	 * varies them.
 	 *
 	 * @return what changed, such as "your Nation gained 4 Population"
@@ -1239,7 +1239,7 @@ public class Game {
 	}
 
 	/**
-	 * An Event's or a Dilemma choice's line in the Turn Report: its text, then
+	 * An Event's or a Dilemma outcome's line in the Turn Report: its text, then
 	 * what it changed.
 	 */
 	private static String announced(String text, List<String> changes) {

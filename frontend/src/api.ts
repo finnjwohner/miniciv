@@ -103,10 +103,11 @@ export type Spy = {
   turnsLeft: number
   turnsTravelled: number
 }
-/** What a Dilemma's choice changes; resources it would take below 0 stop at 0. */
-export type Effects = { gold: number; population: number; research: number; damageDefense: number; travelTurns: number }
-/** One choice a Dilemma offers; `worst` is the one that applies if the Player does not choose before the Turn ends. */
-export type Choice = { name: string; effects: Effects; worst: boolean; text: string }
+/**
+ * One choice a Dilemma offers; `worst` is the one that applies if the Player does not choose before the Turn ends.
+ * What it leads to is partly luck, and neither its outcomes nor their odds are shown.
+ */
+export type Choice = { name: string; worst: boolean }
 /**
  * A Dilemma this Player may answer, by its `name`, until the Turn ends; `chosen` is the name of the
  * choice they made, or null. The choice made, or else the worst, applies as the Turn ends.

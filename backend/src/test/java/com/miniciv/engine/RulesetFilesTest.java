@@ -29,6 +29,15 @@ class RulesetFilesTest {
 	}
 
 	@Test
+	void everyShippedDilemmaChoiceCanTurnOutMoreThanOneWay() {
+		Ruleset ruleset = RulesetFiles.load("ruleset");
+
+		assertThat(ruleset.events()).filteredOn(Event::dilemma)
+			.flatExtracting(Event::choices)
+			.allSatisfy(choice -> assertThat(choice.outcomes()).as(choice.name()).hasSizeGreaterThanOrEqualTo(2));
+	}
+
+	@Test
 	void theShippedBankAddsHalfAGoldPerPopulation() {
 		Ruleset ruleset = RulesetFiles.load("ruleset");
 
@@ -81,6 +90,21 @@ class RulesetFilesTest {
 		assertThatExceptionOfType(InvalidRuleset.class).isThrownBy(() -> RulesetFiles.load("rulesets/unknown-subject"))
 			.withMessageContaining("rulesets/unknown-subject/events.json")
 			.withMessageContaining("Spy");
+	}
+
+	@Test
+	void aChoiceWhoseOutcomeChancesDoNotTotalOneFailsToLoad() {
+		assertThatExceptionOfType(InvalidRuleset.class)
+			.isThrownBy(() -> RulesetFiles.load("rulesets/outcome-chances"))
+			.withMessageContaining("Event Bandits's choice Hunt them down has outcome chances totalling 0.9, not 1");
+	}
+
+	@Test
+	void aMalformedOutcomeFailsToLoadNamingTheFile() {
+		assertThatExceptionOfType(InvalidRuleset.class)
+			.isThrownBy(() -> RulesetFiles.load("rulesets/malformed-outcome"))
+			.withMessageContaining("rulesets/malformed-outcome/events.json")
+			.withMessageContaining("odds");
 	}
 
 	@Test
