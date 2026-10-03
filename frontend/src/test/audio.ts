@@ -1,5 +1,6 @@
 // A stand-in for the browser's Web Audio, which jsdom lacks, recording every tone played.
 import { vi } from 'vitest'
+import { CUES, type Cue } from '../sound'
 
 /** A tone a cue played: its pitch in Hz and its loudest volume, from 0 to 1. */
 export type Tone = { frequency: number; peak: number }
@@ -64,4 +65,14 @@ export function fakeWebAudio(): Tone[] {
   }
   vi.stubGlobal('AudioContext', FakeAudioContext)
   return tones
+}
+
+/** How many times `cue` played among `tones`, by the pitches of its notes in turn. */
+export function timesPlayed(tones: Tone[], cue: Cue): number {
+  const pitches = CUES[cue].map((n) => n.frequency)
+  let times = 0
+  for (let i = 0; i + pitches.length <= tones.length; i++) {
+    if (pitches.every((pitch, j) => tones[i + j].frequency === pitch)) times++
+  }
+  return times
 }

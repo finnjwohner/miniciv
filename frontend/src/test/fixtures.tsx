@@ -1,9 +1,10 @@
 // A Game in progress, as the server would send it, for tests to render and adjust.
 import { render, screen } from '@testing-library/react'
-import type { ComponentProps } from 'react'
+import type { ComponentProps, ReactNode } from 'react'
 import type { BuildingType, Facts, GameView, NationView, PlayerView, Spy, UnitType, Warparty } from '../api'
 import GameScreen from '../game/GameScreen'
 import { SettingsProvider } from '../SettingsProvider'
+import { SettingsMenu } from '../ui/SettingsMenu'
 import type { ReceivedRoom } from '../useRoom'
 
 /** The id of the Player the tests play as, by default: Rome's. */
@@ -136,9 +137,10 @@ export function nationView(overrides: Partial<NationView> = {}): NationView {
 }
 
 /**
- * Renders the Game screen as the Player `playerId` (Rome's by default), with default settings and every
- * action a no-op unless passed in `props`. `rerenderGame` re-renders it with other props, as when the
- * server sends a new Nation view or a rejection, keeping what the Player has open.
+ * Renders the Game screen as the Player `playerId` (Rome's by default), below the settings gear with
+ * the settings at their defaults, and every action a no-op unless passed in `props`. `rerenderGame`
+ * re-renders it with other props, as when the server sends a new Nation view or a rejection, keeping
+ * what the Player has open.
  */
 export function renderGame(props: Partial<ComponentProps<typeof GameScreen>> = {}) {
   const noop = () => {}
@@ -165,7 +167,14 @@ export function renderGame(props: Partial<ComponentProps<typeof GameScreen>> = {
       {...overrides}
     />
   )
-  const result = render(gameScreen(props), { wrapper: SettingsProvider })
+  // The settings and their gear sit above the screen, as the app puts them.
+  const wrapper = ({ children }: { children: ReactNode }) => (
+    <SettingsProvider>
+      <SettingsMenu />
+      {children}
+    </SettingsProvider>
+  )
+  const result = render(gameScreen(props), { wrapper })
   return { ...result, rerenderGame: (overrides: Partial<ComponentProps<typeof GameScreen>>) => result.rerender(gameScreen(overrides)) }
 }
 

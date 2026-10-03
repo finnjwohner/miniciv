@@ -1,15 +1,5 @@
 // Controls shared by the Game screen's panels.
 
-/** Why the server refused the last action taken in this panel, if it did. */
-export function Rejection({ reason }: { reason: string | null }) {
-  if (!reason) return null
-  return (
-    <p role="alert" className="alert">
-      {reason}
-    </p>
-  )
-}
-
 /** A small whole-number input, such as how many Units to train. */
 export function CountInput({
   value,

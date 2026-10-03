@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
 import { inviteLink, type PlayerView, type RoomView } from './api'
-import { Rejection } from './game/controls'
 import { suggestRulerName } from './rulerNames'
 import { Emblem, Icon } from './ui/Icon'
 import { NationEmblem } from './ui/NationName'
@@ -50,9 +49,13 @@ function YourNation({
   }
 
   return (
-    <Panel title="Your Nation" icon="flag" actions={<NationEmblem colour={me.colour} emblem={me.emblem} size={12} />}>
+    <Panel
+      title="Your Nation"
+      icon="flag"
+      actions={<NationEmblem colour={me.colour} emblem={me.emblem} size={12} />}
+      rejection={rejection}
+    >
       <div className="stack">
-        <Rejection reason={rejection} />
         <form
           className="field"
           onSubmit={(e) => {

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import type { BuildingDamage, BuildingType, NationView, TechTreeEntry, UnitType } from '../api'
 import { Icon, type IconName } from '../ui/Icon'
 import { Panel } from '../ui/Panel'
-import { CountInput, Rejection } from './controls'
+import { CountInput } from './controls'
 import { plural } from './format'
 
 function Stat({ icon, label, value }: { icon: IconName; label: string; value: number }) {
@@ -110,8 +110,7 @@ export function BuildPanel({
 }) {
   const owned = Object.entries(nation.buildings)
   return (
-    <Panel title="Build" icon="building">
-      <Rejection reason={rejection} />
+    <Panel title="Build" icon="building" rejection={rejection}>
       <h3>Construct</h3>
       <ul className="list">
         {nation.availableBuildings.map((b) => (
@@ -225,8 +224,7 @@ export function TrainPanel({
   onTrain: (unit: string, count: number) => void
 }) {
   return (
-    <Panel title="Train" icon="sword">
-      <Rejection reason={rejection} />
+    <Panel title="Train" icon="sword" rejection={rejection}>
       <h3>Units</h3>
       <ul className="list">
         {nation.availableUnits.map((u) => (
@@ -273,8 +271,7 @@ export function TechTreePanel({
 }) {
   const unlocked = new Set(nation.techTree.filter((t) => t.standing === 'UNLOCKED').map((t) => t.name))
   return (
-    <Panel title="Tech Tree" icon="lightbulb">
-      <Rejection reason={rejection} />
+    <Panel title="Tech Tree" icon="lightbulb" rejection={rejection}>
       {nation.techTree.length === 0 ? (
         <p className="muted">There are no Technologies in this Game.</p>
       ) : (

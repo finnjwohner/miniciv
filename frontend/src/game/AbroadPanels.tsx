@@ -3,7 +3,7 @@ import { otherNations, recallTurns, travelTurns } from '../api'
 import type { Fact, MapNation, NationView, Spy, TravelBracket, Warparty } from '../api'
 import { NationEmblem } from '../ui/NationName'
 import { Panel } from '../ui/Panel'
-import { CountInput, Rejection, TargetSelect } from './controls'
+import { CountInput, TargetSelect } from './controls'
 import { currentTarget, formatAmount, listCounts, plural } from './format'
 import { MapName } from './MapName'
 
@@ -81,8 +81,8 @@ export function ArmyPanel({
       title="Army & Warparties"
       icon="castle"
       actions={<span className="tag tag--accent">Strength {formatAmount(strength)}</span>}
+      rejection={rejection}
     >
-      <Rejection reason={rejection} />
       <h3>Send a Warparty</h3>
       {sendable.length === 0 ? (
         <p className="muted">Your Army has no Units to send.</p>
@@ -199,8 +199,7 @@ export function SpiesPanel({
     .filter(([name]) => spyTypes.has(name))
     .reduce((total, [, count]) => total + count, 0)
   return (
-    <Panel title="Spies" icon="eye" actions={<span className="muted">{atHome} at home</span>}>
-      <Rejection reason={rejection} />
+    <Panel title="Spies" icon="eye" actions={<span className="muted">{atHome} at home</span>} rejection={rejection}>
       {atHome === 0 ? (
         <p className="muted">Train a Spy to send one abroad. Spies kept at home can catch enemy Spies.</p>
       ) : targets.length === 0 ? (

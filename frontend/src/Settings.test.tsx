@@ -1,7 +1,8 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import App from './App'
 import { fakeWebAudio } from './test/audio'
+import { prefersReducedMotion } from './test/motion'
 
 /** The gear at the top right of every screen. */
 function gear() {
@@ -78,16 +79,6 @@ describe('Click feedback', () => {
     expect(tones[0].peak).toBeCloseTo(loud / 4)
   })
 })
-
-/** Pretends the operating system does, or doesn't, ask for reduced motion. */
-function prefersReducedMotion(reduce: boolean) {
-  vi.stubGlobal('matchMedia', (query: string) => ({
-    matches: reduce && query === '(prefers-reduced-motion: reduce)',
-    media: query,
-    addEventListener() {},
-    removeEventListener() {},
-  }))
-}
 
 describe('Reduced motion', () => {
   it('starts on when the operating system asks for reduced motion, and the screen has no animation', () => {

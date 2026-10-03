@@ -1,8 +1,10 @@
-import { Fragment } from 'react'
+import { Fragment, useEffect, useEffectEvent } from 'react'
 import type { GameView, NetChange, PlayerView, TurnReport, TurnReportKind } from '../api'
+import { useCue, useSettings } from '../settings'
 import { Icon } from '../ui/Icon'
 import { NationName } from '../ui/NationName'
 import { Panel } from '../ui/Panel'
+import { formatCountdown } from './format'
 
 /** How a Player stands in the Game, as a tag beside their Nation. */
 function PlayerStanding({ player, game }: { player: PlayerView; game: GameView }) {
@@ -93,27 +95,50 @@ export function TurnReportPanel({ report }: { report: TurnReport | null }) {
   )
 }
 
+/** How many of the Turn's last seconds count as time running out. */
+const RUNNING_OUT_SECONDS = 10
+
 /**
- * The Turn timer and the button to end the Turn, while the Player is playing, and how each Player
- * stands: who is done, deciding, disconnected or out of the Game.
+ * Whether time is running out on a Player still deciding, counted down from `millisLeft`: the last
+ * seconds of a Turn not Paused. The tick cue plays as each of those seconds starts.
+ */
+function useTimeRunningOut(millisLeft: number, deciding: boolean, paused: boolean) {
+  const play = useCue()
+  const secondsLeft = Math.ceil(Math.max(0, millisLeft) / 1000)
+  const runningOut = deciding && !paused && secondsLeft > 0 && secondsLeft <= RUNNING_OUT_SECONDS
+  const tick = useEffectEvent(() => play('tick'))
+  useEffect(() => {
+    if (runningOut) tick()
+  }, [runningOut, secondsLeft])
+  return runningOut
+}
+
+/**
+ * The Turn timer, counting down `millisLeft`, and the button to end the Turn, while the Player is
+ * playing, and how each Player stands: who is done, deciding, disconnected or out of the Game. As time
+ * runs out on a Player still deciding, End Turn pulses and the tick cue plays each second.
  */
 export function TurnPanel({
   game,
   players,
   playerId,
   playing,
-  countdown,
+  millisLeft,
   onDone,
 }: {
   game: GameView
   players: PlayerView[]
   playerId: string
   playing: boolean
-  countdown: string
+  millisLeft: number
   onDone: (turn: number) => void
 }) {
   const me = players.find((p) => p.id === playerId)
   const paused = game.waitingFor.length > 0
+  const deciding = playing && me !== undefined && !me.done
+  const runningOut = useTimeRunningOut(millisLeft, deciding, paused)
+  const { settings } = useSettings()
+  const pulsing = runningOut && !settings.reducedMotion
   return (
     <Panel
       title={`Turn ${game.turn}`}
@@ -125,10 +150,10 @@ export function TurnPanel({
         {playing && (
           <div className="turn__controls">
             <div className={paused ? 'turn__timer turn__timer--paused' : 'turn__timer'} aria-label="Time left">
-              {countdown}
+              {formatCountdown(millisLeft)}
             </div>
             <button
-              className="button--primary turn__end"
+              className={`button--primary turn__end${pulsing ? ' turn__end--pulse' : ''}`}
               data-cue="endTurn"
               onClick={() => onDone(game.turn)}
               disabled={!me || me.done}
