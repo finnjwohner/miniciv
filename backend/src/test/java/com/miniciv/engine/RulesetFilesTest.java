@@ -391,4 +391,30 @@ class RulesetFilesTest {
 			.withMessageContaining("damageBuildings");
 	}
 
+	@Test
+	void theShippedRulesetHasTheFiveReportMissionsOfTwoTurnsEach() {
+		Ruleset ruleset = RulesetFiles.load("ruleset");
+
+		assertThat(ruleset.missions()).containsExactly(new Mission("Report Gold", 2, Mission.FactKind.GOLD),
+				new Mission("Report Population", 2, Mission.FactKind.POPULATION),
+				new Mission("Report Research", 2, Mission.FactKind.RESEARCH),
+				new Mission("Report Army", 2, Mission.FactKind.ARMY),
+				new Mission("Report Buildings", 2, Mission.FactKind.BUILDINGS));
+	}
+
+	@Test
+	void aMissionReportingAnUnknownFactFailsToLoadNamingTheFile() {
+		assertThatExceptionOfType(InvalidRuleset.class)
+			.isThrownBy(() -> RulesetFiles.load("rulesets/unknown-fact"))
+			.withMessageContaining("rulesets/unknown-fact/missions.json")
+			.withMessageContaining("GOSSIP");
+	}
+
+	@Test
+	void aMissionTakingNoTurnsFailsToLoad() {
+		assertThatExceptionOfType(InvalidRuleset.class)
+			.isThrownBy(() -> RulesetFiles.load("rulesets/instant-mission"))
+			.withMessageContaining("Mission Report Gold must take at least 1 Turn.");
+	}
+
 }

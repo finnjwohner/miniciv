@@ -286,6 +286,7 @@ class TurnsTest {
 		view.put("training", training);
 		view.put("warparties", List.of());
 		view.put("spies", List.of());
+		view.put("missions", List.of());
 		view.put("travelBrackets",
 				List.of(Map.of("strength", 0, "turns", 3), Map.of("strength", 10, "turns", 4),
 						Map.of("strength", 25, "turns", 5), Map.of("strength", 50, "turns", 6),

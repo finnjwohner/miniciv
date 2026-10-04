@@ -128,6 +128,15 @@ export function useRoom(code: string, token: string) {
     })
   }
 
+  /** Sets one of the Nation's Spies in place to a Mission, from scratch; a rejection's reason arrives in `rejection`. */
+  const setMission = (spy: number, mission: string) => {
+    setRejection(null)
+    client.current?.publish({
+      destination: `/app/rooms/${code}/spies/missions`,
+      body: JSON.stringify({ token, spy, mission }),
+    })
+  }
+
   /** Sets some of the Nation's Idle Scouts to a Task; a rejection's reason arrives in `rejection`. */
   const setTask = (kind: TaskKind, target: string, scouts: number) => {
     setRejection(null)
@@ -230,6 +239,7 @@ export function useRoom(code: string, token: string) {
     sendWarparty,
     recallWarparty,
     sendSpy,
+    setMission,
     setTask,
     cancelTask,
     answerDilemma,

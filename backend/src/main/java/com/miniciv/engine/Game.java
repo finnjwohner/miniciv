@@ -94,11 +94,6 @@ public class Game {
 	private static final double LOCATE_CHANCE_PER_SCOUT = 0.15;
 
 	/**
-	 * The chance each Spy in place gives its Nation, each Turn, of a report.
-	 */
-	private static final double SPY_REPORT_CHANCE = 0.4;
-
-	/**
 	 * The chance each Spy at home gives its Nation, each Turn, of catching each
 	 * other Nation's Spy in place there.
 	 */
@@ -151,35 +146,6 @@ public class Game {
 		 */
 		static Captured picked(double draw) {
 			return values()[Math.min(values().length - 1, (int) (draw * values().length))];
-		}
-	}
-
-	/**
-	 * The facts a Spy may report, each as likely as its weight: Buildings,
-	 * which reveal Defense, only occasionally.
-	 */
-	private enum SpiedFact {
-		GOLD(2), POPULATION(2), RESEARCH(2), ARMY(2), BUILDINGS(1);
-
-		private final int weight;
-
-		SpiedFact(int weight) {
-			this.weight = weight;
-		}
-
-		/**
-		 * The fact a draw between 0 and 1 picks, by weight in the order listed.
-		 */
-		static SpiedFact picked(double draw) {
-			double total = Arrays.stream(values()).mapToInt(fact -> fact.weight).sum();
-			double at = draw * total;
-			for (SpiedFact fact : values()) {
-				if (at < fact.weight) {
-					return fact;
-				}
-				at -= fact.weight;
-			}
-			return values()[values().length - 1];
 		}
 	}
 
@@ -467,7 +433,7 @@ public class Game {
 		scout(reports);
 		catchSpies(reports, witnessed);
 		tellWitnesses(reports, witnessed);
-		spy(reports);
+		workOnMissions(reports);
 		meet(reports);
 		List<Nation> left = remaining();
 		if (left.size() == 1) {
@@ -1213,50 +1179,58 @@ public class Game {
 	}
 
 	/**
-	 * Has each Nation still in the Game in order watch, through each of its
-	 * Spies in place in the order sent, the Nation the Spy is at, drawing once
-	 * from the seeded random source for whether the Spy reports and, if it
-	 * does, once more for which fact. The fact, as it stands once the Turn has
-	 * resolved, is announced in the Turn Report and shown on the Map, tagged
-	 * with this Turn.
+	 * Has each Nation still in the Game in order move each of its Spies on a
+	 * Mission, in the order sent, one Turn further into it. A Spy whose
+	 * Mission ends reports its Fact, as it stands once the Turn has resolved,
+	 * in the Turn Report and on the Map, tagged with this Turn, then goes
+	 * Idle, and the Player is alerted. Idle Spies do nothing. No luck is drawn.
 	 */
-	private void spy(Map<String, TurnReport.Draft> reports) {
+	private void workOnMissions(Map<String, TurnReport.Draft> reports) {
 		for (Nation spying : remaining()) {
-			for (Spy spy : spying.spiesInPlace()) {
-				if (random.nextDouble() >= SPY_REPORT_CHANCE) {
-					continue;
-				}
-				Nation target = nation(spy.target());
-				String name = target.name();
-				Facts facts = spying.learnedOf(name);
-				Line reported = switch (SpiedFact.picked(random.nextDouble())) {
-					case GOLD -> {
-						facts = facts.withGold(target.gold(), turn);
-						yield Line.of(name + " has ", neutral(GOLD, target.gold()));
-					}
-					case POPULATION -> {
-						facts = facts.withPopulation(target.population(), turn);
-						yield Line.of(name + " has ", neutral(POPULATION, target.population()));
-					}
-					case RESEARCH -> {
-						facts = facts.withResearch(target.research(), turn);
-						yield Line.of(name + " has ", neutral(RESEARCH, target.research()));
-					}
-					case ARMY -> {
-						facts = facts.withArmy(target.army(), turn);
-						yield Line.of(armyFact(target));
-					}
-					case BUILDINGS -> {
-						facts = facts.withBuildings(target.buildings(), target.damagedBuildings(), target.defense(ruleset),
-								turn);
-						yield Line.of(buildingsFact(target));
-					}
-				};
-				spying.learn(name, facts);
-				reports.get(spying.name())
-					.add(SPIES_AND_SCOUTS, Line.of("Your Spy in " + name + " reported that ", reported, "."));
+			for (Spy spy : spying.workOnMissions()) {
+				TurnReport.Draft report = reports.get(spying.name());
+				Mission mission = ruleset.mission(spy.mission()).orElseThrow();
+				report.add(SPIES_AND_SCOUTS,
+						Line.of("Your Spy in " + spy.target() + " reported that ", learnFact(spying, spy.target(), mission.reports()), "."));
+				report.add(DECISIONS_AND_ALERTS,
+						"Your Spy in " + spy.target() + " finished " + mission.name() + " and is Idle; set it a new Mission.");
 			}
 		}
+	}
+
+	/**
+	 * Has a Nation learn one kind of Fact of another Nation as it stands now,
+	 * tagged with this Turn.
+	 *
+	 * @return what was learned, such as "Egypt has 50 Gold"
+	 */
+	private Line learnFact(Nation spying, String name, Mission.FactKind kind) {
+		Nation target = nation(name);
+		Facts facts = spying.learnedOf(name);
+		Line reported = switch (kind) {
+			case GOLD -> {
+				facts = facts.withGold(target.gold(), turn);
+				yield Line.of(name + " has ", neutral(GOLD, target.gold()));
+			}
+			case POPULATION -> {
+				facts = facts.withPopulation(target.population(), turn);
+				yield Line.of(name + " has ", neutral(POPULATION, target.population()));
+			}
+			case RESEARCH -> {
+				facts = facts.withResearch(target.research(), turn);
+				yield Line.of(name + " has ", neutral(RESEARCH, target.research()));
+			}
+			case ARMY -> {
+				facts = facts.withArmy(target.army(), turn);
+				yield Line.of(armyFact(target));
+			}
+			case BUILDINGS -> {
+				facts = facts.withBuildings(target.buildings(), target.damagedBuildings(), target.defense(ruleset), turn);
+				yield Line.of(buildingsFact(target));
+			}
+		};
+		spying.learn(name, facts);
+		return reported;
 	}
 
 	/**
@@ -1773,6 +1747,9 @@ public class Game {
 			}
 			case Action.SendSpy send -> unreachable(nation, send.target(), "A Spy")
 				.orElseGet(() -> actor.sendSpy(send.target(), ruleset));
+			case Action.SetMission set -> ruleset.mission(set.mission())
+				.map(mission -> actor.setMission(set.spy(), mission))
+				.orElseGet(() -> ActionResult.rejected("There is no Mission called " + set.mission() + "."));
 			case Action.SetTask set -> setTask(actor, set);
 			case Action.CancelTask cancel -> actor.cancelTask(cancel.task());
 			case Action.RecallWarparty recall -> recall(actor, recall.warparty());

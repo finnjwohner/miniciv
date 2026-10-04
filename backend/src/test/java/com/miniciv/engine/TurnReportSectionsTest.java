@@ -101,16 +101,22 @@ class TurnReportSectionsTest {
 	}
 
 	@Test
-	void aSpyReportLandsInSpiesAndScouts() {
-		game = Locating.by("Rome", SpiesTest.RULESET, Identities.of("Rome", "Carthage"), SpiesTest.ALWAYS_GOLD);
+	void aSpyReportLandsInSpiesAndScoutsAndItsIdleAlertInDecisionsAndAlerts() {
+		game = Locating.by("Rome", SpyMissionsTest.RULESET, Identities.of("Rome", "Carthage"), GameTest.EVEN_LUCK);
 		armyOf("Rome", "Spy", 1);
 		game.act("Rome", new Action.SendSpy("Carthage"));
 		for (int turn = 1; turn <= 3; turn++) {
 			game.endTurn();
 		}
+		game.act("Rome", new Action.SetMission(1, "Report Gold"));
+		game.endTurn();
+
+		game.endTurn();
 
 		assertThat(section("Rome", SPIES_AND_SCOUTS))
 			.contains("Your Spy in Carthage reported that Carthage has " + game.viewOf("Carthage").gold() + " Gold.");
+		assertThat(section("Rome", DECISIONS_AND_ALERTS))
+			.contains("Your Spy in Carthage finished Report Gold and is Idle; set it a new Mission.");
 	}
 
 	@Test

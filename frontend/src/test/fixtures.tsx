@@ -146,6 +146,13 @@ export function nationView(overrides: Partial<NationView> = {}): NationView {
     training: [{ unit: 'Archer', count: 2, readyOnTurn: 5 }],
     warparties: [],
     spies: [],
+    missions: [
+      { name: 'Report Gold', turns: 2, reports: 'GOLD' },
+      { name: 'Report Population', turns: 2, reports: 'POPULATION' },
+      { name: 'Report Research', turns: 2, reports: 'RESEARCH' },
+      { name: 'Report Army', turns: 2, reports: 'ARMY' },
+      { name: 'Report Buildings', turns: 2, reports: 'BUILDINGS' },
+    ],
     travelBrackets: [
       { strength: 0, turns: 1 },
       { strength: 10, turns: 2 },
@@ -237,6 +244,7 @@ export function renderGame(props: Partial<ComponentProps<typeof GameScreen>> = {
       onSendWarparty={noop}
       onRecallWarparty={noop}
       onSendSpy={noop}
+      onSetMission={noop}
       onSetTask={noop}
       onCancelTask={noop}
       onAnswerDilemma={noop}
@@ -283,7 +291,7 @@ export function warparty(overrides: Partial<Warparty> = {}): Warparty {
   }
 }
 
-/** Rome's Spy in place at Egypt. */
+/** Rome's Spy in place at Egypt, Idle. */
 export function spy(overrides: Partial<Spy> = {}): Spy {
   return {
     id: 2,
@@ -292,6 +300,8 @@ export function spy(overrides: Partial<Spy> = {}): Spy {
     homeward: false,
     turnsLeft: 0,
     turnsTravelled: 2,
+    mission: null,
+    missionTurnsLeft: 0,
     ...overrides,
   }
 }

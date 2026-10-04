@@ -11,8 +11,8 @@ import tools.jackson.databind.json.JsonMapper;
 
 /**
  * Loads a Ruleset from JSON data files on the classpath: {@code units.json},
- * {@code buildings.json}, {@code technologies.json} and {@code events.json} in
- * one directory. A field left out of an entry counts as 0 or empty; a field the
+ * {@code buildings.json}, {@code technologies.json}, {@code events.json} and
+ * {@code missions.json} in one directory. A field left out of an entry counts as 0 or empty; a field the
  * engine does not know, such as a misspelling or a condition or effect outside
  * an Event's fixed set, is an error.
  */
@@ -36,6 +36,7 @@ public final class RulesetFiles {
 		}), read(directory + "/buildings.json", new TypeReference<List<BuildingType>>() {
 		}), read(directory + "/technologies.json", new TypeReference<List<Technology>>() {
 		}), read(directory + "/events.json", new TypeReference<List<Event>>() {
+		}), read(directory + "/missions.json", new TypeReference<List<Mission>>() {
 		}));
 	}
 

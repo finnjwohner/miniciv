@@ -196,8 +196,9 @@ export function recallTurns(brackets: TravelBracket[], warparty: Warparty): numb
 
 /**
  * A Spy sent abroad, told apart by `id`; `turnsLeft` is how many more Turns must resolve before it gets
- * where it is heading, 0 once it is in place at its target, where it stays and now and then reports.
- * `homeward` once its target is out of the Game and it is heading back.
+ * where it is heading, 0 once it is in place at its target, where it stays. `homeward` once its target is
+ * out of the Game and it is heading back. `mission` is the name of the Mission it is on, with
+ * `missionTurnsLeft` Turns to go, or null while it is Idle.
  */
 export type Spy = {
   id: number
@@ -206,7 +207,13 @@ export type Spy = {
   homeward: boolean
   turnsLeft: number
   turnsTravelled: number
+  mission: string | null
+  missionTurnsLeft: number
 }
+/** The kinds of Fact a Mission may report. */
+export type FactKind = 'GOLD' | 'POPULATION' | 'RESEARCH' | 'ARMY' | 'BUILDINGS'
+/** What a Spy in place may be set to do, for `turns` Turns; it reports the kind of Fact `reports` when it ends. */
+export type Mission = { name: string; turns: number; reports: FactKind }
 /** A kind of Task Scouts can be set to: `LOCATE` searches for a Nation not yet Located until it is Located. */
 export type TaskKind = 'LOCATE'
 /** What some of the Nation's Scouts are set to do, told apart by `id`; `target` is the Nation it is about. */
@@ -339,8 +346,10 @@ export type NationView = {
   training: Training[]
   /** The Nation's Warparties abroad, in the order sent. */
   warparties: Warparty[]
-  /** The Nation's Spies abroad, in the order sent. */
+  /** The Nation's Spies abroad, in the order sent, each with its Mission and the Turns left on it. */
   spies: Spy[]
+  /** The Missions its Spies in place may be set to, in the ruleset's order. */
+  missions: Mission[]
   /** How many Turns a Warparty takes to reach another Nation, by its Strength, from the weakest up. */
   travelBrackets: TravelBracket[]
   /** How many Turns a Spy takes to reach another Nation. */

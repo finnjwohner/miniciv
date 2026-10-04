@@ -202,19 +202,54 @@ describe('SpiesPanel', () => {
     ).toBe(true)
   })
 
-  it('shows Spies in place at the same Nation as one row with a count', () => {
+  it('shows each Spy in place as its own row, Idle or with its Mission and the Turns left on it', () => {
     renderGame({
       nation: nationView({
-        spies: [spy({ id: 1 }), spy({ id: 2 }), spy({ id: 3 })],
+        spies: [spy({ id: 1 }), spy({ id: 2, mission: 'Report Gold', missionTurnsLeft: 1 })],
       }),
     })
     fireEvent.click(tab('Spies & Scouts'))
 
     const spies = screen.getByRole('region', { name: 'Spies & Scouts' })
     const rows = within(spies).getAllByRole('listitem')
-    expect(rows).toHaveLength(1)
-    expect(rows[0]).toHaveTextContent('Spy ×3')
-    expect(rows[0]).toHaveTextContent('in place at Egypt')
+    expect(rows).toHaveLength(2)
+    expect(rows[0]).toHaveTextContent('in place at Egypt, Idle')
+    expect(rows[1]).toHaveTextContent('in place at Egypt, on Report Gold, 1 Turn left')
+  })
+
+  it('offers a Mission picker per Spy in place, showing its current Mission', () => {
+    renderGame({
+      nation: nationView({
+        spies: [spy({ id: 1 }), spy({ id: 2, mission: 'Report Army', missionTurnsLeft: 2 }), spy({ id: 3, turnsLeft: 1 })],
+      }),
+    })
+    fireEvent.click(tab('Spies & Scouts'))
+
+    const spies = screen.getByRole('region', { name: 'Spies & Scouts' })
+    const idle = within(spies).getByRole('combobox', { name: 'Mission for Spy 1 in Egypt' })
+    expect(options(idle)).toEqual([
+      'Choose a Mission',
+      'Report Gold (2 Turns)',
+      'Report Population (2 Turns)',
+      'Report Research (2 Turns)',
+      'Report Army (2 Turns)',
+      'Report Buildings (2 Turns)',
+    ])
+    expect(idle).toHaveValue('')
+    expect(within(spies).getByRole('combobox', { name: 'Mission for Spy 2 in Egypt' })).toHaveValue('Report Army')
+    expect(within(spies).queryByRole('combobox', { name: 'Mission for Spy 3 in Egypt' })).not.toBeInTheDocument()
+  })
+
+  it('sets a Spy’s Mission when one is picked', () => {
+    const onSetMission = vi.fn()
+    renderGame({ nation: nationView({ spies: [spy({ id: 1 }), spy({ id: 2, mission: 'Report Gold', missionTurnsLeft: 1 })] }), onSetMission })
+    fireEvent.click(tab('Spies & Scouts'))
+
+    fireEvent.change(screen.getByRole('combobox', { name: 'Mission for Spy 2 in Egypt' }), {
+      target: { value: 'Report Research' },
+    })
+
+    expect(onSetMission).toHaveBeenCalledWith(2, 'Report Research')
   })
 
   it('keeps Spies to the same Nation with different Turns left as separate rows', () => {

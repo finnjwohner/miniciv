@@ -10,26 +10,35 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
- * The game content: Unit types, Building types, Technologies and Events. It is
- * checked when made, so a Game never meets content that refers to something
- * missing.
+ * The game content: Unit types, Building types, Technologies, Events and Spy
+ * Missions. It is checked when made, so a Game never meets content that refers
+ * to something missing.
  */
 public record Ruleset(List<UnitType> units, List<BuildingType> buildings, List<Technology> technologies,
-		List<Event> events) {
+		List<Event> events, List<Mission> missions) {
 
 	public Ruleset {
 		units = List.copyOf(units);
 		buildings = List.copyOf(buildings);
 		technologies = List.copyOf(technologies);
 		events = List.copyOf(events);
-		List<String> problems = problems(units, buildings, technologies, events);
+		missions = List.copyOf(missions);
+		List<String> problems = problems(units, buildings, technologies, events, missions);
 		if (!problems.isEmpty()) {
 			throw new InvalidRuleset("The ruleset is invalid:\n" + String.join("\n", problems));
 		}
 	}
 
 	/**
-	 * Game content with no Events.
+	 * Game content with no Missions.
+	 */
+	public Ruleset(List<UnitType> units, List<BuildingType> buildings, List<Technology> technologies,
+			List<Event> events) {
+		this(units, buildings, technologies, events, List.of());
+	}
+
+	/**
+	 * Game content with no Events or Missions.
 	 */
 	public Ruleset(List<UnitType> units, List<BuildingType> buildings, List<Technology> technologies) {
 		this(units, buildings, technologies, List.of());
@@ -45,6 +54,10 @@ public record Ruleset(List<UnitType> units, List<BuildingType> buildings, List<T
 
 	public Optional<Technology> technology(String name) {
 		return technologies.stream().filter(t -> t.name().equals(name)).findFirst();
+	}
+
+	public Optional<Mission> mission(String name) {
+		return missions.stream().filter(m -> m.name().equals(name)).findFirst();
 	}
 
 	/**
@@ -67,7 +80,7 @@ public record Ruleset(List<UnitType> units, List<BuildingType> buildings, List<T
 	}
 
 	private static List<String> problems(List<UnitType> units, List<BuildingType> buildings,
-			List<Technology> technologies, List<Event> events) {
+			List<Technology> technologies, List<Event> events, List<Mission> missions) {
 		List<String> problems = new ArrayList<>();
 		Set<String> unitNames = names(units.stream().map(UnitType::name));
 		Set<String> buildingNames = names(buildings.stream().map(BuildingType::name));
@@ -141,6 +154,12 @@ public record Ruleset(List<UnitType> units, List<BuildingType> buildings, List<T
 		duplicates(technologies.stream().flatMap(technology -> technology.unlocks().stream()))
 			.forEach(name -> problems.add(name + " is unlocked by more than one Technology."));
 		events.forEach(event -> problems.addAll(event.problems(units)));
+		if (missions.stream().map(Mission::name).anyMatch(Ruleset::isBlank)) {
+			problems.add("A Mission has no name.");
+		}
+		duplicates(missions.stream().map(Mission::name))
+			.forEach(name -> problems.add("There is more than one Mission called " + name + "."));
+		missions.forEach(mission -> problems.addAll(mission.problems()));
 		return problems;
 	}
 
