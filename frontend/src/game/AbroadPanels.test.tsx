@@ -25,6 +25,16 @@ describe('ArmyPanel', () => {
     expect(screen.getByRole('slider', { name: 'How many Archer to send' })).toHaveAttribute('max', '2')
   })
 
+  it('keeps the Warparty slider for a single Unit, so 0 stays selectable', () => {
+    renderGame({ nation: nationView({ army: { Warrior: 1 } }) })
+    fireEvent.click(tab('Army'))
+
+    const warriors = screen.getByRole('slider', { name: 'How many Warrior to send' })
+    expect(warriors).toHaveAttribute('min', '0')
+    expect(warriors).toHaveAttribute('max', '1')
+    expect(warriors).toHaveValue('0')
+  })
+
   it('shows no travel brackets, keeping the arrival and Recall Turns', () => {
     renderGame({ nation: nationView({ warparties: [warparty()] }) })
     fireEvent.click(tab('Army'))

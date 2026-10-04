@@ -1,8 +1,12 @@
 // Controls shared by the Game screen's panels.
 
+import { graduations } from './graduations'
+
 /**
- * A slider snapping to whole numbers from `min` to `max`, such as how many Units to train, with its range
- * and current value beside it. With nothing to choose (`max` below `min`) it is disabled and shows no numbers.
+ * A slider snapping to whole numbers from `min` to `max`, such as how many Units to train, drawn with
+ * graduations beneath it like a measuring rule and the current value beside it. With nothing to choose it shows no
+ * slider: just the one value as text when `min` and `max` meet, or disabled with no numbers when `max` is
+ * below `min`.
  */
 export function CountSlider({
   value,
@@ -24,20 +28,40 @@ export function CountSlider({
       </span>
     )
   }
+  if (max === min) {
+    return (
+      <span className="count-slider">
+        <output className="count-slider__value" aria-label={label}>
+          {min}
+        </output>
+      </span>
+    )
+  }
   return (
     <span className="count-slider">
-      <span className="count-slider__bound">{min}</span>
-      <input
-        type="range"
-        className="count-slider__input"
-        min={min}
-        max={max}
-        step={1}
-        value={value}
-        onChange={(e) => onChange(Math.round(Number(e.target.value)))}
-        aria-label={label}
-      />
-      <span className="count-slider__bound">{max}</span>
+      <span className="count-slider__scale">
+        <input
+          type="range"
+          className="count-slider__input"
+          min={min}
+          max={max}
+          step={1}
+          value={value}
+          onChange={(e) => onChange(Math.round(Number(e.target.value)))}
+          aria-label={label}
+        />
+        <span className="count-slider__ticks" aria-hidden="true">
+          {graduations(min, max).map((mark) => (
+            <span
+              key={mark.value}
+              className={mark.major ? 'count-slider__tick count-slider__tick--major' : 'count-slider__tick'}
+              style={{ left: `${((mark.value - min) / (max - min)) * 100}%` }}
+            >
+              {mark.labelled && <span className="count-slider__tick-label">{mark.value}</span>}
+            </span>
+          ))}
+        </span>
+      </span>
       <output className="count-slider__value">{value}</output>
     </span>
   )
