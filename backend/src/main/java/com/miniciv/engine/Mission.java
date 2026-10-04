@@ -7,7 +7,7 @@ import java.util.List;
  * What a Spy in place at another Nation may be set to do there, for a fixed
  * number of Turns; a Spy on no Mission is Idle. An Intel Mission reports a
  * Fact for certain when it ends; a hostile Mission harms the Nation the Spy is
- * at, if it succeeds by chance when it ends.
+ * at, or steals from it, if it succeeds by chance when it ends.
  *
  * @param name what the Mission is called and chosen by, such as "Report Gold"
  * @param turns how many Turns must resolve before the Mission ends
@@ -15,26 +15,37 @@ import java.util.List;
  *        hostile one
  * @param chance for a hostile Mission, how likely it is to succeed when it
  *        ends, above 0 and at most 1; 0 for an Intel one
- * @param harm for a hostile Mission, what it does to the Nation the Spy is at
- *        if it succeeds; null for an Intel one
- * @param text for a hostile Mission, how the harmed Nation's Turn Report
- *        announces it, such as "Saboteurs struck in the night", followed by
- *        what it harmed; it never names who sent the Spy
+ * @param harm for a hostile Mission that harms, what it does to the Nation the
+ *        Spy is at if it succeeds; null for any other
+ * @param steals for a Steal Mission, the resource, Gold or Research, its Spy
+ *        takes a share of from what the Nation it is at gains the next Turn
+ *        if it succeeds; null for any other
+ * @param text for a hostile Mission, how the harmed or robbed Nation's Turn
+ *        Report announces it, such as "Saboteurs struck in the night",
+ *        followed by what it harmed or took; it never names who sent the Spy
  */
-public record Mission(String name, int turns, FactKind reports, double chance, Harm harm, String text) {
+public record Mission(String name, int turns, FactKind reports, double chance, Harm harm, Resource steals,
+		String text) {
 
 	/**
 	 * An Intel Mission, reporting the given kind of Fact.
 	 */
 	public Mission(String name, int turns, FactKind reports) {
-		this(name, turns, reports, 0, null, null);
+		this(name, turns, reports, 0, null, null, null);
 	}
 
 	/**
-	 * A hostile Mission.
+	 * A hostile Mission that harms.
 	 */
 	public Mission(String name, int turns, double chance, Harm harm, String text) {
-		this(name, turns, null, chance, harm, text);
+		this(name, turns, null, chance, harm, null, text);
+	}
+
+	/**
+	 * A Steal Mission.
+	 */
+	public Mission(String name, int turns, double chance, Resource steals, String text) {
+		this(name, turns, null, chance, null, steals, text);
 	}
 
 	/**
@@ -67,7 +78,7 @@ public record Mission(String name, int turns, FactKind reports, double chance, H
 	 * Whether it is a hostile Mission rather than an Intel one.
 	 */
 	public boolean hostile() {
-		return harm != null;
+		return harm != null || steals != null;
 	}
 
 	/**
@@ -96,6 +107,15 @@ public record Mission(String name, int turns, FactKind reports, double chance, H
 		}
 		if (text == null || text.isBlank()) {
 			problems.add(subject + " has no text to announce it.");
+		}
+		if (steals != null) {
+			if (harm != null) {
+				problems.add(subject + " steals, so it cannot also harm its target.");
+			}
+			if (steals != Resource.GOLD && steals != Resource.RESEARCH) {
+				problems.add(subject + " can only steal Gold or Research.");
+			}
+			return problems;
 		}
 		if (harm.damageDefense() < 0 || harm.damageBuildings() < 0 || harm.armyKilled() < 0 || harm.populationLost() < 0) {
 			problems.add(subject + " cannot harm by less than 0.");

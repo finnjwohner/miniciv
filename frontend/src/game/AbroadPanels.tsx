@@ -165,10 +165,15 @@ function inPlace(spy: Spy) {
   return !spy.homeward && spy.turnsLeft === 0
 }
 
+/** Whether a Mission harms or steals from the Nation its Spy is at, rather than reporting a Fact. */
+function hostile(mission: Mission) {
+  return mission.harm !== null || mission.steals !== null
+}
+
 /** Such as "Report Gold (2 Turns)" or, for a hostile Mission, "Poison Army (4 Turns, 50% chance)". */
 function missionLabel(mission: Mission) {
   const turns = plural(mission.turns, 'Turn')
-  if (mission.harm === null) return `${mission.name} (${turns})`
+  if (!hostile(mission)) return `${mission.name} (${turns})`
   return `${mission.name} (${turns}, ${Math.round(mission.chance * 100)}% chance)`
 }
 
@@ -197,8 +202,8 @@ function MissionSelect({
         </option>
       )}
       {[
-        { label: 'Intel', group: missions.filter((m) => m.harm === null) },
-        { label: 'Hostile', group: missions.filter((m) => m.harm !== null) },
+        { label: 'Intel', group: missions.filter((m) => !hostile(m)) },
+        { label: 'Hostile', group: missions.filter(hostile) },
       ]
         .filter(({ group }) => group.length > 0)
         .map(({ label, group }) => (
@@ -217,9 +222,18 @@ function MissionSelect({
 function describeSpy(spy: Spy, map: MapNation[]) {
   const target = <MapName name={spy.target} map={map} />
   if (spy.homeward) {
+    const haul = spy.haul && ` carrying ${spy.haul.amount} ${spy.haul.resource === 'GOLD' ? 'Gold' : 'Research'}`
     return (
       <>
-        heading home from {target}, {plural(spy.turnsLeft, 'Turn')} left
+        heading home from {target}
+        {haul}, {plural(spy.turnsLeft, 'Turn')} left
+      </>
+    )
+  }
+  if (spy.escaping) {
+    return (
+      <>
+        in place at {target}, Escaping after {spy.mission}; it takes its Haul as this Turn ends
       </>
     )
   }
@@ -377,14 +391,22 @@ export function SpiesPanel({
         <p className="muted">No Spies abroad.</p>
       ) : (
         <ul className="list">
-          {mergeAlike(nation.spies, (s) => [s.unit, s.target, s.homeward, s.turnsLeft, inPlace(s) ? s.id : 0]).map(
+          {mergeAlike(nation.spies, (s) => [
+            s.unit,
+            s.target,
+            s.homeward,
+            s.turnsLeft,
+            inPlace(s) ? s.id : 0,
+            s.haul?.resource ?? '',
+            s.haul?.amount ?? 0,
+          ]).map(
             ({ key, item, count }) => (
               <li key={key} className="row row--wrap">
                 <span className="row__name">
                   <TypeName name={item.unit} kind="unit" size={24} /> ×{count}
                 </span>
                 <span className="row__meta">{describeSpy(item, nation.map)}</span>
-                {inPlace(item) && (
+                {inPlace(item) && !item.escaping && (
                   <MissionSelect
                     spy={item}
                     missions={nation.missions}

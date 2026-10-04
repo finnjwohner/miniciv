@@ -194,11 +194,14 @@ export function recallTurns(brackets: TravelBracket[], warparty: Warparty): numb
   return Math.max(1, Math.min(warparty.turnsTravelled, turns))
 }
 
+/** The Gold or Research a Spy stole, reaching its Nation only once the Spy has carried it home. */
+export type Haul = { resource: 'GOLD' | 'RESEARCH'; amount: number }
 /**
  * A Spy sent abroad, told apart by `id`; `turnsLeft` is how many more Turns must resolve before it gets
  * where it is heading, 0 once it is in place at its target, where it stays. `homeward` once its target is
- * out of the Game, or it was Unmasked, and it is heading back. `mission` is the name of the Mission it is on, with
- * `missionTurnsLeft` Turns to go, or null while it is Idle.
+ * out of the Game, it was Unmasked, or it is carrying a `haul`, and it is heading back. `mission` is the name of
+ * the Mission it is on, with `missionTurnsLeft` Turns to go, or null while it is Idle. `escaping` once its Steal
+ * Mission `mission` succeeded, until it takes its Haul as the next Turn resolves, out of anyone's reach.
  */
 export type Spy = {
   id: number
@@ -209,6 +212,8 @@ export type Spy = {
   turnsTravelled: number
   mission: string | null
   missionTurnsLeft: number
+  escaping: boolean
+  haul: Haul | null
 }
 /** The kinds of Fact a Mission may report. */
 export type FactKind = 'GOLD' | 'POPULATION' | 'RESEARCH' | 'ARMY' | 'BUILDINGS'
@@ -219,8 +224,9 @@ export type FactKind = 'GOLD' | 'POPULATION' | 'RESEARCH' | 'ARMY' | 'BUILDINGS'
 export type Harm = { damageDefense: number; damageBuildings: number; armyKilled: number; populationLost: number }
 /**
  * What a Spy in place may be set to do, for `turns` Turns. An Intel Mission reports the kind of Fact `reports`
- * when it ends; a hostile one, with `harm`, succeeds with probability `chance` when it ends, and its target is
- * told `text` without being told who sent the Spy.
+ * when it ends; a hostile one, with `harm` or stealing the resource `steals` from what its target gains the next
+ * Turn, succeeds with probability `chance` when it ends, and its target is told `text` without being told who
+ * sent the Spy.
  */
 export type Mission = {
   name: string
@@ -228,6 +234,7 @@ export type Mission = {
   reports: FactKind | null
   chance: number
   harm: Harm | null
+  steals: Haul['resource'] | null
   text: string | null
 }
 /** A kind of Task Scouts can be set to: `LOCATE` searches for a Nation not yet Located until it is Located. */

@@ -78,15 +78,15 @@ class SpiesTest {
 
 		NationView rome = game.viewOf("Rome");
 		assertThat(rome.army()).containsExactly(entry("Spy", 1));
-		assertThat(rome.spies()).containsExactly(new Spy(1, "Spy", "Carthage", false, 3, 0, null, 0));
+		assertThat(rome.spies()).containsExactly(new Spy(1, "Spy", "Carthage", false, 3, 0, null, 0, false, null));
 		game.endTurn();
 		game.endTurn();
-		assertThat(game.viewOf("Rome").spies()).containsExactly(new Spy(1, "Spy", "Carthage", false, 1, 2, null, 0));
+		assertThat(game.viewOf("Rome").spies()).containsExactly(new Spy(1, "Spy", "Carthage", false, 1, 2, null, 0, false, null));
 		assertThat(report("Rome")).noneMatch(line -> line.contains("Spy"));
 
 		game.endTurn();
 
-		assertThat(game.viewOf("Rome").spies()).containsExactly(new Spy(1, "Spy", "Carthage", false, 0, 3, null, 0));
+		assertThat(game.viewOf("Rome").spies()).containsExactly(new Spy(1, "Spy", "Carthage", false, 0, 3, null, 0, false, null));
 		assertThat(report("Rome")).contains("Your Spy arrived at Carthage.");
 		assertThat(report("Carthage")).noneMatch(line -> line.contains("Spy") || line.contains("Rome"));
 	}
@@ -100,7 +100,7 @@ class SpiesTest {
 			game.endTurn();
 		}
 
-		assertThat(game.viewOf("Rome").spies()).containsExactly(new Spy(1, "Spy", "Carthage", false, 0, 3, null, 0));
+		assertThat(game.viewOf("Rome").spies()).containsExactly(new Spy(1, "Spy", "Carthage", false, 0, 3, null, 0, false, null));
 		assertThat(game.viewOf("Rome").army()).isEmpty();
 	}
 
@@ -158,7 +158,7 @@ class SpiesTest {
 		assertThat(game.viewOf("Carthage").conqueredBy()).isEqualTo("Egypt");
 
 		assertThat(report("Rome")).contains("Your Spy in Carthage is heading home, as Carthage was conquered.");
-		assertThat(game.viewOf("Rome").spies()).containsExactly(new Spy(1, "Spy", "Carthage", true, 3, 3, null, 0));
+		assertThat(game.viewOf("Rome").spies()).containsExactly(new Spy(1, "Spy", "Carthage", true, 3, 3, null, 0, false, null));
 		for (int turn = 1; turn <= 3; turn++) {
 			game.endTurn();
 		}

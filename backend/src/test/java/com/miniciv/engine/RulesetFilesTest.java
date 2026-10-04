@@ -402,11 +402,13 @@ class RulesetFilesTest {
 				new Mission("Report Army", 2, Mission.FactKind.ARMY),
 				new Mission("Report Buildings", 2, Mission.FactKind.BUILDINGS));
 		assertThat(ruleset.missions()).filteredOn(Mission::hostile)
-			.extracting(Mission::name, Mission::turns, Mission::chance, Mission::harm)
-			.containsExactly(tuple("Sabotage Defenses", 4, 0.6, new Mission.Harm(8, 0, 0, 0)),
-					tuple("Sabotage Buildings", 4, 0.6, new Mission.Harm(0, 1, 0, 0)),
-					tuple("Poison Army", 4, 0.5, new Mission.Harm(0, 0, 0.2, 0)),
-					tuple("Incite Unrest", 3, 0.6, new Mission.Harm(0, 0, 0, 4)));
+			.extracting(Mission::name, Mission::turns, Mission::chance, Mission::harm, Mission::steals)
+			.containsExactly(tuple("Sabotage Defenses", 4, 0.6, new Mission.Harm(8, 0, 0, 0), null),
+					tuple("Sabotage Buildings", 4, 0.6, new Mission.Harm(0, 1, 0, 0), null),
+					tuple("Poison Army", 4, 0.5, new Mission.Harm(0, 0, 0.2, 0), null),
+					tuple("Incite Unrest", 3, 0.6, new Mission.Harm(0, 0, 0, 4), null),
+					tuple("Steal Gold", 3, 0.6, null, Resource.GOLD),
+					tuple("Steal Research", 3, 0.6, null, Resource.RESEARCH));
 	}
 
 	@Test
@@ -415,6 +417,13 @@ class RulesetFilesTest {
 			.isThrownBy(() -> RulesetFiles.load("rulesets/malformed-mission"))
 			.withMessageContaining("Mission Sabotage Defenses must have a chance above 0 and at most 1.")
 			.withMessageContaining("Mission Sabotage Defenses has no text to announce it.");
+	}
+
+	@Test
+	void aMissionStealingPopulationFailsToLoad() {
+		assertThatExceptionOfType(InvalidRuleset.class)
+			.isThrownBy(() -> RulesetFiles.load("rulesets/population-theft"))
+			.withMessageContaining("Mission Steal Population can only steal Gold or Research.");
 	}
 
 	@Test

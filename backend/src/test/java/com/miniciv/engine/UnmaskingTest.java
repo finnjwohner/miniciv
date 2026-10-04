@@ -132,7 +132,7 @@ class UnmaskingTest {
 		luck.then(0.99, 0, 0.5);
 		game.endTurn();
 
-		assertThat(spies()).containsExactly(new Spy(1, "Spy", "Carthage", true, 3, 3, null, 0));
+		assertThat(spies()).containsExactly(new Spy(1, "Spy", "Carthage", true, 3, 3, null, 0, false, null));
 		assertThat(report("Rome")).contains("Your Spy in Carthage failed at Incite Unrest.",
 				"Your Spy in Carthage was Unmasked and is fleeing home.")
 			.noneMatch(line -> line.contains("is Idle"));

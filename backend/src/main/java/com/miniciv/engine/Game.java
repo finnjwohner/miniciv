@@ -122,6 +122,12 @@ public class Game {
 	private static final double CAUGHT_WHEN_UNMASKED_CHANCE = 0.5;
 
 	/**
+	 * The least share of what its target gains that an Escaping Spy takes as
+	 * its Haul; it may take all of it.
+	 */
+	private static final double MIN_HAUL_SHARE = 0.2;
+
+	/**
 	 * The chance each Scout gives its Nation, each Turn, of catching
 	 * each other Nation's Spy still travelling.
 	 */
@@ -384,7 +390,12 @@ public class Game {
 							" and " + listed(returned.units()) + " rejoined your Army."));
 			}
 			for (Spy returned : nation.spiesTravelHome()) {
-				reports.get(nation.name()).add(SPIES_AND_SCOUTS, "Your Spy came home from " + returned.target() + " and rejoined your Army.");
+				reports.get(nation.name())
+					.add(SPIES_AND_SCOUTS, returned.haul() == null
+							? Line.of("Your Spy came home from " + returned.target() + " and rejoined your Army.")
+							: Line.of("Your Spy came home from " + returned.target() + " with ",
+									gain(returned.haul().resource(), returned.haul().amount()),
+									" and joined your Spies at home."));
 			}
 		}
 		// A Nation conquered earlier in this Turn no longer fights, and its
@@ -405,9 +416,14 @@ public class Game {
 				reports.get(nation.name()).add(SPIES_AND_SCOUTS, "Your Spy arrived at " + arrived.target() + ".");
 			}
 		}
+		Map<String, Nation.Change> gains = new LinkedHashMap<>();
 		for (Nation nation : remaining()) {
 			TurnReport.Draft report = reports.get(nation.name());
+			int goldBefore = nation.gold();
+			int researchBefore = nation.research();
 			IncomeAndUpkeep earnings = earnAndPayUpkeep(nation);
+			gains.put(nation.name(),
+					new Nation.Change(nation.gold() - goldBefore, 0, nation.research() - researchBefore));
 			List<Line> grown = new ArrayList<>();
 			if (earnings.populationGrowth() > 0) {
 				grown.add(Line.of(gain(POPULATION, earnings.populationGrowth())));
@@ -451,9 +467,11 @@ public class Game {
 				}
 			}
 		}
+		takeHauls(gains, reports);
 		rollEvents(reports, witnessed);
 		scout(reports);
 		catchSpies(reports, witnessed);
+		escape(reports, witnessed);
 		workOnMissions(reports, witnessed);
 		tellWitnesses(reports, witnessed);
 		meet(reports);
@@ -1203,8 +1221,10 @@ public class Game {
 	/**
 	 * Has each Nation still in the Game in order move each of its Spies on a
 	 * Mission, in the order sent, one Turn further into it. A Spy whose
-	 * Mission ends goes Idle, and the Player is alerted. Idle Spies do
-	 * nothing.
+	 * Mission ends goes Idle, and the Player is alerted, unless it succeeded
+	 * at a Steal Mission: it is then Escaping instead, its sender is told so,
+	 * and nothing more is drawn for it until the next Turn (see
+	 * {@link #takeHauls} and {@link #escape}). Idle Spies do nothing.
 	 * <p>
 	 * An Intel Mission that ends reports its Fact, as it stands once the Turn
 	 * has resolved, in the Turn Report and on the Map, tagged with this Turn,
@@ -1227,6 +1247,12 @@ public class Game {
 				if (mission.hostile()) {
 					Nation target = nation(spy.target());
 					boolean succeeded = random.nextDouble() < mission.chance();
+					if (succeeded && mission.steals() != null) {
+						spying.changeSpy(spy, succeeding -> succeeding.escaping(mission));
+						report.add(SPIES_AND_SCOUTS, "Your Spy in " + spy.target() + " succeeded at " + mission.name()
+								+ " and is Escaping; it will take its Haul from what " + spy.target() + " gains next Turn.");
+						continue;
+					}
 					if (succeeded) {
 						List<Line> harmed = sabotage(mission, target, reports);
 						if (!harmed.isEmpty()) {
@@ -1254,6 +1280,96 @@ public class Game {
 				}
 				report.add(DECISIONS_AND_ALERTS,
 						"Your Spy in " + spy.target() + " finished " + mission.name() + " and is Idle; set it a new Mission.");
+			}
+		}
+	}
+
+	/**
+	 * Has each Nation still in the Game in order have its Escaping Spies, in
+	 * the order sent, take their Haul from what the Nation each is at gained
+	 * as it earned and paid upkeep this Turn, never from what it held before:
+	 * each draws once from the seeded random source for a share of 20% to 100%
+	 * of what is left of that gain, at least 1, which the robbed Nation loses
+	 * and whose Turn Report says what was taken without naming the sender. A
+	 * Spy whose target gained none of what it steals takes nothing and draws
+	 * nothing.
+	 *
+	 * @param gains how much Gold and Research each Nation gained as it earned
+	 *        and paid upkeep this Turn; what is taken is taken from it
+	 */
+	private void takeHauls(Map<String, Nation.Change> gains, Map<String, TurnReport.Draft> reports) {
+		for (Nation spying : remaining()) {
+			for (Spy spy : spying.spiesEscaping()) {
+				Mission mission = ruleset.mission(spy.mission()).orElseThrow();
+				Resource resource = mission.steals();
+				Nation.Change gain = gains.get(spy.target());
+				int gained = resource == GOLD ? gain.gold() : gain.research();
+				if (gained <= 0) {
+					continue;
+				}
+				double share = MIN_HAUL_SHARE + (1 - MIN_HAUL_SHARE) * random.nextDouble();
+				int taken = Math.min(gained, Math.max(1, (int) Math.round(gained * share)));
+				int gold = resource == GOLD ? taken : 0;
+				int research = resource == RESEARCH ? taken : 0;
+				nation(spy.target()).gain(-gold, 0, -research);
+				gains.put(spy.target(), new Nation.Change(gain.gold() - gold, 0, gain.research() - research));
+				spying.changeSpy(spy, escaping -> escaping.took(new Haul(resource, taken)));
+				reports.get(spy.target())
+					.add(SPIES_AND_SCOUTS, announced(mission.text(),
+							List.of(Line.of(loss(resource, taken), " was taken from what your Nation gained"))));
+			}
+		}
+	}
+
+	/**
+	 * Has each Nation still in the Game in order have its Escaping Spies, in
+	 * the order sent, stop Escaping once they have taken their Haul, if any.
+	 * Each draws once from the seeded random source for whether it is
+	 * Unmasked, {@value #UNMASK_CHANCE_ON_SUCCESS} likely, and an Unmasked Spy
+	 * draws once more for whether it is caught on the spot (see
+	 * {@link #caught}), its Haul going straight back to the Nation it robbed,
+	 * or flees home carrying its Haul, both sides told and its target told who
+	 * sent it, without Locating the sender. Otherwise a Spy with a Haul sets
+	 * off home carrying it, and one without is back in place and Idle; its
+	 * sender is told which.
+	 */
+	private void escape(Map<String, TurnReport.Draft> reports, List<Witnessed> witnessed) {
+		for (Nation spying : remaining()) {
+			for (Spy spy : spying.spiesEscaping()) {
+				TurnReport.Draft report = reports.get(spying.name());
+				Nation target = nation(spy.target());
+				Haul haul = spy.haul();
+				boolean unmasked = random.nextDouble() < UNMASK_CHANCE_ON_SUCCESS;
+				if (unmasked && random.nextDouble() < CAUGHT_WHEN_UNMASKED_CHANCE) {
+					caught(spy, spying, target, "Your people unmasked and", reports, witnessed);
+					if (haul != null) {
+						target.gain(haul.resource() == GOLD ? haul.amount() : 0, 0,
+								haul.resource() == RESEARCH ? haul.amount() : 0);
+						reports.get(target.name())
+							.add(SPIES_AND_SCOUTS, Line.of("You took back the ", gain(haul.resource(), haul.amount()), " it stole."));
+					}
+					continue;
+				}
+				if (unmasked) {
+					spying.fleeHome(spy);
+					report.add(SPIES_AND_SCOUTS, haul == null
+							? Line.of("Your Spy in " + spy.target() + " was Unmasked and is fleeing home.")
+							: Line.of("Your Spy in " + spy.target() + " stole ", gain(haul.resource(), haul.amount()),
+									", was Unmasked and is fleeing home with it."));
+					reports.get(spy.target())
+						.add(SPIES_AND_SCOUTS, "A Spy was Unmasked in your Nation and fled home; " + spying.ruled() + " sent it.");
+					continue;
+				}
+				if (haul != null) {
+					spying.changeSpy(spy, Spy::carryingHaulHome);
+					report.add(SPIES_AND_SCOUTS, Line.of("Your Spy in " + spy.target() + " stole ",
+							gain(haul.resource(), haul.amount()), " and is heading home with it."));
+					continue;
+				}
+				spying.changeSpy(spy, Spy::idle);
+				report.add(SPIES_AND_SCOUTS, "Your Spy in " + spy.target() + " found nothing to steal, as " + spy.target()
+						+ " gained no " + ruleset.mission(spy.mission()).orElseThrow().steals().named() + ".");
+				report.add(DECISIONS_AND_ALERTS, "Your Spy in " + spy.target() + " is Idle; set it a new Mission.");
 			}
 		}
 	}
@@ -1356,7 +1472,7 @@ public class Game {
 	 * hostile Mission {@value #HOSTILE_CATCH_MULTIPLIER} times as likely to be
 	 * caught as any other; then with its Scouts, and then with each of its
 	 * travelling Warparties in the order sent, those still travelling
-	 * anywhere. Each try takes the other
+	 * anywhere. No one tries to catch an Escaping Spy. Each try takes the other
 	 * Nations in order and each one's Spies in the order sent, drawing once
 	 * from the seeded random source for each Spy not yet caught; a Spy caught
 	 * draws once more for what becomes of it. See {@link #caught}.
@@ -1368,6 +1484,9 @@ public class Game {
 				for (Nation other : others(catching)) {
 					for (Spy spy : other.spiesInPlace()) {
 						if (!spy.target().equals(catching.name())) {
+							continue;
+						}
+						if (spy.escaping()) {
 							continue;
 						}
 						double perSpy = onHostileMission(spy) ? HOSTILE_CATCH_MULTIPLIER * CATCH_CHANCE_PER_SPY_AT_HOME

@@ -245,14 +245,24 @@ describe('SpiesPanel', () => {
       nation: nationView({
         spies: [spy({ id: 1 })],
         missions: [
-          { name: 'Report Gold', turns: 2, reports: 'GOLD', chance: 0, harm: null, text: null },
+          { name: 'Report Gold', turns: 2, reports: 'GOLD', chance: 0, harm: null, steals: null, text: null },
           {
             name: 'Sabotage Buildings',
             turns: 4,
             reports: null,
             chance: 0.6,
             harm: { damageDefense: 0, damageBuildings: 1, armyKilled: 0, populationLost: 0 },
+            steals: null,
             text: 'Saboteurs struck in the night',
+          },
+          {
+            name: 'Steal Gold',
+            turns: 3,
+            reports: null,
+            chance: 0.6,
+            harm: null,
+            steals: 'GOLD',
+            text: 'Thieves robbed your treasury',
           },
         ],
       }),
@@ -263,7 +273,36 @@ describe('SpiesPanel', () => {
     expect(options(within(picker).getByRole('group', { name: 'Intel' }))).toEqual(['Report Gold (2 Turns)'])
     expect(options(within(picker).getByRole('group', { name: 'Hostile' }))).toEqual([
       'Sabotage Buildings (4 Turns, 60% chance)',
+      'Steal Gold (3 Turns, 60% chance)',
     ])
+  })
+
+  it('shows an Escaping Spy without a Mission picker', () => {
+    renderGame({ nation: nationView({ spies: [spy({ id: 1, mission: 'Steal Gold', escaping: true })] }) })
+    fireEvent.click(tab('Spies & Scouts'))
+
+    const spies = screen.getByRole('region', { name: 'Spies & Scouts' })
+    expect(within(spies).getByRole('listitem')).toHaveTextContent(
+      'in place at Egypt, Escaping after Steal Gold; it takes its Haul as this Turn ends',
+    )
+    expect(within(spies).queryByRole('combobox', { name: 'Mission for Spy 1 in Egypt' })).not.toBeInTheDocument()
+  })
+
+  it('shows the Haul a Spy heading home carries', () => {
+    renderGame({
+      nation: nationView({
+        spies: [
+          spy({ id: 1, homeward: true, turnsLeft: 3, haul: { resource: 'GOLD', amount: 12 } }),
+          spy({ id: 2, homeward: true, turnsLeft: 3, haul: { resource: 'RESEARCH', amount: 4 } }),
+        ],
+      }),
+    })
+    fireEvent.click(tab('Spies & Scouts'))
+
+    const rows = within(screen.getByRole('region', { name: 'Spies & Scouts' })).getAllByRole('listitem')
+    expect(rows).toHaveLength(2)
+    expect(rows[0]).toHaveTextContent('heading home from Egypt carrying 12 Gold, 3 Turns left')
+    expect(rows[1]).toHaveTextContent('heading home from Egypt carrying 4 Research, 3 Turns left')
   })
 
   it('sets a Spy’s Mission when one is picked', () => {

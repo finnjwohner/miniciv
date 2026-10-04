@@ -39,9 +39,9 @@ class RulesetTest {
 					List.of(new Mission("Sabotage Defenses", 4, 1.5, new Mission.Harm(8, 0, 0, 0), " "),
 							new Mission("Loiter", 2, 0.5, new Mission.Harm(0, 0, 0, 0), "Nothing happened"),
 							new Mission("Poison Army", 4, 0.5, new Mission.Harm(0, 0, 1.5, -1), "Poison"),
-							new Mission("Double Agent", 2, Mission.FactKind.GOLD, 0.5, new Mission.Harm(0, 1, 0, 0),
+							new Mission("Double Agent", 2, Mission.FactKind.GOLD, 0.5, new Mission.Harm(0, 1, 0, 0), null,
 									"Saboteurs"),
-							new Mission("Report Army", 2, Mission.FactKind.ARMY, 0.5, null, null))))
+							new Mission("Report Army", 2, Mission.FactKind.ARMY, 0.5, null, null, null))))
 			.withMessageContaining("Mission Sabotage Defenses must have a chance above 0 and at most 1.")
 			.withMessageContaining("Mission Sabotage Defenses has no text to announce it.")
 			.withMessageContaining("Mission Loiter harms nothing.")
@@ -50,6 +50,20 @@ class RulesetTest {
 			.withMessageContaining("Mission Double Agent harms its target, so it cannot also report a Fact.")
 			.withMessageContaining(
 					"Mission Report Army reports a Fact, so it cannot have a chance or text, which belong to hostile Missions.");
+	}
+
+	@Test
+	void aStealMissionStealsOnlyGoldOrResearchAndHarmsNothing() {
+		assertThatExceptionOfType(InvalidRuleset.class)
+			.isThrownBy(() -> new Ruleset(List.of(), List.of(), List.of(), List.of(),
+					List.of(new Mission("Steal Population", 3, 0.6, Resource.POPULATION, "Thieves"),
+							new Mission("Steal and Burn", 3, null, 0.6, new Mission.Harm(0, 1, 0, 0), Resource.GOLD,
+									"Thieves"),
+							new Mission("Steal Gold", 3, 0, Resource.GOLD, " "))))
+			.withMessageContaining("Mission Steal Population can only steal Gold or Research.")
+			.withMessageContaining("Mission Steal and Burn steals, so it cannot also harm its target.")
+			.withMessageContaining("Mission Steal Gold must have a chance above 0 and at most 1.")
+			.withMessageContaining("Mission Steal Gold has no text to announce it.");
 	}
 
 	@Test

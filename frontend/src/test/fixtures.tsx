@@ -147,11 +147,11 @@ export function nationView(overrides: Partial<NationView> = {}): NationView {
     warparties: [],
     spies: [],
     missions: [
-      { name: 'Report Gold', turns: 2, reports: 'GOLD', chance: 0, harm: null, text: null },
-      { name: 'Report Population', turns: 2, reports: 'POPULATION', chance: 0, harm: null, text: null },
-      { name: 'Report Research', turns: 2, reports: 'RESEARCH', chance: 0, harm: null, text: null },
-      { name: 'Report Army', turns: 2, reports: 'ARMY', chance: 0, harm: null, text: null },
-      { name: 'Report Buildings', turns: 2, reports: 'BUILDINGS', chance: 0, harm: null, text: null },
+      { name: 'Report Gold', turns: 2, reports: 'GOLD', chance: 0, harm: null, steals: null, text: null },
+      { name: 'Report Population', turns: 2, reports: 'POPULATION', chance: 0, harm: null, steals: null, text: null },
+      { name: 'Report Research', turns: 2, reports: 'RESEARCH', chance: 0, harm: null, steals: null, text: null },
+      { name: 'Report Army', turns: 2, reports: 'ARMY', chance: 0, harm: null, steals: null, text: null },
+      { name: 'Report Buildings', turns: 2, reports: 'BUILDINGS', chance: 0, harm: null, steals: null, text: null },
     ],
     travelBrackets: [
       { strength: 0, turns: 1 },
@@ -302,6 +302,8 @@ export function spy(overrides: Partial<Spy> = {}): Spy {
     turnsTravelled: 2,
     mission: null,
     missionTurnsLeft: 0,
+    escaping: false,
+    haul: null,
     ...overrides,
   }
 }
