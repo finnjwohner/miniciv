@@ -76,11 +76,23 @@ class RulesetFilesTest {
 	}
 
 	@Test
-	void theShippedRulesetHasFiftyFourEventsAndFortyFourDilemmas() {
+	void theShippedRulesetHasSixtyTwoEventsAndFortyEightDilemmas() {
 		Ruleset ruleset = RulesetFiles.load("ruleset");
 
-		assertThat(ruleset.events()).filteredOn(event -> !event.dilemma()).hasSize(54);
-		assertThat(ruleset.events()).filteredOn(Event::dilemma).hasSize(44);
+		assertThat(ruleset.events()).filteredOn(event -> !event.dilemma()).hasSize(62);
+		assertThat(ruleset.events()).filteredOn(Event::dilemma).hasSize(48);
+	}
+
+	@Test
+	void eightShippedEventsAndFourShippedDilemmasDamageBuildings() {
+		Ruleset ruleset = RulesetFiles.load("ruleset");
+
+		assertThat(ruleset.events()).filteredOn(event -> !event.dilemma())
+			.filteredOn(event -> event.effects().damageBuildings() > 0)
+			.hasSize(8);
+		assertThat(ruleset.events()).filteredOn(Event::dilemma)
+			.filteredOn(event -> allEffects(event).stream().anyMatch(effects -> effects.damageBuildings() > 0))
+			.hasSize(4);
 	}
 
 	@Test
@@ -128,6 +140,7 @@ class RulesetFilesTest {
 		assertThat(nationEffects).as("own Spy caught").anyMatch(effects -> effects.spyCaught() == Event.SpyCaught.OWN);
 		assertThat(nationEffects).as("enemy Spy caught").anyMatch(effects -> effects.spyCaught() == Event.SpyCaught.ENEMY);
 		assertThat(nationEffects).as("Scouts lost").anyMatch(effects -> effects.scoutsLost() > 0);
+		assertThat(nationEffects).as("Buildings Damaged").anyMatch(effects -> effects.damageBuildings() > 0);
 		List<Event.Lasting> lasting = nationEffects.stream().map(Event.Effects::lasting).filter(Objects::nonNull).toList();
 		assertThat(lasting).as("Lasting Gold").anyMatch(each -> each.gold() != 0);
 		assertThat(lasting).as("Lasting Population").anyMatch(each -> each.population() != 0);
@@ -156,12 +169,13 @@ class RulesetFilesTest {
 	 * Rough worth of each effect in Gold, for weighing Dilemma choices against
 	 * each other: a Population is worth the Gold it earns over a few Turns,
 	 * a Research about three Gold, a point of Defense lost about six
-	 * Gold to repair or rebuild, a Scout lost about twenty Gold to train
-	 * again, a Unit what it costs to train, a Turn of work stalled about ten
-	 * Gold, a Spy of the Nation's own caught what it cost and another
-	 * Nation's caught half that, and a Lasting Event its per-Turn changes
-	 * over its Turns, a halt to growth costing the two Population a Nation
-	 * grows by each Turn.
+	 * Gold to repair or rebuild, a non-defensive Building Damaged about forty
+	 * Gold to Repair and in what it fails to add meanwhile, a Scout lost about
+	 * twenty Gold to train again, a Unit what it costs to train, a Turn of
+	 * work stalled about ten Gold, a Spy of the Nation's own caught what it
+	 * cost and another Nation's caught half that, and a Lasting Event its
+	 * per-Turn changes over its Turns, a halt to growth costing the two
+	 * Population a Nation grows by each Turn.
 	 */
 	static double worth(Event.Effects effects, Ruleset ruleset) {
 		double units = effects.units()
@@ -176,7 +190,7 @@ class RulesetFilesTest {
 				: lasting.turns() * (lasting.gold() + 6.0 * lasting.population() + 3.0 * lasting.research()
 						- (lasting.noGrowth() ? 6.0 * 2 : 0));
 		return effects.gold() + 6.0 * effects.population() + 3.0 * effects.research() - 6.0 * effects.damageDefense()
-				- 20.0 * effects.scoutsLost() + units - 10.0 * effects.workTurns() + spy + lastingWorth;
+				- 40.0 * effects.damageBuildings() - 20.0 * effects.scoutsLost() + units - 10.0 * effects.workTurns() + spy + lastingWorth;
 	}
 
 	static double expectedWorth(Event.Choice choice, Ruleset ruleset) {

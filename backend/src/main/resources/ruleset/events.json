@@ -311,6 +311,23 @@
     "effects": { "gold": -20 }, "text": "Counterfeit coin flooded your markets" },
   { "name": "Bumper vintage", "subject": "Nation", "chance": 0.05, "when": { "turnAtLeast": 3 },
     "effects": { "gold": 15 }, "text": "Your vineyards gave a bumper vintage" },
+  { "name": "Warehouse fire", "subject": "Nation", "chance": 0.03, "when": { "turnAtLeast": 6 },
+    "effects": { "gold": -10, "damageBuildings": 1 }, "text": "Fire broke out in a warehouse and spread to its neighbours" },
+  { "name": "Gale", "subject": "Nation", "chance": 0.03, "when": { "turnAtLeast": 4 },
+    "effects": { "damageBuildings": 1 }, "text": "A gale tore through your streets" },
+  { "name": "Landslide", "subject": "Nation", "chance": 0.03, "when": { "turnAtLeast": 6 },
+    "effects": { "population": -2, "damageBuildings": 1 }, "text": "A hillside gave way and slid into your Nation" },
+  { "name": "Rot", "subject": "Nation", "chance": 0.02, "when": { "turnAtLeast": 10 },
+    "effects": { "damageBuildings": 1 }, "text": "Rot crept unnoticed into the beams of your Buildings" },
+  { "name": "Subsidence", "subject": "Nation", "chance": 0.02, "when": { "turnAtLeast": 8 },
+    "effects": { "workTurns": 1, "damageBuildings": 1 }, "text": "Old mine workings collapsed beneath your streets" },
+  { "name": "Vandals", "subject": "Nation", "chance": 0.03, "when": { "turnAtLeast": 6, "populationAtLeast": 15 },
+    "effects": { "gold": -10, "damageBuildings": 1 }, "text": "Vandals ran wild through your streets in the night" },
+  { "name": "Burst dam", "subject": "Nation", "chance": 0.02, "when": { "turnAtLeast": 10 },
+    "effects": { "population": -3, "damageBuildings": 2 }, "text": "A dam burst upstream, and the waters tore through your Nation" },
+  { "name": "Wildfire", "subject": "Nation", "chance": 0.02, "when": { "turnAtLeast": 7 },
+    "effects": { "damageBuildings": 1, "lasting": { "turns": 2, "noGrowth": true } },
+    "text": "Wildfire swept down from the hills" },
   { "name": "Camp fever", "subject": "Warparty", "chance": 0.04, "when": { "turnAtLeast": 4, "unitsAtLeast": 4 },
     "effects": { "units": { "Warrior": -1 } }, "text": "Fever swept through the camp" },
   { "name": "Raiders", "subject": "Warparty", "chance": 0.03, "when": { "turnAtLeast": 6, "unitsAtLeast": 3 },
@@ -686,6 +703,83 @@
         { "chance": 0.7, "effects": { "lasting": { "turns": 2, "noGrowth": true } },
           "text": "You ignored the thieves, and your granaries emptied" },
         { "chance": 0.3, "effects": { "population": -1 }, "text": "You ignored the thieves, and they grew bolder" }
+      ] }
+    ] },
+  { "name": "Spreading fire", "subject": "Nation", "chance": 0.03, "when": { "turnAtLeast": 5 },
+    "text": "A fire is spreading through your city",
+    "choices": [
+      { "name": "Form bucket chains", "outcomes": [
+        { "chance": 0.7, "effects": { "population": -2 }, "text": "Your people formed bucket chains and put the fire out" },
+        { "chance": 0.3, "effects": { "population": -2, "damageBuildings": 1 },
+          "text": "Your people formed bucket chains, but the fire had already caught hold" }
+      ] },
+      { "name": "Tear down what is in its path", "outcomes": [
+        { "chance": 0.8, "effects": { "damageBuildings": 1 },
+          "text": "You tore down what stood in the fire's path, and it burned itself out" },
+        { "chance": 0.2, "effects": { "damageBuildings": 2 },
+          "text": "You tore down what stood in the fire's path, but the wind carried it over" }
+      ] },
+      { "name": "Let it burn", "worst": true, "outcomes": [
+        { "chance": 0.7, "effects": { "damageBuildings": 3 }, "text": "You let the fire burn, and it took street after street" },
+        { "chance": 0.3, "effects": { "damageBuildings": 1 }, "text": "You let the fire burn, and rain soon put it out" }
+      ] }
+    ] },
+  { "name": "Hungry mob", "subject": "Nation", "chance": 0.03, "when": { "turnAtLeast": 6, "populationAtLeast": 15 },
+    "text": "A hungry mob is marching on your granaries",
+    "choices": [
+      { "name": "Open the granaries", "outcomes": [
+        { "chance": 0.8, "effects": { "gold": -20 }, "text": "You opened your granaries to the mob" },
+        { "chance": 0.2, "effects": { "gold": -20, "damageBuildings": 1 },
+          "text": "You opened your granaries, and the mob wrecked what it could reach in the scramble" }
+      ] },
+      { "name": "Drive them off", "outcomes": [
+        { "chance": 0.6, "effects": { "population": -3 }, "text": "You drove the mob off" },
+        { "chance": 0.4, "effects": { "population": -3, "damageBuildings": 1 },
+          "text": "You drove the mob off, but not before it set fires as it fled" }
+      ] },
+      { "name": "Bar the doors", "worst": true, "outcomes": [
+        { "chance": 0.7, "effects": { "population": -1, "damageBuildings": 2 },
+          "text": "You barred the doors, and the mob broke in and wrecked what it could" },
+        { "chance": 0.3, "text": "You barred the doors, and the mob drifted home" }
+      ] }
+    ] },
+  { "name": "Shoddy work", "subject": "Nation", "chance": 0.03, "when": { "turnAtLeast": 8 },
+    "text": "Your builders have been found cutting corners on your Buildings",
+    "choices": [
+      { "name": "Have it done again", "outcomes": [
+        { "chance": 0.75, "effects": { "gold": -25, "workTurns": 1 }, "text": "You had the shoddy work torn out and done again" },
+        { "chance": 0.25, "effects": { "gold": -25, "workTurns": 2 },
+          "text": "You had the shoddy work done again, and it took far longer than promised" }
+      ] },
+      { "name": "Punish the builders", "outcomes": [
+        { "chance": 0.5, "effects": { "population": -1, "workTurns": 1 },
+          "text": "You punished the builders, and the rest set the work right for nothing" },
+        { "chance": 0.5, "effects": { "population": -1, "damageBuildings": 1 },
+          "text": "You punished the builders, but their work gave way before it could be set right" }
+      ] },
+      { "name": "Leave it", "worst": true, "outcomes": [
+        { "chance": 0.6, "effects": { "damageBuildings": 2 }, "text": "You left the shoddy work, and it gave way" },
+        { "chance": 0.4, "text": "You left the shoddy work, and it held for now" }
+      ] }
+    ] },
+  { "name": "Alchemists' fire", "subject": "Nation", "chance": 0.03, "when": { "turnAtLeast": 10 },
+    "text": "Your alchemists have brewed a fire that burns on water, and want to test it",
+    "choices": [
+      { "name": "Test it in the city", "outcomes": [
+        { "chance": 0.5, "effects": { "research": 15 }, "text": "Your alchemists tested their fire, and learned much from it" },
+        { "chance": 0.5, "effects": { "research": 5, "damageBuildings": 1 },
+          "text": "Your alchemists tested their fire, and it got away from them" }
+      ] },
+      { "name": "Test it far from the city", "outcomes": [
+        { "chance": 0.7, "effects": { "gold": -15, "research": 10 },
+          "text": "Your alchemists carried their fire far from the city and tested it there" },
+        { "chance": 0.3, "effects": { "gold": -15 },
+          "text": "Your alchemists carried their fire far from the city, and it fizzled out on the way" }
+      ] },
+      { "name": "Forbid it", "worst": true, "outcomes": [
+        { "chance": 0.7, "text": "You forbade the alchemists' test" },
+        { "chance": 0.3, "effects": { "damageBuildings": 1 },
+          "text": "You forbade the test, and the alchemists tried it in secret in their workshop" }
       ] }
     ] },
   { "name": "Missing Scout", "subject": "Scouts", "chance": 0.03, "when": { "turnAtLeast": 4 },
