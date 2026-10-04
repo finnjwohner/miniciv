@@ -37,6 +37,25 @@
     "effects": { "travelTurns": -1 }, "text": "Favourable winds sped the march" },
   { "name": "Blocked mountain pass", "subject": "Warparty", "chance": 0.03, "when": { "turnAtLeast": 8 },
     "effects": { "travelTurns": 2 }, "text": "A rockfall blocked the mountain pass" },
+  { "name": "Blizzard", "subject": "Scouts", "chance": 0.04, "when": { "turnAtLeast": 3 },
+    "effects": { "scoutsLost": 1 }, "text": "A Scout was lost in a blizzard" },
+  { "name": "Abandoned camp", "subject": "Scouts", "chance": 0.05,
+    "effects": { "gold": 15 }, "text": "Your Scouts found supplies in an abandoned camp" },
+  { "name": "Ancient ruins", "subject": "Scouts", "chance": 0.04, "when": { "turnAtLeast": 4 },
+    "effects": { "research": 8 }, "text": "Your Scouts mapped ancient ruins in the wilds" },
+  { "name": "Strange tracks", "subject": "Scouts", "chance": 0.03, "when": { "turnAtLeast": 5 },
+    "text": "Your Scouts found strange tracks leading into the mountains",
+    "choices": [
+      { "name": "Follow them", "outcomes": [
+        { "chance": 0.6, "effects": { "research": 10 }, "text": "Your Scouts followed the tracks to a forgotten shrine" },
+        { "chance": 0.4, "effects": { "scoutsLost": 1 }, "text": "Your Scouts followed the tracks, and one never came back" }
+      ] },
+      { "name": "Leave them", "worst": true, "outcomes": [
+        { "chance": 0.8, "text": "Your Scouts left the tracks alone" },
+        { "chance": 0.2, "effects": { "gold": -10 },
+          "text": "Your Scouts left the tracks alone, and whoever made them raided your caravans" }
+      ] }
+    ] },
   { "name": "Rumours of war", "subject": "Nation", "chance": 0.5, "when": { "approachingUnitsAtLeast": 8 },
     "text": "Rumours spread of a large army marching on your Nation" },
   { "name": "Outbreak", "subject": "Nation", "chance": 0.05, "when": { "turnAtLeast": 3, "populationAtLeast": 14 },

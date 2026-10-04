@@ -834,11 +834,12 @@ public class Game {
 
 	/**
 	 * Rolls every Event, in the order listed, for each Nation still in the
-	 * Game in order or each of its travelling Warparties in the order sent,
-	 * that the Event's conditions hold for, drawing once from the seeded random
-	 * source for each. One that happens takes effect at once, as luck varies
-	 * it (see {@link Event.Effects#varied}), and is announced in the Turn
-	 * Report of the Nation it happened to, or that sent the Warparty. An Event
+	 * Game in order (for a Scout Event, only one with Scouts) or each of its
+	 * travelling Warparties in the order sent, that the Event's conditions
+	 * hold for, drawing once from the seeded random source for each. One that
+	 * happens takes effect at once, as luck varies it (see
+	 * {@link Event.Effects#varied}), and is announced in the Turn Report of
+	 * the Nation it happened to, or that sent the Warparty. An Event
 	 * whose effects need what the Nation or Warparty does not have (see
 	 * {@link #canBefall}) is not rolled for it.
 	 */
@@ -847,8 +848,9 @@ public class Game {
 			for (Nation nation : remaining()) {
 				TurnReport.Draft report = reports.get(nation.name());
 				switch (event.subject()) {
-					case NATION -> {
-						if (event.when().holdForNation(turn, nation, nation.defense(ruleset), largestApproaching(nation))
+					case NATION, SCOUTS -> {
+						if ((event.subject() == Event.Subject.NATION || nation.scouts() > 0)
+								&& event.when().holdForNation(turn, nation, nation.defense(ruleset), largestApproaching(nation))
 								&& canBefall(event.effects(), nation) && happens(event)) {
 							if (event.dilemma()) {
 								nation.faceDilemma(event);
@@ -1368,6 +1370,13 @@ public class Game {
 		}
 		if (!effects.units().isEmpty()) {
 			changes.addAll(unitsChanged(nation.changeArmy(effects.units()), "your Army"));
+		}
+		if (effects.scoutsLost() > 0) {
+			Map<String, Integer> scoutsLost = nation.loseScouts(effects.scoutsLost());
+			if (!scoutsLost.isEmpty()) {
+				int count = scoutsLost.values().stream().mapToInt(Integer::intValue).sum();
+				changes.add(Line.of(scoutsCounted(scoutsLost) + (count == 1 ? " was" : " were") + " lost in the wilds"));
+			}
 		}
 		if (effects.workTurns() != 0 && nation.workInProgress() > 0) {
 			int pick = (int) (random.nextDouble() * nation.workInProgress());

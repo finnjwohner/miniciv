@@ -5,6 +5,7 @@ import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 
+import static com.miniciv.engine.ScoutEventsTest.scoutsLost;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 
 class RulesetTest {
@@ -107,7 +108,7 @@ class RulesetTest {
 					List.of(event("Plague", null, 0.1, null, null),
 							event("Good harvest", Event.Subject.NATION, 0, null, null),
 							event("Dust storm", Event.Subject.WARPARTY, 1.5, null, null))))
-			.withMessageContaining("Event Plague must happen to a Nation or a Warparty")
+			.withMessageContaining("Event Plague must happen to a Nation, a Warparty or Scouts")
 			.withMessageContaining("Event Good harvest must have a chance above 0 and at most 1")
 			.withMessageContaining("Event Dust storm must have a chance above 0 and at most 1");
 	}
@@ -216,6 +217,55 @@ class RulesetTest {
 			.isThrownBy(() -> new Ruleset(List.of(), List.of(), List.of(), List.of(ambush, flood)))
 			.withMessageContaining("Event Ambush offers choices, so it must happen to a Nation")
 			.withMessageContaining("Event Flood offers choices, so its effects belong to its choices");
+	}
+
+	@Test
+	void aScoutEventHasTheConditionsAndEffectsOfANation() {
+		Event blizzard = event("Blizzard", Event.Subject.SCOUTS, 0.1,
+				new Event.Conditions(2, 10, 1, 4, 30, 5, 2), new Event.Effects(5, -1, 2, 3, 1, null, 1, null, 1));
+
+		assertThatExceptionOfType(InvalidRuleset.class)
+			.isThrownBy(() -> new Ruleset(List.of(), List.of(), List.of(), List.of(blizzard)))
+			.withMessageContaining("Event Blizzard happens to Scouts, so it cannot need unitsAtLeast")
+			.withMessageContaining("Event Blizzard happens to Scouts, so it cannot change travelTurns")
+			.withMessageNotContaining("populationAtLeast")
+			.withMessageNotContaining("gold")
+			.withMessageNotContaining("workTurns")
+			.withMessageNotContaining("scoutsLost");
+	}
+
+	@Test
+	void onlyAScoutEventCanLoseScoutsAndNeverLessThanZero() {
+		Event famine = event("Famine", Event.Subject.NATION, 0.1, null, scoutsLost(1));
+		Event storm = event("Dust storm", Event.Subject.WARPARTY, 0.1, null, scoutsLost(1));
+		Event thaw = event("Thaw", Event.Subject.SCOUTS, 0.1, null, scoutsLost(-1));
+		Event bandits = dilemma("Bandits", Event.Subject.NATION, null, choice("Flee", true),
+				new Event.Choice("Hunt", scoutsLost(1), false, "You hunted"),
+				new Event.Choice("Track", false,
+						List.of(new Event.Outcome(1, scoutsLost(1), "Your trackers vanished"))));
+		Event avalanche = dilemma("Avalanche", Event.Subject.SCOUTS, null, choice("Wait", true),
+				new Event.Choice("Climb", scoutsLost(-2), false, "You climbed"),
+				new Event.Choice("Dig", false, List.of(new Event.Outcome(1, scoutsLost(-1), "You dug"))));
+
+		assertThatExceptionOfType(InvalidRuleset.class)
+			.isThrownBy(() -> new Ruleset(List.of(), List.of(), List.of(),
+					List.of(famine, storm, thaw, bandits, avalanche)))
+			.withMessageContaining("Event Famine happens to a Nation, so it cannot change scoutsLost")
+			.withMessageContaining("Event Dust storm happens to a Warparty, so it cannot change scoutsLost")
+			.withMessageContaining("Event Thaw cannot lose less than 0 Scouts")
+			.withMessageContaining("Event Bandits's choice Hunt cannot lose Scouts, as Event Bandits happens to a Nation")
+			.withMessageContaining(
+					"Event Bandits's choice Track has an outcome that cannot lose Scouts, as Event Bandits happens to a Nation")
+			.withMessageContaining("Event Avalanche's choice Climb cannot lose less than 0 Scouts")
+			.withMessageContaining("Event Avalanche's choice Dig has an outcome that cannot lose less than 0 Scouts");
+	}
+
+	@Test
+	void aDilemmaCanHappenToScouts() {
+		Event lostTrail = dilemma("Lost trail", Event.Subject.SCOUTS, null, choice("Wait", true),
+				new Event.Choice("Press on", scoutsLost(1), false, "You pressed on"));
+
+		new Ruleset(List.of(), List.of(), List.of(), List.of(lostTrail));
 	}
 
 	static Event.Outcome outcome(double chance) {

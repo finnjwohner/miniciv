@@ -31,6 +31,18 @@ class RulesetFilesTest {
 	}
 
 	@Test
+	void theShippedRulesetHasScoutEventsThatLoseScoutsAndAScoutDilemma() {
+		Ruleset ruleset = RulesetFiles.load("ruleset");
+
+		assertThat(ruleset.events()).filteredOn(event -> event.subject() == Event.Subject.SCOUTS)
+			.extracting(Event::name)
+			.contains("Blizzard", "Abandoned camp", "Ancient ruins", "Strange tracks");
+		assertThat(ruleset.events()).filteredOn(event -> event.name().equals("Blizzard"))
+			.extracting(event -> event.effects().scoutsLost())
+			.containsExactly(1);
+	}
+
+	@Test
 	void everyShippedDilemmaChoiceCanTurnOutMoreThanOneWay() {
 		Ruleset ruleset = RulesetFiles.load("ruleset");
 
@@ -56,11 +68,13 @@ class RulesetFilesTest {
 	/**
 	 * Rough worth of each effect in Gold, for weighing Dilemma choices against
 	 * each other: a Population is worth the Gold it earns over a few Turns,
-	 * a Research about three Gold, and a point of Defense lost about six
-	 * Gold to repair or rebuild.
+	 * a Research about three Gold, a point of Defense lost about six
+	 * Gold to repair or rebuild, and a Scout lost about twenty Gold to train
+	 * again.
 	 */
 	static double worth(Event.Effects effects) {
-		return effects.gold() + 6.0 * effects.population() + 3.0 * effects.research() - 6.0 * effects.damageDefense();
+		return effects.gold() + 6.0 * effects.population() + 3.0 * effects.research() - 6.0 * effects.damageDefense()
+				- 20.0 * effects.scoutsLost();
 	}
 
 	static double expectedWorth(Event.Choice choice) {

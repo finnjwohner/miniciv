@@ -159,7 +159,7 @@ _Avoid_: Domination, elimination
 ## Events
 
 **Event**:
-Something that happens to a Nation, a Warparty or a Nation's Scouts outside the Players' direct actions, announced through the Turn Report (e.g. a plague, a good harvest, a dust storm delaying a Warparty, rumours of an approaching army). How much it changes varies a little by luck.
+Something that happens to a Nation, a Warparty or a Nation's Scouts outside the Players' direct actions, announced through the Turn Report (e.g. a plague, a good harvest, a dust storm delaying a Warparty, rumours of an approaching army, a Scout lost in a blizzard). How much it changes varies a little by luck, except how many Turns it delays a Warparty by and how many Scouts it loses.
 _Avoid_: Incident, occurrence
 
 **Lasting Event**:
