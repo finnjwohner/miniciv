@@ -1288,11 +1288,11 @@ public class Game {
 	 * Has each Nation still in the Game in order have its Escaping Spies, in
 	 * the order sent, take their Haul from what the Nation each is at gained
 	 * as it earned and paid upkeep this Turn, never from what it held before:
-	 * each draws once from the seeded random source for a share of 20% to 100%
-	 * of what is left of that gain, at least 1, which the robbed Nation loses
-	 * and whose Turn Report says what was taken without naming the sender. A
-	 * Spy whose target gained none of what it steals takes nothing and draws
-	 * nothing.
+	 * each draws once from the seeded random source for a share of
+	 * {@value #MIN_HAUL_SHARE} to all of what is left of that gain, at least
+	 * 1, which the robbed Nation loses and whose Turn Report says what was
+	 * taken without naming the sender. A Spy whose target gained none of what
+	 * it steals, or none is left, takes nothing and draws nothing.
 	 *
 	 * @param gains how much Gold and Research each Nation gained as it earned
 	 *        and paid upkeep this Turn; what is taken is taken from it
@@ -1323,15 +1323,14 @@ public class Game {
 
 	/**
 	 * Has each Nation still in the Game in order have its Escaping Spies, in
-	 * the order sent, stop Escaping once they have taken their Haul, if any.
-	 * Each draws once from the seeded random source for whether it is
-	 * Unmasked, {@value #UNMASK_CHANCE_ON_SUCCESS} likely, and an Unmasked Spy
+	 * the order sent, stop Escaping. One that took nothing is back in place
+	 * and Idle, drawing nothing. One with a Haul draws once from the seeded
+	 * random source for whether it is Unmasked, {@value #UNMASK_CHANCE_ON_SUCCESS} likely, and an Unmasked Spy
 	 * draws once more for whether it is caught on the spot (see
 	 * {@link #caught}), its Haul going straight back to the Nation it robbed,
 	 * or flees home carrying its Haul, both sides told and its target told who
-	 * sent it, without Locating the sender. Otherwise a Spy with a Haul sets
-	 * off home carrying it, and one without is back in place and Idle; its
-	 * sender is told which.
+	 * sent it, without Locating the sender, or otherwise sets off home
+	 * carrying it. Its sender is told what became of it.
 	 */
 	private void escape(Map<String, TurnReport.Draft> reports, List<Witnessed> witnessed) {
 		for (Nation spying : remaining()) {
@@ -1339,37 +1338,30 @@ public class Game {
 				TurnReport.Draft report = reports.get(spying.name());
 				Nation target = nation(spy.target());
 				Haul haul = spy.haul();
+				if (haul == null) {
+					spying.changeSpy(spy, Spy::idle);
+					report.add(SPIES_AND_SCOUTS, "Your Spy in " + spy.target() + " found nothing to steal there.");
+					report.add(DECISIONS_AND_ALERTS, "Your Spy in " + spy.target() + " is Idle; set it a new Mission.");
+					continue;
+				}
+				Line stolen = Line.of(gain(haul.resource(), haul.amount()));
 				boolean unmasked = random.nextDouble() < UNMASK_CHANCE_ON_SUCCESS;
 				if (unmasked && random.nextDouble() < CAUGHT_WHEN_UNMASKED_CHANCE) {
 					caught(spy, spying, target, "Your people unmasked and", reports, witnessed);
-					if (haul != null) {
-						target.gain(haul.resource() == GOLD ? haul.amount() : 0, 0,
-								haul.resource() == RESEARCH ? haul.amount() : 0);
-						reports.get(target.name())
-							.add(SPIES_AND_SCOUTS, Line.of("You took back the ", gain(haul.resource(), haul.amount()), " it stole."));
-					}
+					target.gain(haul);
+					reports.get(target.name()).add(SPIES_AND_SCOUTS, Line.of("You took back the ", stolen, " it stole."));
 					continue;
 				}
 				if (unmasked) {
 					spying.fleeHome(spy);
-					report.add(SPIES_AND_SCOUTS, haul == null
-							? Line.of("Your Spy in " + spy.target() + " was Unmasked and is fleeing home.")
-							: Line.of("Your Spy in " + spy.target() + " stole ", gain(haul.resource(), haul.amount()),
-									", was Unmasked and is fleeing home with it."));
+					report.add(SPIES_AND_SCOUTS,
+							Line.of("Your Spy in " + spy.target() + " stole ", stolen, ", was Unmasked and is fleeing home with it."));
 					reports.get(spy.target())
 						.add(SPIES_AND_SCOUTS, "A Spy was Unmasked in your Nation and fled home; " + spying.ruled() + " sent it.");
 					continue;
 				}
-				if (haul != null) {
-					spying.changeSpy(spy, Spy::carryingHaulHome);
-					report.add(SPIES_AND_SCOUTS, Line.of("Your Spy in " + spy.target() + " stole ",
-							gain(haul.resource(), haul.amount()), " and is heading home with it."));
-					continue;
-				}
-				spying.changeSpy(spy, Spy::idle);
-				report.add(SPIES_AND_SCOUTS, "Your Spy in " + spy.target() + " found nothing to steal, as " + spy.target()
-						+ " gained no " + ruleset.mission(spy.mission()).orElseThrow().steals().named() + ".");
-				report.add(DECISIONS_AND_ALERTS, "Your Spy in " + spy.target() + " is Idle; set it a new Mission.");
+				spying.changeSpy(spy, Spy::carryingHaulHome);
+				report.add(SPIES_AND_SCOUTS, Line.of("Your Spy in " + spy.target() + " stole ", stolen, " and is heading home with it."));
 			}
 		}
 	}

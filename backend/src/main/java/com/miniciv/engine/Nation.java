@@ -432,6 +432,7 @@ class Nation {
 	 * Changes one of the Nation's Spies abroad.
 	 *
 	 * @param spy the Spy, as it is now or was earlier this Turn
+	 * @param change what becomes of it, given it as it is now
 	 */
 	void changeSpy(Spy spy, UnaryOperator<Spy> change) {
 		spies.replaceAll(current -> current.id() == spy.id() ? change.apply(current) : current);
@@ -729,6 +730,14 @@ class Nation {
 	 */
 	boolean canAfford(int gold, int population) {
 		return gold <= this.gold && population <= this.population;
+	}
+
+	/**
+	 * Adds a Haul to what the Nation owns.
+	 */
+	void gain(Haul haul) {
+		gain(haul.resource() == Resource.GOLD ? haul.amount() : 0, 0,
+				haul.resource() == Resource.RESEARCH ? haul.amount() : 0);
 	}
 
 	void gain(int gold, int population, int research) {
@@ -1186,9 +1195,7 @@ class Nation {
 				it.remove();
 				army.merge(current.unit(), 1, Integer::sum);
 				if (current.haul() != null) {
-					Haul haul = current.haul();
-					gain(haul.resource() == Resource.GOLD ? haul.amount() : 0, 0,
-							haul.resource() == Resource.RESEARCH ? haul.amount() : 0);
+					gain(current.haul());
 				}
 				returned.add(current);
 			}
