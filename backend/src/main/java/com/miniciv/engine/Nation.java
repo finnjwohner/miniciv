@@ -107,6 +107,11 @@ class Nation {
 	private final List<FacedDilemma> dilemmas = new ArrayList<>();
 
 	/**
+	 * The names of every Dilemma the Nation has faced this Game.
+	 */
+	private final Set<String> everFaced = new LinkedHashSet<>();
+
+	/**
 	 * The Nation or Nations that conquered this one, such as "Rome and Egypt",
 	 * or null while it is still in the Game.
 	 */
@@ -540,7 +545,15 @@ class Nation {
 	 */
 	void faceDilemma(Event dilemma) {
 		dilemmas.add(new FacedDilemma(dilemma, null));
+		everFaced.add(dilemma.name());
 		version++;
+	}
+
+	/**
+	 * Whether the Nation has faced the Dilemma before in this Game.
+	 */
+	boolean hasFaced(Event dilemma) {
+		return everFaced.contains(dilemma.name());
 	}
 
 	/**
