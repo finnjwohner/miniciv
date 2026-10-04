@@ -1,6 +1,5 @@
 package com.miniciv.room;
 
-import java.security.SecureRandom;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -9,9 +8,10 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Random;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
+import java.util.random.RandomGenerator;
 
 import com.miniciv.engine.Action;
 import com.miniciv.engine.ActionResult;
@@ -105,8 +105,6 @@ public class Room {
 	 */
 	private static final Duration DISCONNECTION_ALLOWANCE = Duration.ofMinutes(5);
 
-	private static final SecureRandom SEEDS = new SecureRandom();
-
 	private final String code;
 
 	private int version;
@@ -117,6 +115,11 @@ public class Room {
 
 	private final Ruleset ruleset;
 
+	/**
+	 * Supplies the luck the Game draws on once it starts.
+	 */
+	private final Supplier<RandomGenerator> luck;
+
 	private Game game;
 
 	private Instant turnEndsAt;
@@ -126,10 +129,11 @@ public class Room {
 	 */
 	private Instant pausedSince;
 
-	Room(String code, Clock clock, Ruleset ruleset) {
+	Room(String code, Clock clock, Ruleset ruleset, Supplier<RandomGenerator> luck) {
 		this.code = code;
 		this.clock = clock;
 		this.ruleset = ruleset;
+		this.luck = luck;
 	}
 
 	public String code() {
@@ -217,7 +221,7 @@ public class Room {
 		player.ready(ready);
 		version++;
 		if (players.size() >= MIN_PLAYERS && players.stream().allMatch(Player::ready)) {
-			game = new Game(ruleset, players.stream().map(Player::identity).toList(), new Random(SEEDS.nextLong()));
+			game = new Game(ruleset, players.stream().map(Player::identity).toList(), luck.get());
 			turnEndsAt = clock.instant().plus(TURN_LENGTH);
 			settle();
 		}

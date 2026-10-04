@@ -174,18 +174,34 @@ class DilemmasTest {
 	}
 
 	@Test
-	void aDilemmaCanOnlyBeAnsweredOnceAndOnlyWithAChoiceItOffers() {
+	void aDilemmaCanOnlyBeAnsweredWithAChoiceItOffers() {
 		play(firstDraws(2), OUTBREAK);
 		game.endTurn();
 
 		assertThat(game.act("Rome", new Action.AnswerDilemma("Outbreak", "Pray")))
 			.isEqualTo(ActionResult.rejected("Outbreak offers no choice called Pray."));
-		assertThat(game.act("Rome", new Action.AnswerDilemma("Outbreak", "Let it spread"))).isEqualTo(ActionResult.ACCEPTED);
-		assertThat(game.act("Rome", new Action.AnswerDilemma("Outbreak", "Quarantine")))
-			.isEqualTo(ActionResult.rejected("You have already chosen what to do about Outbreak."));
 		assertThat(game.act("Rome", new Action.AnswerDilemma("Flood", "Flee")))
 			.isEqualTo(ActionResult.rejected("There is no Dilemma called Flood awaiting your choice."));
-		assertThat(game.viewOf("Rome").dilemmas()).singleElement().extracting(Dilemma::chosen).isEqualTo("Let it spread");
+		assertThat(game.viewOf("Rome").dilemmas()).singleElement().extracting(Dilemma::chosen).isNull();
+	}
+
+	@Test
+	void aDilemmasChoiceCanBeChangedUntilTheTurnEndsAndTheLatestApplies() {
+		play(firstDraws(2), OUTBREAK);
+		game.endTurn();
+		assertThat(game.act("Rome", new Action.AnswerDilemma("Outbreak", "Let it spread"))).isEqualTo(ActionResult.ACCEPTED);
+		int version = game.viewOf("Rome").version();
+
+		assertThat(game.act("Rome", new Action.AnswerDilemma("Outbreak", "Quarantine"))).isEqualTo(ActionResult.ACCEPTED);
+
+		NationView rome = game.viewOf("Rome");
+		assertThat(rome.version()).isGreaterThan(version);
+		assertThat(rome.dilemmas()).singleElement().extracting(Dilemma::chosen).isEqualTo("Quarantine");
+
+		game.endTurn();
+
+		assertThat(report("Rome")).containsExactly("You quarantined the sick: your Nation lost 15 Gold and 2 Population.",
+				BASE_INCOME_REPORT);
 	}
 
 	@Test

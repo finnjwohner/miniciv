@@ -2,6 +2,8 @@ package com.miniciv;
 
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
+import java.util.random.RandomGenerator;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -18,7 +20,8 @@ import com.miniciv.engine.UnitType;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Encounters as Players experience them over STOMP.
+ * Encounters as Players experience them over STOMP, with luck that has every
+ * two Warparties abroad meet.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class EncountersTest {
@@ -36,6 +39,12 @@ class EncountersTest {
 		@Primary
 		Ruleset testRuleset() {
 			return new Ruleset(List.of(new UnitType("Warrior", 10, 1, 1, 1, 3, List.of())), List.of(), List.of());
+		}
+
+		@Bean
+		@Primary
+		Supplier<RandomGenerator> testLuck() {
+			return () -> () -> 0L;
 		}
 
 	}
@@ -72,8 +81,7 @@ class EncountersTest {
 		player.stomp().send("/app/rooms/" + code + destination, body);
 	}
 
-	@Test
-	void aPlayerIsToldPrivatelyWhyAChoiceAboutAnEncounterIsRejected() throws Exception {
+	void startGame() throws Exception {
 		code = (String) RestClient.create("http://localhost:" + port)
 			.post()
 			.uri("/api/rooms")
@@ -88,6 +96,57 @@ class EncountersTest {
 		for (TurnsTest.Connected player : List.of(rome, carthage)) {
 			player.privately().next();
 		}
+	}
+
+	void endTurn(int turn) throws Exception {
+		for (TurnsTest.Connected player : List.of(rome, carthage)) {
+			send(player, "/done", Map.of("token", player.token(), "turn", turn));
+		}
+		for (TurnsTest.Connected player : List.of(rome, carthage)) {
+			assertThat(player.privately().next().get("turn")).isEqualTo(turn + 1);
+		}
+	}
+
+	/**
+	 * Has Rome and Carthage each train a Warrior on Turn 1 and send it at the
+	 * other on Turn 2, so their Warparties meet as Turn 2 ends.
+	 */
+	void romeMeetsCarthage() throws Exception {
+		for (TurnsTest.Connected player : List.of(rome, carthage)) {
+			send(player, "/units", Map.of("token", player.token(), "unit", "Warrior", "count", 1));
+			player.privately().next();
+		}
+		endTurn(1);
+		for (TurnsTest.Connected player : List.of(rome, carthage)) {
+			send(player, "/warparties", Map.of("token", player.token(), "target", player == rome ? "Carthage" : "Rome",
+					"units", Map.of("Warrior", 1)));
+			player.privately().next();
+		}
+		endTurn(2);
+	}
+
+	static List<Map<String, Object>> encounter(String romeChoice) {
+		return List.of(Map.of("first", Map.of("nation", "Rome", "warparty", 1, "units", Map.of("Warrior", 1), "choice", romeChoice),
+				"second", Map.of("nation", "Carthage", "warparty", 1, "units", Map.of("Warrior", 1), "choice", "NONE")));
+	}
+
+	@Test
+	void whenAPlayerChangesTheirChoiceTheOtherPlayerSeesItAtOnce() throws Exception {
+		startGame();
+		romeMeetsCarthage();
+		send(rome, "/encounters/answers", Map.of("token", rome.token(), "warparty", 1, "fight", true));
+		rome.privately().next();
+		assertThat(carthage.privately().next().get("encounters")).isEqualTo(encounter("FIGHT"));
+
+		send(rome, "/encounters/answers", Map.of("token", rome.token(), "warparty", 1, "fight", false));
+
+		assertThat(rome.privately().next().get("encounters")).isEqualTo(encounter("PASS"));
+		assertThat(carthage.privately().next().get("encounters")).isEqualTo(encounter("PASS"));
+	}
+
+	@Test
+	void aPlayerIsToldPrivatelyWhyAChoiceAboutAnEncounterIsRejected() throws Exception {
+		startGame();
 		StompConnection.Messages romeRejections = rome.stomp().subscribe("/user/queue/rejections");
 
 		send(rome, "/encounters/answers", Map.of("token", rome.token(), "warparty", 1, "fight", true));

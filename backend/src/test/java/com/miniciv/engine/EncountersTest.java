@@ -146,7 +146,7 @@ class EncountersTest {
 	}
 
 	@Test
-	void eachPlayerChoosesOnceWhetherToFightAndTheOtherSeesTheChoiceAtOnce() {
+	void eachPlayerChoosesWhetherToFightAndTheOtherSeesTheChoiceAtOnce() {
 		romeMeetsCarthage();
 
 		assertThat(answer("Carthage", 1, false)).isEqualTo(ActionResult.ACCEPTED);
@@ -155,8 +155,6 @@ class EncountersTest {
 				side("Carthage", 1, Map.of("Warrior", 1), PASS));
 		assertThat(game.viewOf("Rome").encounters()).containsExactly(answered);
 		assertThat(game.viewOf("Carthage").encounters()).containsExactly(answered);
-		assertThat(answer("Carthage", 1, true))
-			.isEqualTo(ActionResult.rejected("You have already chosen whether to fight Rome's Warparty."));
 		assertThat(answer("Carthage", 2, true))
 			.isEqualTo(ActionResult.rejected("No Encounter awaits your choice for that Warparty."));
 		assertThat(answer("Egypt", 1, true))
@@ -166,6 +164,36 @@ class EncountersTest {
 
 		assertThat(game.viewOf("Carthage").encounters()).containsExactly(new Encounter(
 				side("Rome", 1, Map.of("Warrior", 3), FIGHT), side("Carthage", 1, Map.of("Warrior", 1), PASS)));
+	}
+
+	@Test
+	void aPlayerCanChangeTheirChoiceUntilTheTurnEndsAndTheOtherSeesTheChangeAtOnce() {
+		romeMeetsCarthage();
+		answer("Rome", 1, true);
+		int carthageVersion = game.viewOf("Carthage").version();
+
+		assertThat(answer("Rome", 1, false)).isEqualTo(ActionResult.ACCEPTED);
+
+		assertThat(game.viewOf("Carthage").version()).isGreaterThan(carthageVersion);
+		assertThat(game.viewOf("Carthage").encounters()).containsExactly(new Encounter(
+				side("Rome", 1, Map.of("Warrior", 3), PASS), side("Carthage", 1, Map.of("Warrior", 1), NONE)));
+	}
+
+	@Test
+	void onlyTheLatestChoiceCountsWhenTheTurnEnds() {
+		romeMeetsCarthage();
+		answer("Rome", 1, true);
+		answer("Rome", 1, false);
+		answer("Carthage", 1, false);
+
+		game.endTurn();
+
+		assertThat(game.viewOf("Rome").warparties())
+			.containsExactly(new Warparty(1, "Carthage", Map.of("Warrior", 3), 9, false, 1, 2));
+		assertThat(game.viewOf("Carthage").warparties())
+			.containsExactly(new Warparty(1, "Rome", Map.of("Warrior", 1), 3, false, 1, 2));
+		assertThat(report("Rome")).contains("Your Warparty of Warrior ×3 heading to Carthage and Hannibal of Carthage's"
+				+ " Warparty of Warrior ×1 went their separate ways, as neither of you chose to fight.");
 	}
 
 	@Test

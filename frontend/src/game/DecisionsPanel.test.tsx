@@ -1,5 +1,6 @@
-import { screen, within } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { fireEvent, screen, within } from '@testing-library/react'
+import { describe, expect, it, vi } from 'vitest'
+import type { Encounter } from '../api'
 import { nationView, renderGame } from '../test/fixtures'
 
 /** The choice buttons of the fixture's Flooded river Dilemma. */
@@ -21,13 +22,41 @@ describe('DecisionsPanel', () => {
     expect(within(flood).getByText("if you don't choose")).toBeInTheDocument()
   })
 
-  it('highlights the choice made and disables every choice', () => {
+  it('highlights the choice made, keeps every choice clickable and tags the card chosen', () => {
     const nation = nationView()
-    renderGame({ nation: { ...nation, dilemmas: [{ ...nation.dilemmas[0], chosen: 'Build levees' }] } })
+    const onAnswerDilemma = vi.fn()
+    renderGame({ nation: { ...nation, dilemmas: [{ ...nation.dilemmas[0], chosen: 'Build levees' }] }, onAnswerDilemma })
 
     const [levees, flood] = choiceButtons()
     expect(levees).toHaveClass('button--chosen')
     expect(flood).not.toHaveClass('button--chosen')
-    for (const button of choiceButtons()) expect(button).toBeDisabled()
+    expect(screen.getByText(/You chose Build levees; you can change it until the Turn ends/)).toBeInTheDocument()
+    const card = screen.getByRole('heading', { name: /Dilemma/ })
+    expect(within(card).getByText('chosen')).toHaveClass('tag--muted')
+    expect(within(card).queryByText('needs you')).not.toBeInTheDocument()
+
+    fireEvent.click(flood)
+
+    expect(onAnswerDilemma).toHaveBeenCalledWith('Flooded river', 'Let it flood')
+  })
+
+  it("keeps an Encounter's Fight and Let it pass after choosing, highlighting the choice", () => {
+    const encounter: Encounter = {
+      first: { nation: 'Rome', warparty: 1, units: { Warrior: 3 }, choice: 'FIGHT' },
+      second: { nation: 'Egypt', warparty: 1, units: { Warrior: 1 }, choice: 'NONE' },
+    }
+    const onAnswerEncounter = vi.fn()
+    renderGame({ nation: nationView({ dilemmas: [], encounters: [encounter] }), onAnswerEncounter })
+
+    const fight = screen.getByRole('button', { name: 'Fight' })
+    const pass = screen.getByRole('button', { name: 'Let it pass' })
+    expect(fight).toHaveClass('button--chosen')
+    expect(pass).not.toHaveClass('button--chosen')
+    expect(screen.getByText(/You chose to fight; you can change it until the Turn ends/)).toBeInTheDocument()
+    expect(within(screen.getByRole('heading', { name: /Encounter/ })).getByText('chosen')).toBeInTheDocument()
+
+    fireEvent.click(pass)
+
+    expect(onAnswerEncounter).toHaveBeenCalledWith(1, false)
   })
 })

@@ -7,6 +7,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
+import java.util.function.Supplier;
+import java.util.random.RandomGenerator;
 
 import org.springframework.context.event.EventListener;
 import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
@@ -46,15 +48,18 @@ public class Rooms {
 
 	private final Ruleset ruleset;
 
-	Rooms(SimpMessagingTemplate messaging, Clock clock, Ruleset ruleset) {
+	private final Supplier<RandomGenerator> luck;
+
+	Rooms(SimpMessagingTemplate messaging, Clock clock, Ruleset ruleset, Supplier<RandomGenerator> luck) {
 		this.messaging = messaging;
 		this.clock = clock;
 		this.ruleset = ruleset;
+		this.luck = luck;
 	}
 
 	public Room create() {
 		while (true) {
-			Room room = new Room(newCode(), clock, ruleset);
+			Room room = new Room(newCode(), clock, ruleset, luck);
 			if (rooms.putIfAbsent(room.code(), room) == null) {
 				return room;
 			}

@@ -17,20 +17,37 @@ function sides(encounter: Encounter, nation: string) {
   return encounter.first.nation === nation ? [encounter.first, encounter.second] : [encounter.second, encounter.first]
 }
 
-/** One decision in the strip: a titled card, marked while it still awaits the Player. */
-function Decision({ kind, open, children }: { kind: string; open: boolean; children: ReactNode }) {
+/**
+ * One decision in the strip: a titled card, tagged while it still awaits the Player and, once they
+ * have answered, tagged with `answeredTag` instead, so its header keeps its height.
+ */
+function Decision({
+  kind,
+  open,
+  answeredTag,
+  children,
+}: {
+  kind: string
+  open: boolean
+  answeredTag?: string
+  children: ReactNode
+}) {
   return (
     <li className={open ? 'decision decision--open' : 'decision'}>
       <h3 className="decision__kind">
         {kind}
-        {open && <span className="tag tag--accent">needs you</span>}
+        {open ? (
+          <span className="tag tag--accent">needs you</span>
+        ) : (
+          answeredTag && <span className="tag tag--muted">{answeredTag}</span>
+        )}
       </h3>
       {children}
     </li>
   )
 }
 
-/** A Dilemma; the choice made, or else the worst, applies as the Turn ends. */
+/** A Dilemma; the Player may change their choice until the Turn ends, when it, or else the worst, applies. */
 function DilemmaDecision({
   dilemma,
   onAnswer,
@@ -39,13 +56,13 @@ function DilemmaDecision({
   onAnswer: (dilemma: string, choice: string) => void
 }) {
   return (
-    <Decision kind="Dilemma" open={dilemma.chosen === null}>
+    <Decision kind="Dilemma" open={dilemma.chosen === null} answeredTag="chosen">
       <p>
         <strong>{dilemma.text}.</strong>
       </p>
       <p className="muted">
         {dilemma.chosen
-          ? `You chose ${dilemma.chosen}; it applies as the Turn ends.`
+          ? `You chose ${dilemma.chosen}; you can change it until the Turn ends.`
           : 'Choose before the Turn ends, or the worst choice applies.'}
       </p>
       <ul className="list" aria-label={`Choices for ${dilemma.name}`}>
@@ -54,7 +71,6 @@ function DilemmaDecision({
             <button
               className={dilemma.chosen === choice.name ? 'decision__choice button--chosen' : 'decision__choice'}
               onClick={() => onAnswer(dilemma.name, choice.name)}
-              disabled={dilemma.chosen !== null}
             >
               {choice.name}
               {choice.worst && <span className="tag tag--warn">if you don't choose</span>}
@@ -66,7 +82,10 @@ function DilemmaDecision({
   )
 }
 
-/** One of the Nation's Warparties met another Nation's; either Player choosing to fight makes them fight. */
+/**
+ * One of the Nation's Warparties met another Nation's; either Player choosing to fight makes them fight.
+ * The Player may change their choice until the Turn ends.
+ */
 function EncounterDecision({
   encounter,
   nation,
@@ -81,17 +100,29 @@ function EncounterDecision({
   const [own, other] = sides(encounter, nation)
   const them = <MapName name={other.nation} map={map} />
   return (
-    <Decision kind="Encounter" open={own.choice === 'NONE'}>
+    <Decision kind="Encounter" open={own.choice === 'NONE'} answeredTag="chosen">
       <p>
         Your Warparty of {listCounts(own.units)} met {them}'s Warparty of {listCounts(other.units)}.
       </p>
-      {own.choice === 'NONE' ? (
-        <div className="button-row">
-          <button onClick={() => onAnswer(own.warparty, true)}>Fight</button>
-          <button onClick={() => onAnswer(own.warparty, false)}>Let it pass</button>
-        </div>
-      ) : (
-        <p>{own.choice === 'FIGHT' ? 'You chose to fight.' : 'You chose not to fight.'}</p>
+      <div className="button-row">
+        <button
+          className={own.choice === 'FIGHT' ? 'button--chosen' : undefined}
+          onClick={() => onAnswer(own.warparty, true)}
+        >
+          Fight
+        </button>
+        <button
+          className={own.choice === 'PASS' ? 'button--chosen' : undefined}
+          onClick={() => onAnswer(own.warparty, false)}
+        >
+          Let it pass
+        </button>
+      </div>
+      {own.choice !== 'NONE' && (
+        <p>
+          {own.choice === 'FIGHT' ? 'You chose to fight' : 'You chose not to fight'}; you can change it until the Turn
+          ends.
+        </p>
       )}
       <p className="muted">
         {them}{' '}
@@ -196,7 +227,7 @@ export function DecisionsPanel({
           const offered = offeredFor(a.nation, a.warparty)
           const attacker = <MapName name={a.nation} map={nation.map} />
           return (
-            <Decision key={`${a.nation}-${a.warparty}`} kind="Warparty arrived" open={!offered}>
+            <Decision key={`${a.nation}-${a.warparty}`} kind="Warparty arrived" open={!offered} answeredTag="offered">
               <p>A Warparty from {attacker} has arrived; the Battle will be fought as this Turn ends.</p>
               {!offered ? (
                 <TributeOffer nation={a.nation} warparty={a.warparty} onOffer={onOfferTribute} />
@@ -220,7 +251,7 @@ export function DecisionsPanel({
           </Decision>
         ))}
         {received.map((t) => (
-          <Decision key={`${t.from}-${t.warparty}`} kind="Tribute offered" open={t.answer === 'NONE'}>
+          <Decision key={`${t.from}-${t.warparty}`} kind="Tribute offered" open={t.answer === 'NONE'} answeredTag="answered">
             <p>
               <MapName name={t.from} map={nation.map} /> offers you {describeTribute(t)} to Recall your Warparty.
             </p>
