@@ -1629,6 +1629,7 @@ public class Game {
 			case Action.AnswerEncounter answer -> answer(actor, answer);
 			case Action.AnswerDilemma answer -> answer(actor, answer);
 			case Action.UnlockTechnology unlock -> ruleset.technology(unlock.technology())
+				.filter(technology -> actor.sees(technology, ruleset))
 				.map(actor::unlock)
 				.orElseGet(() -> ActionResult.rejected("There is no Technology called " + unlock.technology() + "."));
 		};
