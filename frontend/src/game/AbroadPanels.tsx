@@ -4,7 +4,7 @@ import type { Fact, MapNation, NationView, Spy, TravelBracket, Warparty } from '
 import { NationEmblem } from '../ui/NationName'
 import { Panel } from '../ui/Panel'
 import { CountInput, TargetSelect } from './controls'
-import { currentTarget, formatAmount, listCounts, plural } from './format'
+import { currentTarget, formatAmount, listCounts, mergeAlike, plural } from './format'
 import { MapName } from './MapName'
 import { rowClass, useFreshRows } from './turnStart'
 
@@ -184,7 +184,10 @@ function describeSpy(spy: Spy, map: MapNation[]) {
   )
 }
 
-/** A form to send a Spy from the Army to another Nation, then the Nation's Spies abroad. */
+/**
+ * A form to send a Spy from the Army to another Nation, what the Spies at home are doing, then the
+ * Nation's Spies abroad, those with the same target and state merged into one row.
+ */
 export function SpiesPanel({
   nation,
   rejection,
@@ -202,9 +205,9 @@ export function SpiesPanel({
     .filter(([name]) => spyTypes.has(name))
     .reduce((total, [, count]) => total + count, 0)
   return (
-    <Panel title="Spies" icon="eye" actions={<span className="muted">{atHome} at home</span>} rejection={rejection}>
+    <Panel title="Spies" icon="eye" actions={<span className="muted">{atHome} on counter-intelligence</span>} rejection={rejection}>
       {atHome === 0 ? (
-        <p className="muted">Train a Spy to send one abroad. Spies kept at home can catch enemy Spies.</p>
+        <p className="muted">Train a Spy to send one abroad. Spies kept at home run counter-intelligence.</p>
       ) : targets.length === 0 ? (
         <p className="muted">There is no other Nation to send a Spy to.</p>
       ) : (
@@ -218,14 +221,22 @@ export function SpiesPanel({
           <p className="muted">Takes {plural(nation.spyTravelTurns, 'Turn')} to arrive, then stays there.</p>
         </div>
       )}
+      {atHome > 0 && (
+        <p className="muted">
+          Your Spies at home are running counter-intelligence, giving your Nation a chance each Turn to catch
+          enemy Spies in its land.
+        </p>
+      )}
       {nation.spies.length === 0 ? (
         <p className="muted">No Spies abroad.</p>
       ) : (
         <ul className="list">
-          {nation.spies.map((s) => (
-            <li key={s.id} className="row row--wrap">
-              <span className="row__name">{s.unit}</span>
-              <span className="row__meta">{describeSpy(s, nation.map)}</span>
+          {mergeAlike(nation.spies, (s) => [s.unit, s.target, s.homeward, s.turnsLeft]).map(({ key, item, count }) => (
+            <li key={key} className="row row--wrap">
+              <span className="row__name">
+                {item.unit} ×{count}
+              </span>
+              <span className="row__meta">{describeSpy(item, nation.map)}</span>
             </li>
           ))}
         </ul>
