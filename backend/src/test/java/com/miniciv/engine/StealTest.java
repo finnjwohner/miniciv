@@ -175,6 +175,44 @@ class StealTest {
 	}
 
 	@Test
+	void anEscapingSpyCannotBeCaughtByScouts() {
+		armyOf("Carthage", "Scout", 3);
+		spyArrivesAtCarthage();
+		succeedAt("Steal Gold");
+
+		luck.then(0.5, 0.99);
+		luck.always(0);
+		game.endTurn();
+
+		assertThat(spies()).singleElement().satisfies(spy -> assertThat(spy.homeward()).isTrue());
+		assertThat(report("Carthage")).noneMatch(line -> line.contains("caught"));
+	}
+
+	@Test
+	void aSecondThiefFindsNothingLeftOnceTheFirstHasTakenAll() {
+		armyOf("Rome", "Spy", 2);
+		assertThat(game.act("Rome", new Action.SendSpy("Carthage"))).isEqualTo(ActionResult.ACCEPTED);
+		assertThat(game.act("Rome", new Action.SendSpy("Carthage"))).isEqualTo(ActionResult.ACCEPTED);
+		for (int turn = 1; turn <= 3; turn++) {
+			game.endTurn();
+		}
+		assertThat(game.act("Rome", new Action.SetMission(2, "Steal Gold"))).isEqualTo(ActionResult.ACCEPTED);
+		succeedAt("Steal Gold", 0);
+
+		// The first takes all of it and is not Unmasked; the second draws
+		// nothing.
+		luck.then(0.9999999, 0.99);
+		luck.always(0);
+		int stolen = goldBehindEgyptAfterTurn();
+
+		assertThat(stolen).isEqualTo(egyptGained);
+		assertThat(spies()).containsExactly(
+				new Spy(1, "Spy", "Carthage", true, 3, 3, null, 0, false, new Haul(Resource.GOLD, stolen)),
+				new Spy(2, "Spy", "Carthage", false, 0, 3, null, 0, false, null));
+		assertThat(report("Rome")).contains("Your Spy in Carthage found nothing to steal there.");
+	}
+
+	@Test
 	void aThiefWhoseTargetGainedNothingStaysInPlaceIdle() {
 		spyArrivesAtCarthage();
 		succeedAt("Steal Gold");
@@ -186,7 +224,7 @@ class StealTest {
 
 		assertThat(game.viewOf("Carthage").gold()).isLessThan(held);
 		assertThat(spies()).containsExactly(new Spy(1, "Spy", "Carthage", false, 0, 3, null, 0, false, null));
-		assertThat(report("Rome")).contains("Your Spy in Carthage found nothing to steal, as Carthage gained no Gold.",
+		assertThat(report("Rome")).contains("Your Spy in Carthage found nothing to steal there.",
 				"Your Spy in Carthage is Idle; set it a new Mission.");
 		assertThat(report("Carthage")).noneMatch(line -> line.contains("Thieves"));
 	}
