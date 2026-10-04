@@ -54,6 +54,14 @@ class ScoutsTest {
 		game = new Game(RULESET, Identities.of(nations), luck);
 	}
 
+	/**
+	 * Plays with the given luck once one Nation has Located every other; see
+	 * {@link Locating#by}.
+	 */
+	void playLocatedBy(String nation, RandomGenerator luck, String... nations) {
+		game = Locating.by(nation, RULESET, Identities.of(nations), luck);
+	}
+
 	@Test
 	void scoutsAreTrainedLikeOtherUnitsAndSetOutIntoTheWildsNotTheArmy() {
 		armyOf("Rome", "Warrior", 1);
@@ -90,6 +98,8 @@ class ScoutsTest {
 
 	@Test
 	void scoutsRoamTheWildsAndCannotBeSentInAWarparty() {
+		playLocatedBy("Rome", EVEN_LUCK, "Rome", "Carthage", "Egypt");
+		int pathfinders = game.viewOf("Rome").scouts();
 		armyOf("Rome", "Scout", 2);
 		armyOf("Rome", "Warrior", 1);
 		ActionResult kept = ActionResult.rejected("Scouts roam the wilds and cannot be sent in a Warparty.");
@@ -99,11 +109,12 @@ class ScoutsTest {
 
 		assertThat(game.viewOf("Rome").warparties()).isEmpty();
 		assertThat(game.viewOf("Rome").army()).containsExactly(entry("Warrior", 1));
-		assertThat(game.viewOf("Rome").scouts()).isEqualTo(2);
+		assertThat(game.viewOf("Rome").scouts()).isEqualTo(pathfinders + 2);
 	}
 
 	@Test
 	void scoutsTakeNoPartInABattleAndSurviveIt() {
+		playLocatedBy("Rome", EVEN_LUCK, "Rome", "Carthage", "Egypt");
 		game.endTurn();
 		armyOf("Rome", "Warrior", 1);
 		armyOf("Carthage", "Warrior", 3);
@@ -121,6 +132,7 @@ class ScoutsTest {
 
 	@Test
 	void aNationWithOnlyScoutsMeetsAWarpartyWithNoArmy() {
+		playLocatedBy("Rome", EVEN_LUCK, "Rome", "Carthage", "Egypt");
 		armyOf("Rome", "Warrior", 2);
 		armyOf("Carthage", "Scout", 1);
 		send("Rome", "Carthage", Map.of("Warrior", 2));
@@ -137,7 +149,7 @@ class ScoutsTest {
 	@Test
 	void aNationWithOnlyScoutsLeftAtNoPopulationIsConqueredAndLosesThem() {
 		UnitType giant = new UnitType("Giant", 10, 1, 1, 1, 100, List.of());
-		game = new Game(new Ruleset(List.of(giant, GameTest.SCOUT), List.of(), List.of()), Identities.of("Rome", "Carthage"),
+		game = Locating.by("Rome", new Ruleset(List.of(giant, GameTest.SCOUT), List.of(), List.of()), Identities.of("Rome", "Carthage"),
 				EVEN_LUCK);
 		game.act("Rome", new Action.TrainUnits("Giant", 1));
 		game.act("Carthage", new Action.TrainUnits("Scout", 1));
@@ -176,7 +188,7 @@ class ScoutsTest {
 
 	@Test
 	void scoutsDiscoverAnotherNationsWarpartyAbroadNamingItsNationAndMakeup() {
-		play(ALWAYS, "Rome", "Carthage", "Egypt");
+		playLocatedBy("Carthage", ALWAYS, "Rome", "Carthage", "Egypt");
 		armyOf("Rome", "Scout", 1);
 		armyOf("Carthage", "Warrior", 2);
 
@@ -190,7 +202,10 @@ class ScoutsTest {
 
 	@Test
 	void scoutsTellWhereADiscoveredWarpartyIsHeading() {
-		play(ALWAYS, "Rome", "Carthage", "Egypt");
+		game = Locating.in(RULESET, Identities.of("Rome", "Carthage", "Egypt"), ALWAYS)
+			.locate("Carthage", "Rome", "Egypt")
+			.locate("Egypt", "Carthage")
+			.game();
 		armyOf("Rome", "Scout", 1);
 		armyOf("Carthage", "Warrior", 2);
 		armyOf("Egypt", "Warrior", 2);
@@ -211,7 +226,7 @@ class ScoutsTest {
 
 	@Test
 	void scoutsTellOfAWarpartyWaitingAtAnotherNationButNotOfOneAlreadyArrivedAtTheirOwn() {
-		play(ALWAYS, "Rome", "Carthage", "Egypt");
+		playLocatedBy("Carthage", ALWAYS, "Rome", "Carthage", "Egypt");
 		armyOf("Rome", "Scout", 1);
 		armyOf("Carthage", "Warrior", 2);
 		send("Carthage", "Rome", Map.of("Warrior", 1));
@@ -228,7 +243,7 @@ class ScoutsTest {
 
 	@Test
 	void nothingIsDiscoveredWhenLuckIsAgainstTheScouts() {
-		play(NEVER, "Rome", "Carthage");
+		playLocatedBy("Carthage", NEVER, "Rome", "Carthage");
 		armyOf("Rome", "Scout", 5);
 		armyOf("Carthage", "Warrior", 2);
 
@@ -240,7 +255,7 @@ class ScoutsTest {
 
 	@Test
 	void aNationWithNoScoutsDiscoversNothing() {
-		play(ALWAYS, "Rome", "Carthage", "Egypt");
+		playLocatedBy("Carthage", ALWAYS, "Rome", "Carthage", "Egypt");
 		armyOf("Rome", "Warrior", 1);
 		armyOf("Carthage", "Warrior", 2);
 
@@ -254,7 +269,7 @@ class ScoutsTest {
 	void eachScoutRaisesTheChanceOfDiscoveringAWarparty() {
 		// A fifth of a chance for one Scout, and 1 - 0.8 × 0.8 = 0.36 for two.
 		for (int scouts = 1; scouts <= 2; scouts++) {
-			play(luck(draw(0.3)), "Rome", "Carthage");
+			playLocatedBy("Carthage", luck(draw(0.3)), "Rome", "Carthage");
 			armyOf("Rome", "Scout", scouts);
 			armyOf("Carthage", "Warrior", 2);
 
@@ -272,7 +287,7 @@ class ScoutsTest {
 
 	@Test
 	void eachWarpartyIsDiscoveredOrNotOnItsOwnDraw() {
-		play(luck(draw(0.9), draw(0.1)), "Rome", "Carthage", "Egypt");
+		playLocatedBy("Carthage", luck(draw(0.9), draw(0.1)), "Rome", "Carthage", "Egypt");
 		armyOf("Rome", "Scout", 1);
 		armyOf("Carthage", "Warrior", 2);
 
@@ -289,7 +304,7 @@ class ScoutsTest {
 	 * sending Warparties to Persia, from a fixed seed.
 	 */
 	int discoveriesWith(int scouts) {
-		play(new Random(17), "Rome", "Carthage", "Persia");
+		playLocatedBy("Carthage", new Random(17), "Rome", "Carthage", "Persia");
 		game.endTurn();
 		armyOf("Rome", "Scout", scouts);
 		int discoveries = 0;

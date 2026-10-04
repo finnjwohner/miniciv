@@ -38,7 +38,8 @@ class EncountersTest {
 		@Bean
 		@Primary
 		Ruleset testRuleset() {
-			return new Ruleset(List.of(new UnitType("Warrior", 10, 1, 1, 1, 3, List.of())), List.of(), List.of());
+			return new Ruleset(List.of(new UnitType("Warrior", 10, 1, 1, 1, 3, List.of()), TurnsTest.PATHFINDER), List.of(),
+					List.of());
 		}
 
 		@Bean
@@ -108,21 +109,31 @@ class EncountersTest {
 	}
 
 	/**
-	 * Has Rome and Carthage each train a Warrior on Turn 1 and send it at the
-	 * other on Turn 2, so their Warparties meet as Turn 2 ends.
+	 * Has Rome and Carthage each train a Warrior and a Pathfinder on Turn 1,
+	 * set the Pathfinder to Locate the other on Turn 2, which the luck has
+	 * succeed, and send the Warrior at the other on Turn 3, so their
+	 * Warparties meet as Turn 3 ends.
 	 */
 	void romeMeetsCarthage() throws Exception {
 		for (TurnsTest.Connected player : List.of(rome, carthage)) {
 			send(player, "/units", Map.of("token", player.token(), "unit", "Warrior", "count", 1));
 			player.privately().next();
+			send(player, "/units", Map.of("token", player.token(), "unit", "Pathfinder", "count", 1));
+			player.privately().next();
 		}
 		endTurn(1);
+		for (TurnsTest.Connected player : List.of(rome, carthage)) {
+			send(player, "/tasks", Map.of("token", player.token(), "kind", "LOCATE", "target",
+					player == rome ? "Carthage" : "Rome", "scouts", 1));
+			player.privately().next();
+		}
+		endTurn(2);
 		for (TurnsTest.Connected player : List.of(rome, carthage)) {
 			send(player, "/warparties", Map.of("token", player.token(), "target", player == rome ? "Carthage" : "Rome",
 					"units", Map.of("Warrior", 1)));
 			player.privately().next();
 		}
-		endTurn(2);
+		endTurn(3);
 	}
 
 	static List<Map<String, Object>> encounter(String romeChoice) {

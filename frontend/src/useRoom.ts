@@ -1,6 +1,6 @@
 import { Client } from '@stomp/stompjs'
 import { useEffect, useRef, useState } from 'react'
-import type { NationView, RoomView } from './api'
+import type { NationView, RoomView, TaskKind } from './api'
 
 /** A Room view and when this browser received it, to count down the Turn from. */
 export type ReceivedRoom = RoomView & { receivedAt: number }
@@ -128,6 +128,24 @@ export function useRoom(code: string, token: string) {
     })
   }
 
+  /** Sets some of the Nation's Idle Scouts to a Task; a rejection's reason arrives in `rejection`. */
+  const setTask = (kind: TaskKind, target: string, scouts: number) => {
+    setRejection(null)
+    client.current?.publish({
+      destination: `/app/rooms/${code}/tasks`,
+      body: JSON.stringify({ token, kind, target, scouts }),
+    })
+  }
+
+  /** Ends one of the Nation's Tasks, its Scouts going Idle; a rejection's reason arrives in `rejection`. */
+  const cancelTask = (task: number) => {
+    setRejection(null)
+    client.current?.publish({
+      destination: `/app/rooms/${code}/tasks/cancellations`,
+      body: JSON.stringify({ token, task }),
+    })
+  }
+
   /** Recalls one of the Nation's Warparties, turning it back home; a rejection's reason arrives in `rejection`. */
   const recallWarparty = (warparty: number) => {
     setRejection(null)
@@ -212,6 +230,8 @@ export function useRoom(code: string, token: string) {
     sendWarparty,
     recallWarparty,
     sendSpy,
+    setTask,
+    cancelTask,
     answerDilemma,
     unlockTechnology,
     offerTribute,

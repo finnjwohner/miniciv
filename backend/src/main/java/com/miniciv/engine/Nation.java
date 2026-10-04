@@ -80,6 +80,22 @@ class Nation {
 	private final Map<String, Integer> scouts = new LinkedHashMap<>();
 
 	/**
+	 * The Tasks the Nation's Scouts are set to, in the order set; the Scouts
+	 * on none are Idle.
+	 */
+	private final List<Task> tasks = new ArrayList<>();
+
+	/**
+	 * The number the next Task set will be told apart by.
+	 */
+	private int nextTaskId = 1;
+
+	/**
+	 * The Nations this one has Located, in the order Located.
+	 */
+	private final Set<String> located = new LinkedHashSet<>();
+
+	/**
 	 * The Nation's Warparties abroad, in the order sent.
 	 */
 	private final List<Warparty> warparties = new ArrayList<>();
@@ -169,6 +185,7 @@ class Nation {
 		copy.training.addAll(training);
 		copy.army.putAll(army);
 		copy.scouts.putAll(scouts);
+		copy.tasks.addAll(tasks);
 		copy.warparties.addAll(warparties);
 		copy.spies.addAll(spies);
 		copy.lastingEvent = lastingEvent;
@@ -209,7 +226,7 @@ class Nation {
 				Collections.unmodifiableMap(new LinkedHashMap<>(buildings)), construction, repairs, defense(ruleset), damage(ruleset),
 				sellValues(ruleset),
 				availableUnits,
-				Collections.unmodifiableMap(new LinkedHashMap<>(army)), scouts(), training, warparties, spies, TravelBracket.ALL, Spy.TRAVEL_TURNS, upkeep(ruleset),
+				Collections.unmodifiableMap(new LinkedHashMap<>(army)), scouts(), idleScouts(), tasks, List.copyOf(located), training, warparties, spies, TravelBracket.ALL, Spy.TRAVEL_TURNS, upkeep(ruleset),
 				goldForecast, lastingEvent,
 				arrivals, tributes, encounters, techTree(ruleset), turnReport, awaitingChoice(winner),
 				conqueredBy, winner);
@@ -233,13 +250,14 @@ class Nation {
 
 	/**
 	 * Takes the Nation out of the Game without it being conquered; its
-	 * Warparties, Spies abroad and Scouts are gone.
+	 * Warparties, Spies abroad, Scouts and their Tasks are gone.
 	 */
 	void remove() {
 		removed = true;
 		warparties.clear();
 		spies.clear();
 		scouts.clear();
+		tasks.clear();
 	}
 
 	/**
@@ -285,8 +303,8 @@ class Nation {
 	}
 
 	/**
-	 * Takes the Nation out of the Game: its Warparties, Spies abroad and
-	 * Scouts disappear, and its conquerors seize a share of its Gold and Research,
+	 * Takes the Nation out of the Game: its Warparties, Spies abroad, Scouts
+	 * and their Tasks disappear, and its conquerors seize a share of its Gold and Research,
 	 * rounded down.
 	 *
 	 * @param conquerors the Nation or Nations that conquered it, such as "Rome
@@ -298,6 +316,7 @@ class Nation {
 		warparties.clear();
 		spies.clear();
 		scouts.clear();
+		tasks.clear();
 		return plundered((int) Math.floor(gold * share), (int) Math.floor(research * share));
 	}
 
@@ -1174,8 +1193,11 @@ class Nation {
 	 * that sent them
 	 * @param spiesTurnedBack those Spies as they were before, by the Nation
 	 * that sent them
+	 * @param tasksEnded the Tasks about it that ended, by the Nation whose
+	 * Scouts were on them
 	 */
-	record Conquest(Plunder seized, Map<String, List<Warparty>> turnedBack, Map<String, List<Spy>> spiesTurnedBack) {
+	record Conquest(Plunder seized, Map<String, List<Warparty>> turnedBack, Map<String, List<Spy>> spiesTurnedBack,
+			Map<String, List<Task>> tasksEnded) {
 	}
 
 	/**
@@ -1258,9 +1280,116 @@ class Nation {
 			left -= losing;
 		}
 		if (!lost.isEmpty()) {
+			fitTasksToScouts();
 			version++;
 		}
 		return lost;
+	}
+
+	/**
+	 * How many of the Nation's Scouts are on no Task.
+	 */
+	int idleScouts() {
+		return scouts() - tasks.stream().mapToInt(Task::scouts).sum();
+	}
+
+	/**
+	 * The Tasks the Nation's Scouts are set to, in the order set.
+	 */
+	List<Task> tasks() {
+		return List.copyOf(tasks);
+	}
+
+	/**
+	 * Sets some of the Nation's Idle Scouts to a Task, which the Game has
+	 * checked makes sense for its target.
+	 */
+	ActionResult setTask(Task.Kind kind, String target, int count) {
+		if (count < 1) {
+			return ActionResult.rejected("Set at least one Scout to the Task.");
+		}
+		int idle = idleScouts();
+		if (count > idle) {
+			return ActionResult.rejected("You have only " + idle + " Idle " + (idle == 1 ? "Scout" : "Scouts") + ".");
+		}
+		tasks.add(new Task(nextTaskId++, kind, target, count));
+		version++;
+		return ActionResult.ACCEPTED;
+	}
+
+	/**
+	 * Ends one of the Nation's Tasks, its Scouts going Idle.
+	 */
+	ActionResult cancelTask(int id) {
+		if (!tasks.removeIf(task -> task.id() == id)) {
+			return ActionResult.rejected("You have no such Task.");
+		}
+		version++;
+		return ActionResult.ACCEPTED;
+	}
+
+	/**
+	 * Ends the Nation's Tasks about a Nation that has left the Game, their
+	 * Scouts going Idle.
+	 *
+	 * @return the Tasks ended, in the order set
+	 */
+	List<Task> endTasksFor(String target) {
+		List<Task> ended = tasks.stream().filter(task -> task.target().equals(target)).toList();
+		if (!ended.isEmpty()) {
+			tasks.removeAll(ended);
+			version++;
+		}
+		return ended;
+	}
+
+	/**
+	 * Takes Scouts from the Nation's Tasks once it has fewer Scouts than they
+	 * hold, Idle Scouts having gone first: from the Task set last, ending each
+	 * left with none.
+	 */
+	private void fitTasksToScouts() {
+		int missing = -idleScouts();
+		for (int at = tasks.size() - 1; at >= 0 && missing > 0; at--) {
+			Task task = tasks.get(at);
+			int taken = Math.min(missing, task.scouts());
+			if (taken == task.scouts()) {
+				tasks.remove(at);
+			}
+			else {
+				tasks.set(at, task.withScouts(task.scouts() - taken));
+			}
+			missing -= taken;
+		}
+	}
+
+	/**
+	 * Whether the Nation has Located another.
+	 */
+	boolean hasLocated(String nation) {
+		return located.contains(nation);
+	}
+
+	/**
+	 * Whether the Nation has set Scouts to Locate another.
+	 */
+	boolean isLocating(String nation) {
+		return tasks.stream().anyMatch(task -> task.kind() == Task.Kind.LOCATE && task.target().equals(nation));
+	}
+
+	/**
+	 * Locates another Nation, for good, ending any Task Locating it, its
+	 * Scouts going Idle.
+	 *
+	 * @return whether it was not Located before
+	 */
+	boolean locate(String nation) {
+		boolean newlyLocated = located.add(nation);
+		tasks.removeIf(task -> task.kind() == Task.Kind.LOCATE && task.target().equals(nation));
+		if (newlyLocated) {
+			version++;
+		}
+		return newlyLocated;
 	}
 
 	/**
@@ -1484,7 +1613,8 @@ class Nation {
 	 * between equally costly ones, the one listed last, taking the Scouts'
 	 * types and then the Army's in the order first trained, then each
 	 * Warparty's in the order sent, then each Spy in the order sent. A
-	 * Warparty left with no Units disappears.
+	 * Warparty left with no Units disappears. Scouts that desert are taken
+	 * from Tasks as {@link #loseScouts} takes them.
 	 *
 	 * @return the desertions from the Scouts first, then from the Army, then
 	 * from each Warparty in the order sent, then of each Spy in the order sent
@@ -1517,6 +1647,7 @@ class Nation {
 		List<Desertion> desertions = new ArrayList<>();
 		if (!deserted.get(0).isEmpty()) {
 			desertions.add(new Desertion(true, null, null, deserted.get(0)));
+			fitTasksToScouts();
 		}
 		if (!deserted.get(1).isEmpty()) {
 			desertions.add(new Desertion(false, null, null, deserted.get(1)));

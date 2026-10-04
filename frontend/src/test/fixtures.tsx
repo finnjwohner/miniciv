@@ -5,6 +5,7 @@ import type {
   BuildingType,
   Facts,
   GameView,
+  MapNation,
   NationView,
   PlayerView,
   ReportAmount,
@@ -139,6 +140,9 @@ export function nationView(overrides: Partial<NationView> = {}): NationView {
     ],
     army: { Warrior: 3 },
     scouts: 0,
+    idleScouts: 0,
+    tasks: [],
+    located: [EGYPT.name],
     training: [{ unit: 'Archer', count: 2, readyOnTurn: 5 }],
     warparties: [],
     spies: [],
@@ -233,6 +237,8 @@ export function renderGame(props: Partial<ComponentProps<typeof GameScreen>> = {
       onSendWarparty={noop}
       onRecallWarparty={noop}
       onSendSpy={noop}
+      onSetTask={noop}
+      onCancelTask={noop}
       onAnswerDilemma={noop}
       onUnlockTechnology={noop}
       onOfferTribute={noop}
@@ -254,6 +260,11 @@ export function renderGame(props: Partial<ComponentProps<typeof GameScreen>> = {
     ...result,
     rerenderGame: (overrides: Partial<ComponentProps<typeof GameScreen>>) => result.rerender(gameScreen(overrides)),
   }
+}
+
+/** Another Nation on the Map, still in the Game unless told otherwise, with nothing learned of it. */
+export function onMap(name: string, standing: MapNation['standing'] = 'IN_GAME'): MapNation {
+  return { name, ruler: 'Ruler', colour: '#7bc96f', emblem: 'star', standing, facts: noFacts() }
 }
 
 /** Rome's Warparty of two Warriors travelling to Egypt, a Turn from arriving. */

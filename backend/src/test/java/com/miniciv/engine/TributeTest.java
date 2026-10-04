@@ -12,7 +12,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class TributeTest {
 
-	Game game = new Game(RULESET, Identities.of("Rome", "Carthage"), EVEN_LUCK);
+	Game game = Locating.everyone(RULESET, Identities.of("Rome", "Carthage"), EVEN_LUCK);
 
 	/**
 	 * Has a Warparty of Warrior ×2 from Rome arrive at Carthage, to be fought
@@ -106,7 +106,7 @@ class TributeTest {
 
 	@Test
 	void tributeOfferedToANationRemovedFromTheGameIsCancelled() {
-		game = new Game(RULESET, Identities.of("Rome", "Carthage", "Egypt"), EVEN_LUCK);
+		game = Locating.everyone(RULESET, Identities.of("Rome", "Carthage", "Egypt"), EVEN_LUCK);
 		romeArrivesAtCarthage();
 		offer("Carthage", "Rome", 1, 10, 0);
 

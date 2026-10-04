@@ -4,6 +4,8 @@ import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
+import java.util.random.RandomGenerator;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -45,10 +47,31 @@ class TurnsTest {
 		Ruleset testRuleset() {
 			return new Ruleset(
 					List.of(new UnitType("Warrior", 20, 2, 1, 1, 3, List.of()),
-							new UnitType("Catapult", 50, 1, 1, 1, 20, List.of())),
+							new UnitType("Catapult", 50, 1, 1, 1, 20, List.of()), PATHFINDER),
 					List.of(new BuildingType("Farm", 30, 2, 1, 0, 0, 0, 0)), List.of());
 		}
 
+		@Bean
+		@Primary
+		Supplier<RandomGenerator> testLuck() {
+			return TurnsTest::locatingLuck;
+		}
+
+	}
+
+	/**
+	 * A free Scout, costing no upkeep, for a Player to Locate another Nation
+	 * with; see {@link #romeLocatesCarthage}.
+	 */
+	static final UnitType PATHFINDER = new UnitType("Pathfinder", 0, 0, 1, 0, 0, List.of(), true);
+
+	/**
+	 * Luck whose first draw, which the first Locate Task makes as no Event or
+	 * Warparty draws before it, succeeds, and whose every later draw is even.
+	 */
+	static RandomGenerator locatingLuck() {
+		int[] draws = { 0 };
+		return () -> draws[0]++ == 0 ? 0L : Long.MIN_VALUE;
 	}
 
 	/**
@@ -171,6 +194,27 @@ class TurnsTest {
 			.send("/app/rooms/" + code + "/warparties", Map.of("token", player.token(), "target", target, "units", units));
 	}
 
+	void setTask(Connected player, String kind, String target, int scouts) {
+		player.stomp()
+			.send("/app/rooms/" + code + "/tasks",
+					Map.of("token", player.token(), "kind", kind, "target", target, "scouts", scouts));
+	}
+
+	/**
+	 * Has Rome Locate Carthage as Turns 1 and 2 end, once every given Player
+	 * has received their view of Turn 1: a Pathfinder trained on Turn 1 is set
+	 * to Locate Carthage on Turn 2, and {@link #locatingLuck} has it succeed.
+	 * Every given Player has then received their view of Turn 3.
+	 */
+	void romeLocatesCarthage(Connected... players) throws Exception {
+		trainUnits(rome, "Pathfinder", 1);
+		rome.privately().next();
+		endTurn(1, players);
+		setTask(rome, "LOCATE", "Carthage", 1);
+		rome.privately().next();
+		endTurn(2, players);
+	}
+
 	void recallWarparty(Connected player, int warparty) {
 		player.stomp()
 			.send("/app/rooms/" + code + "/recalls", Map.of("token", player.token(), "warparty", warparty));
@@ -231,9 +275,14 @@ class TurnsTest {
 				List.of(Map.of("name", "Warrior", "gold", 20, "population", 2, "turns", 1, "upkeep", 1, "strength", 3.0,
 						"counters", List.of(), "scout", false, "spy", false),
 						Map.of("name", "Catapult", "gold", 50, "population", 1, "turns", 1, "upkeep", 1, "strength", 20.0,
-								"counters", List.of(), "scout", false, "spy", false)));
+								"counters", List.of(), "scout", false, "spy", false),
+						Map.of("name", "Pathfinder", "gold", 0, "population", 0, "turns", 1, "upkeep", 0, "strength", 0.0,
+								"counters", List.of(), "scout", true, "spy", false)));
 		view.put("army", Map.of());
 		view.put("scouts", 0);
+		view.put("idleScouts", 0);
+		view.put("tasks", List.of());
+		view.put("located", List.of());
 		view.put("training", training);
 		view.put("warparties", List.of());
 		view.put("spies", List.of());
@@ -284,16 +333,17 @@ class TurnsTest {
 	}
 
 	/**
-	 * Has Rome train a Catapult on Turn 1 and send it to Carthage, which it
-	 * conquers as Turn 6 ends, its trip taking 4 Turns.
+	 * Has Rome train a Catapult on Turn 1 and, once it has Located Carthage,
+	 * send it there on Turn 3; it conquers Carthage as Turn 7 ends, its trip
+	 * taking 4 Turns.
 	 */
 	void romeConquersCarthage(Connected... players) throws Exception {
 		trainUnits(rome, "Catapult", 1);
 		rome.privately().next();
-		endTurn(1, players);
+		romeLocatesCarthage(players);
 		sendWarparty(rome, "Carthage", Map.of("Catapult", 1));
 		rome.privately().next();
-		for (int turn = 2; turn <= 6; turn++) {
+		for (int turn = 3; turn <= 7; turn++) {
 			endTurn(turn, players);
 		}
 	}
@@ -472,10 +522,11 @@ class TurnsTest {
 		startGame();
 		rome.privately().next();
 		carthage.privately().next();
+		romeLocatesCarthage(rome, carthage);
 		trainUnits(rome, "Warrior", 2);
 		rome.privately().next();
-		done(rome, 1);
-		done(carthage, 1);
+		done(rome, 3);
+		done(carthage, 3);
 		assertThat(rome.privately().next().get("army")).isEqualTo(Map.of("Warrior", 2));
 		carthage.privately().next();
 
@@ -495,10 +546,11 @@ class TurnsTest {
 		rome.privately().next();
 		carthage.privately().next();
 		StompConnection.Messages romeRejections = rome.stomp().subscribe("/user/queue/rejections");
+		romeLocatesCarthage(rome, carthage);
 		trainUnits(rome, "Warrior", 2);
 		rome.privately().next();
-		done(rome, 1);
-		done(carthage, 1);
+		done(rome, 3);
+		done(carthage, 3);
 		rome.privately().next();
 		carthage.privately().next();
 		sendWarparty(rome, "Carthage", Map.of("Warrior", 2));
@@ -521,6 +573,8 @@ class TurnsTest {
 	void aPlayerWhoseWarpartyIsRejectedIsToldWhyPrivately() throws Exception {
 		startGame();
 		rome.privately().next();
+		carthage.privately().next();
+		romeLocatesCarthage(rome, carthage);
 		StompConnection.Messages romeRejections = rome.stomp().subscribe("/user/queue/rejections");
 
 		sendWarparty(rome, "Carthage", Map.of("Warrior", 1));
@@ -546,8 +600,8 @@ class TurnsTest {
 			.containsExactly("Rome", "Rome");
 		clock.advance(Duration.ofMinutes(2));
 		rooms.endDueTurns();
-		done(rome, 7);
-		assertThat(currentGame().get("turn")).isEqualTo(7);
+		done(rome, 8);
+		assertThat(currentGame().get("turn")).isEqualTo(8);
 		rome.privately().expectNone();
 	}
 
@@ -563,9 +617,9 @@ class TurnsTest {
 		romeConquersCarthage(rome, carthage, egypt);
 		assertThat(currentGame().get("winner")).isNull();
 
-		endTurn(7, rome, egypt);
+		endTurn(8, rome, egypt);
 
-		assertThat(currentGame().get("turn")).isEqualTo(8);
+		assertThat(currentGame().get("turn")).isEqualTo(9);
 	}
 
 	@Test

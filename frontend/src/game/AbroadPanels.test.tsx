@@ -1,9 +1,41 @@
 import { fireEvent, screen, within } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
-import { nationView, renderGame, spy, tab, unit, warparty } from '../test/fixtures'
+import { describe, expect, it, vi } from 'vitest'
+import { nationView, onMap, renderGame, spy, tab, unit, warparty } from '../test/fixtures'
 import { precedes, rowNamed } from '../test/order'
 
+/** Rome's view with Carthage and Persia on the Map too, having Located only the given Nations. */
+function locating(located: string[], overrides: Parameters<typeof nationView>[0] = {}) {
+  const view = nationView(overrides)
+  return { ...view, map: [...view.map, onMap('Carthage'), onMap('Persia')], located }
+}
+
+const SPY_TYPE = unit({ name: 'Spy', gold: 30, population: 1, turns: 2, upkeep: 1, strength: 0, spy: true })
+
+/** The names of the options a select offers. */
+function options(select: HTMLElement) {
+  return within(select)
+    .getAllByRole('option')
+    .map((o) => o.textContent)
+}
+
 describe('ArmyPanel', () => {
+  it('offers only Located Nations as Warparty targets', () => {
+    renderGame({ nation: locating(['Persia', 'Egypt']) })
+    fireEvent.click(tab('Army'))
+
+    const army = screen.getByRole('region', { name: 'Army & Warparties' })
+    expect(options(within(army).getByRole('combobox', { name: 'To' }))).toEqual(['Egypt', 'Persia'])
+  })
+
+  it('says to Locate a Nation first when none is Located', () => {
+    renderGame({ nation: locating([]) })
+    fireEvent.click(tab('Army'))
+
+    const army = screen.getByRole('region', { name: 'Army & Warparties' })
+    expect(within(army).getByText(/You have not Located any Nation yet/)).toBeInTheDocument()
+    expect(within(army).queryByRole('button', { name: 'Send Warparty' })).not.toBeInTheDocument()
+  })
+
   it('puts the send-Warparty form before the Army at home and the Warparties abroad', () => {
     renderGame({ nation: nationView({ warparties: [warparty()] }) })
     fireEvent.click(tab('Army'))
@@ -48,12 +80,94 @@ describe('ArmyPanel', () => {
 })
 
 describe('SpiesPanel', () => {
+  it('offers only Located Nations as Spy targets', () => {
+    renderGame({ nation: locating(['Carthage'], { army: { Spy: 1 }, availableUnits: [SPY_TYPE] }) })
+    fireEvent.click(tab('Spies & Scouts'))
+
+    const spies = screen.getByRole('region', { name: 'Spies & Scouts' })
+    expect(options(within(spies).getByRole('combobox', { name: 'Send a Spy to' }))).toEqual(['Carthage'])
+  })
+
+  it('says to Locate a Nation before sending a Spy when none is Located', () => {
+    renderGame({ nation: locating([], { army: { Spy: 1 }, availableUnits: [SPY_TYPE] }) })
+    fireEvent.click(tab('Spies & Scouts'))
+
+    const spies = screen.getByRole('region', { name: 'Spies & Scouts' })
+    expect(within(spies).getByText(/You have not Located any Nation yet/)).toBeInTheDocument()
+    expect(within(spies).queryByRole('button', { name: 'Send Spy' })).not.toBeInTheDocument()
+  })
+
+  it('shows the Idle Scouts and each Task with its Scouts', () => {
+    renderGame({
+      nation: locating(['Egypt'], {
+        scouts: 5,
+        idleScouts: 2,
+        tasks: [{ id: 4, kind: 'LOCATE', target: 'Carthage', scouts: 3 }],
+      }),
+    })
+    fireEvent.click(tab('Spies & Scouts'))
+
+    const spies = screen.getByRole('region', { name: 'Spies & Scouts' })
+    expect(within(spies).getByText('Idle Scouts ×2')).toBeInTheDocument()
+    expect(rowNamed(spies, 'Locating Carthage').closest('li')).toHaveTextContent('3 Scouts')
+  })
+
+  it('cancels a Task', () => {
+    const onCancelTask = vi.fn()
+    renderGame({
+      nation: locating(['Egypt'], {
+        scouts: 3,
+        idleScouts: 0,
+        tasks: [{ id: 4, kind: 'LOCATE', target: 'Carthage', scouts: 3 }],
+      }),
+      onCancelTask,
+    })
+    fireEvent.click(tab('Spies & Scouts'))
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel Locating Carthage' }))
+
+    expect(onCancelTask).toHaveBeenCalledWith(4)
+  })
+
+  it('sets Idle Scouts to Locate a Nation not yet Located, nor being Located, still in the Game', () => {
+    const onSetTask = vi.fn()
+    const view = locating(['Egypt'], {
+      scouts: 4,
+      idleScouts: 3,
+      tasks: [{ id: 1, kind: 'LOCATE', target: 'Persia', scouts: 1 }],
+    })
+    renderGame({ nation: { ...view, map: [...view.map, onMap('Gaul', 'CONQUERED'), onMap('Sparta')] }, onSetTask })
+    fireEvent.click(tab('Spies & Scouts'))
+
+    const spies = screen.getByRole('region', { name: 'Spies & Scouts' })
+    const target = within(spies).getByRole('combobox', { name: 'Locate' })
+    expect(options(target)).toEqual(['Carthage', 'Sparta'])
+    fireEvent.change(target, { target: { value: 'Sparta' } })
+    const count = within(spies).getByRole('slider', { name: 'How many Scouts to set to the Task' })
+    expect(count).toHaveAttribute('min', '1')
+    expect(count).toHaveAttribute('max', '3')
+    fireEvent.change(count, { target: { value: '2' } })
+    fireEvent.click(within(spies).getByRole('button', { name: 'Set Task' }))
+
+    expect(onSetTask).toHaveBeenCalledWith('LOCATE', 'Sparta', 2)
+  })
+
+  it('offers no Task without Idle Scouts', () => {
+    renderGame({
+      nation: locating([], { scouts: 1, idleScouts: 0, tasks: [{ id: 1, kind: 'LOCATE', target: 'Persia', scouts: 1 }] }),
+    })
+    fireEvent.click(tab('Spies & Scouts'))
+
+    const spies = screen.getByRole('region', { name: 'Spies & Scouts' })
+    expect(within(spies).queryByRole('button', { name: 'Set Task' })).not.toBeInTheDocument()
+  })
+
   it('shows Scouts roaming the wilds under Spies & Scouts, not under the Army', () => {
-    renderGame({ nation: nationView({ scouts: 3 }) })
+    renderGame({ nation: nationView({ scouts: 3, idleScouts: 3 }) })
 
     fireEvent.click(tab('Spies & Scouts'))
     const spies = screen.getByRole('region', { name: 'Spies & Scouts' })
-    expect(within(spies).getByText('Scouts roaming the wilds ×3')).toBeInTheDocument()
+    expect(within(spies).getByText('Idle Scouts ×3')).toBeInTheDocument()
     expect(within(spies).getByText(/discover Warparties abroad/)).toBeInTheDocument()
 
     fireEvent.click(tab('Army'))
@@ -145,6 +259,14 @@ describe('SpiesPanel', () => {
 })
 
 describe('MapPanel', () => {
+  it('tags the Nations the Player has Located', () => {
+    renderGame({ nation: locating(['Carthage']) })
+
+    const map = screen.getByRole('region', { name: 'Map' })
+    expect(within(map).getByRole('heading', { name: /Carthage/ })).toHaveTextContent('located')
+    expect(within(map).getByRole('heading', { name: /Persia/ })).not.toHaveTextContent('located')
+  })
+
   /** The Facts shown on the Map for the Nation `name`, label to value. */
   function factsOf(name: string) {
     const card = within(screen.getByRole('region', { name: 'Map' }))

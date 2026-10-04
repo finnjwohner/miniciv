@@ -29,7 +29,7 @@ class BreachedBattlesTest {
 	 */
 	final GameTest.Rigged luck = new GameTest.Rigged();
 
-	final Game game = new Game(new Ruleset(List.of(RAM), List.of(MARKET, LIBRARY, WALLS, MOAT), List.of()),
+	final Game game = Locating.everyone(new Ruleset(List.of(RAM), List.of(MARKET, LIBRARY, WALLS, MOAT), List.of()),
 			Identities.of("Rome", "Carthage"), luck);
 
 	void act(String nation, Action action) {

@@ -71,6 +71,7 @@ class TurnReportSectionsTest {
 
 	@Test
 	void aBattleResultLandsInWarfareAndAnArrivingEnemyInDecisionsAndAlerts() {
+		game = Locating.everyone(RULESET, Identities.of("Rome", "Carthage"), EVEN_LUCK);
 		armyOf("Rome", "Warrior", 2);
 		game.act("Rome", new Action.SendWarparty("Carthage", Map.of("Warrior", 2)));
 		while (game.viewOf("Rome").warparties().getFirst().turnsLeft() > 0) {
@@ -101,14 +102,15 @@ class TurnReportSectionsTest {
 
 	@Test
 	void aSpyReportLandsInSpiesAndScouts() {
-		game = new Game(SpiesTest.RULESET, Identities.of("Rome", "Carthage"), SpiesTest.ALWAYS_GOLD);
+		game = Locating.by("Rome", SpiesTest.RULESET, Identities.of("Rome", "Carthage"), SpiesTest.ALWAYS_GOLD);
 		armyOf("Rome", "Spy", 1);
 		game.act("Rome", new Action.SendSpy("Carthage"));
 		for (int turn = 1; turn <= 3; turn++) {
 			game.endTurn();
 		}
 
-		assertThat(section("Rome", SPIES_AND_SCOUTS)).contains("Your Spy in Carthage reported that Carthage has 102 Gold.");
+		assertThat(section("Rome", SPIES_AND_SCOUTS))
+			.contains("Your Spy in Carthage reported that Carthage has " + game.viewOf("Carthage").gold() + " Gold.");
 	}
 
 	@Test

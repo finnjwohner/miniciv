@@ -40,6 +40,15 @@ class DamagedBuildingsTest {
 				Identities.of("Rome", "Carthage"), luck);
 	}
 
+	/**
+	 * {@link #play}, once every Nation has Located every other; see
+	 * {@link Locating}.
+	 */
+	void playLocated(Event... events) {
+		game = Locating.everyone(new Ruleset(SpiesTest.RULESET.units(), List.of(MARKET, LIBRARY, WALLS), List.of(), List.of(events)),
+				Identities.of("Rome", "Carthage"), luck);
+	}
+
 	void act(String nation, Action action) {
 		assertThat(game.act(nation, action)).isEqualTo(ActionResult.ACCEPTED);
 	}
@@ -261,7 +270,7 @@ class DamagedBuildingsTest {
 
 	@Test
 	void aSpyReportsWhichOfItsTargetsBuildingsAreDamaged() {
-		play(fire(1));
+		playLocated(fire(1));
 		act("Carthage", new Action.StartBuilding("Market"));
 		act("Carthage", new Action.StartBuilding("Market"));
 		act("Rome", new Action.TrainUnits("Spy", 1));
@@ -285,13 +294,13 @@ class DamagedBuildingsTest {
 			.findFirst()
 			.orElseThrow()
 			.facts();
-		assertThat(facts.buildings()).isEqualTo(new Fact<>(Map.of("Market", 2), 4));
-		assertThat(facts.damaged()).isEqualTo(new Fact<>(Map.of("Market", 1), 4));
+		assertThat(facts.buildings()).isEqualTo(new Fact<>(Map.of("Market", 2), 6));
+		assertThat(facts.damaged()).isEqualTo(new Fact<>(Map.of("Market", 1), 6));
 	}
 
 	@Test
 	void aBattleNeverDamagesNorDestroysANonDefensiveBuilding() {
-		play();
+		playLocated();
 		romeBuilt("Market");
 		act("Carthage", new Action.TrainUnits("Warrior", 3));
 		game.endTurn();

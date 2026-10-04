@@ -63,6 +63,12 @@ class RoomController {
 	record SendSpyRequest(String token, String target) {
 	}
 
+	record SetTaskRequest(String token, String kind, String target, int scouts) {
+	}
+
+	record CancelTaskRequest(String token, int task) {
+	}
+
 	record RecallWarpartyRequest(String token, int warparty) {
 	}
 
@@ -249,6 +255,31 @@ class RoomController {
 	@SendToUser(destinations = "/queue/rejections", broadcast = false)
 	Rejection sendSpy(@DestinationVariable String code, SendSpyRequest request) {
 		ActionResult result = rooms.act(code, request.token(), new Action.SendSpy(String.valueOf(request.target())));
+		return result.accepted() ? null : new Rejection(result.reason());
+	}
+
+	/**
+	 * Sets some of the Nation's Idle Scouts to a Task; the Player's changed
+	 * view arrives on {@code /user/queue/game}, or the reason it was rejected
+	 * on {@code /user/queue/rejections}.
+	 */
+	@MessageMapping("/rooms/{code}/tasks")
+	@SendToUser(destinations = "/queue/rejections", broadcast = false)
+	Rejection setTask(@DestinationVariable String code, SetTaskRequest request) {
+		ActionResult result = rooms.act(code, request.token(), new Action.SetTask(String.valueOf(request.kind()),
+				String.valueOf(request.target()), request.scouts()));
+		return result.accepted() ? null : new Rejection(result.reason());
+	}
+
+	/**
+	 * Ends one of the Nation's Tasks, its Scouts going Idle; the Player's
+	 * changed view arrives on {@code /user/queue/game}, or the reason it was
+	 * rejected on {@code /user/queue/rejections}.
+	 */
+	@MessageMapping("/rooms/{code}/tasks/cancellations")
+	@SendToUser(destinations = "/queue/rejections", broadcast = false)
+	Rejection cancelTask(@DestinationVariable String code, CancelTaskRequest request) {
+		ActionResult result = rooms.act(code, request.token(), new Action.CancelTask(request.task()));
 		return result.accepted() ? null : new Rejection(result.reason());
 	}
 

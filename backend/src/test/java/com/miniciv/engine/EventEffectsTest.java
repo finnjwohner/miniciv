@@ -28,6 +28,15 @@ class EventEffectsTest {
 				Identities.of("Rome", "Carthage"), luck);
 	}
 
+	/**
+	 * {@link #play}, once every Nation has Located every other; see
+	 * {@link Locating}.
+	 */
+	void playLocated(RandomGenerator luck, Event... events) {
+		game = Locating.everyone(new Ruleset(RULESET.units(), RULESET.buildings(), List.of(), List.of(events)),
+				Identities.of("Rome", "Carthage"), luck);
+	}
+
 	List<String> report(String nation) {
 		return game.viewOf(nation).turnReport().lines();
 	}
@@ -117,7 +126,7 @@ class EventEffectsTest {
 
 	@Test
 	void unitsCanJoinAWarpartyWithoutChangingItsTravelTime() {
-		play(EVEN_LUCK, warpartyEvent("Stragglers", units(Map.of("Warrior", 1)), "Stragglers caught up with the march"));
+		playLocated(EVEN_LUCK, warpartyEvent("Stragglers", units(Map.of("Warrior", 1)), "Stragglers caught up with the march"));
 		romeSendsTwoWarriors();
 
 		game.endTurn();
@@ -131,7 +140,7 @@ class EventEffectsTest {
 
 	@Test
 	void unitsCanLeaveAWarpartyAndOneLeftWithNoneDisappears() {
-		play(EVEN_LUCK, warpartyEvent("Desertion", units(Map.of("Warrior", -5)), "Your soldiers lost heart"));
+		playLocated(EVEN_LUCK, warpartyEvent("Desertion", units(Map.of("Warrior", -5)), "Your soldiers lost heart"));
 		romeSendsTwoWarriors();
 
 		game.endTurn();
@@ -144,7 +153,7 @@ class EventEffectsTest {
 
 	@Test
 	void anEventLosingUnitsAWarpartyDoesNotHoldCannotHappenToIt() {
-		play(EVEN_LUCK, warpartyEvent("Archers flee", units(Map.of("Archer", -1)), "Your archers fled"));
+		playLocated(EVEN_LUCK, warpartyEvent("Archers flee", units(Map.of("Archer", -1)), "Your archers fled"));
 		romeSendsTwoWarriors();
 
 		game.endTurn();
@@ -225,7 +234,7 @@ class EventEffectsTest {
 
 	@Test
 	void anEventCanCatchAnEnemySpyInTheNationFollowingTheCaughtSpyRules() {
-		play(EVEN_LUCK, INFORMANTS);
+		playLocated(EVEN_LUCK, INFORMANTS);
 
 		romeSpiesArriveAtCarthage(1);
 
@@ -237,7 +246,7 @@ class EventEffectsTest {
 
 	@Test
 	void aSenderIsToldOfAnEventCatchingItsSpyOnlyByAnotherOfItsSpiesThere() {
-		play(EVEN_LUCK, INFORMANTS);
+		playLocated(EVEN_LUCK, INFORMANTS);
 
 		romeSpiesArriveAtCarthage(2);
 
@@ -248,7 +257,7 @@ class EventEffectsTest {
 
 	@Test
 	void anEventCanCatchOneOfTheNationsOwnSpiesAbroadTellingItOnlyTheEventsText() {
-		play(EVEN_LUCK, nationEvent("Intercepted", spyCaught(Event.SpyCaught.OWN), "A courier of yours was intercepted"));
+		playLocated(EVEN_LUCK, nationEvent("Intercepted", spyCaught(Event.SpyCaught.OWN), "A courier of yours was intercepted"));
 		act("Rome", new Action.TrainUnits("Spy", 1));
 		game.endTurn();
 		assertThat(report("Rome")).noneMatch(line -> line.startsWith("A courier"));
@@ -315,7 +324,7 @@ class EventEffectsTest {
 				List.of(new Event.Choice("Hear them", spyCaught(Event.SpyCaught.ENEMY), false,
 						"You heard the informants out"),
 						new Event.Choice("Send them away", null, true, "You sent the informants away")));
-		play(EVEN_LUCK, informants);
+		playLocated(EVEN_LUCK, informants);
 		romeSpiesArriveAtCarthage(1);
 		act("Carthage", new Action.AnswerDilemma("Informants", "Hear them"));
 
@@ -335,7 +344,7 @@ class EventEffectsTest {
 				new Event("Stragglers", Event.Subject.WARPARTY, 0.3, null, units(Map.of("Warrior", 1)), "Stragglers") };
 		List<List<String>> reports = new ArrayList<>();
 		for (int replay = 1; replay <= 2; replay++) {
-			play(new Random(7), events);
+			playLocated(new Random(7), events);
 			act("Rome", new Action.TrainUnits("Spy", 2));
 			act("Rome", new Action.StartBuilding("Walls"));
 			game.endTurn();

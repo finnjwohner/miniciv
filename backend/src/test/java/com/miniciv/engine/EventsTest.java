@@ -50,6 +50,26 @@ class EventsTest {
 				Identities.of("Rome", "Carthage"), luck);
 	}
 
+	/**
+	 * {@link #play}, once every Nation has Located every other; see
+	 * {@link Locating}.
+	 */
+	void playLocated(RandomGenerator luck, Event... events) {
+		List<UnitType> units = Stream.concat(RULESET.units().stream(), Stream.of(RECRUIT)).toList();
+		game = Locating.everyone(new Ruleset(units, RULESET.buildings(), List.of(), List.of(events)),
+				Identities.of("Rome", "Carthage"), luck);
+	}
+
+	/**
+	 * {@link #play}, once Rome alone has Located Carthage, so Carthage has no
+	 * Pathfinders to draw for Rome's Warparties.
+	 */
+	void playLocatedByRome(RandomGenerator luck, Event... events) {
+		List<UnitType> units = Stream.concat(RULESET.units().stream(), Stream.of(RECRUIT)).toList();
+		game = Locating.by("Rome", new Ruleset(units, RULESET.buildings(), List.of(), List.of(events)),
+				Identities.of("Rome", "Carthage"), luck);
+	}
+
 	List<String> report(String nation) {
 		return game.viewOf(nation).turnReport().lines();
 	}
@@ -228,7 +248,7 @@ class EventsTest {
 
 	@Test
 	void aDustStormDelaysATravellingWarpartyAndItsPlayerSeesTheTurnsLeft() {
-		play(ALWAYS, starter("Dust storm"));
+		playLocated(ALWAYS, starter("Dust storm"));
 		armyOf("Rome", "Warrior", 2);
 		game.act("Rome", new Action.SendWarparty("Carthage", Map.of("Warrior", 2)));
 
@@ -244,7 +264,7 @@ class EventsTest {
 	@Test
 	void aDustStormAlsoDelaysAWarpartyHeadingHomeButNotOneWaitingForItsBattle() {
 		// Two misses while it travels out, two draws for the Battle, then a hit.
-		play(luck(-1, -1, -1, -1, 0), starter("Dust storm"));
+		playLocatedByRome(luck(-1, -1, -1, -1, 0), starter("Dust storm"));
 		armyOf("Rome", "Warrior", 2);
 		game.act("Rome", new Action.SendWarparty("Carthage", Map.of("Warrior", 2)));
 		game.endTurn();
@@ -263,7 +283,7 @@ class EventsTest {
 
 	@Test
 	void anEventCannotLeaveAWarpartyLessThanOneTurnFromWhereItIsHeading() {
-		play(ALWAYS, new Event("Tailwind", Event.Subject.WARPARTY, 1, null, new Event.Effects(0, 0, 0, 0, -5),
+		playLocated(ALWAYS, new Event("Tailwind", Event.Subject.WARPARTY, 1, null, new Event.Effects(0, 0, 0, 0, -5),
 				"A tailwind sped your march"));
 		armyOf("Rome", "Warrior", 1);
 		game.act("Rome", new Action.SendWarparty("Carthage", Map.of("Warrior", 1)));
@@ -277,7 +297,7 @@ class EventsTest {
 
 	@Test
 	void rumoursWarnANationOfALargeWarpartyApproachingButNotOfASmallOne() {
-		play(ALWAYS, starter("Rumours of war"));
+		playLocated(ALWAYS, starter("Rumours of war"));
 		// A Turn's income first, so the Recruits' upkeep stays affordable.
 		game.endTurn();
 		armyOf("Rome", "Recruit", 8);
@@ -293,9 +313,11 @@ class EventsTest {
 
 	@Test
 	void eventsAreRolledInTheOrderListedForEachNationAndWarpartyInTurn() {
-		play(luck(-1, 0, Long.MIN_VALUE, 0, -1), starter("Good harvest"), starter("Rumours of war"));
+		GameTest.Rigged luck = new GameTest.Rigged();
+		playLocatedByRome(luck, starter("Good harvest"), starter("Rumours of war"));
 		armyOf("Rome", "Recruit", 8);
 		game.act("Rome", new Action.SendWarparty("Carthage", Map.of("Recruit", 8)));
+		luck.then(0.99, 0, 0.5, 0);
 
 		game.endTurn();
 
@@ -393,7 +415,7 @@ class EventsTest {
 	@Test
 	void luckNeverVariesHowManyTurnsAnEventDelaysAWarparty() {
 		// Were luck drawn for the delay, the next Turn's roll would miss.
-		play(luck(0, -1), new Event("Swollen river", Event.Subject.WARPARTY, 1, null,
+		playLocated(luck(0, -1), new Event("Swollen river", Event.Subject.WARPARTY, 1, null,
 				new Event.Effects(0, 0, 0, 0, 2), "A swollen river forced a long way round"));
 		armyOf("Rome", "Warrior", 2);
 		game.act("Rome", new Action.SendWarparty("Carthage", Map.of("Warrior", 2)));
