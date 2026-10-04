@@ -26,4 +26,13 @@ class RulesetStartupTest {
 				.hasMessageContaining("Unit type Warrior counters Lancer, which is not a Unit type"));
 	}
 
+	@Test
+	void anEventGainingOrLosingAnUnknownUnitTypeStopsTheServerFromStarting() {
+		context.withPropertyValues("miniciv.ruleset=rulesets/unknown-effect-unit")
+			.run(started -> assertThat(started).getFailure()
+				.rootCause()
+				.isInstanceOf(InvalidRuleset.class)
+				.hasMessageContaining("Event Volunteers gains or loses Lancer, which is not a Unit type"));
+	}
+
 }

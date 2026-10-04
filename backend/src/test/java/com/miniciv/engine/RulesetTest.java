@@ -1,6 +1,7 @@
 package com.miniciv.engine;
 
 import java.util.List;
+import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 
@@ -261,6 +262,46 @@ class RulesetTest {
 			.isThrownBy(() -> new Ruleset(List.of(), List.of(), List.of(), List.of(flood)))
 			.withMessageContaining("Event Flood's choice Dig has outcomes, so its effects belong to its outcomes")
 			.withMessageContaining("Event Flood's choice Dig has outcomes, so its text belongs to its outcomes");
+	}
+
+	static final UnitType SCOUT = new UnitType("Scout", 5, 1, 1, 1, 0, List.of(), true);
+
+	static final UnitType SPY = new UnitType("Spy", 10, 1, 1, 1, 0.1, List.of(), false, true);
+
+	static Event.Effects units(Map<String, Integer> units) {
+		return new Event.Effects(0, 0, 0, 0, 0, units, 0, null);
+	}
+
+	@Test
+	void anEventCannotGainOrLoseAnUnknownUnitTypeOrNoneOfOne() {
+		Event volunteers = event("Volunteers", Event.Subject.NATION, 0.1, null,
+				units(Map.of("Lancer", 2, "Warrior", 0)));
+		Event.Choice hire = new Event.Choice("Hire", units(Map.of("Pikeman", 1)), false, "You hired them");
+		Event.Choice train = new Event.Choice("Train", false,
+				List.of(new Event.Outcome(1, units(Map.of("Slinger", -1)), "It turned out so")));
+		Event mercenaries = dilemma("Mercenaries", Event.Subject.NATION, null, choice("Refuse", true), hire, train);
+
+		assertThatExceptionOfType(InvalidRuleset.class)
+			.isThrownBy(() -> new Ruleset(List.of(unit("Warrior")), List.of(), List.of(), List.of(volunteers, mercenaries)))
+			.withMessageContaining("Event Volunteers gains or loses Lancer, which is not a Unit type")
+			.withMessageContaining("Event Volunteers cannot gain or lose 0 Warrior")
+			.withMessageContaining("Event Mercenaries's choice Hire gains or loses Pikeman, which is not a Unit type")
+			.withMessageContaining("Event Mercenaries's choice Train has an outcome that gains or loses Slinger, "
+					+ "which is not a Unit type");
+	}
+
+	@Test
+	void anEventsNewEffectsMustSuitWhatItHappensTo() {
+		Event scouting = event("Scouting", Event.Subject.NATION, 0.1, null, units(Map.of("Scout", 1)));
+		Event storm = event("Storm", Event.Subject.WARPARTY, 0.1, null,
+				new Event.Effects(0, 0, 0, 0, 0, Map.of("Spy", 1), 2, Event.SpyCaught.OWN));
+
+		assertThatExceptionOfType(InvalidRuleset.class)
+			.isThrownBy(() -> new Ruleset(List.of(SCOUT, SPY), List.of(), List.of(), List.of(scouting, storm)))
+			.withMessageContaining("Event Scouting cannot gain or lose Scout, as Scouts are never in the Army")
+			.withMessageContaining("Event Storm happens to a Warparty, so it cannot gain or lose Spy")
+			.withMessageContaining("Event Storm happens to a Warparty, so it cannot change workTurns")
+			.withMessageContaining("Event Storm happens to a Warparty, so it cannot change spyCaught");
 	}
 
 }

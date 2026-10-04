@@ -346,6 +346,13 @@ class Nation {
 	}
 
 	/**
+	 * The Nation's Spies abroad, in the order sent.
+	 */
+	List<Spy> spies() {
+		return List.copyOf(spies);
+	}
+
+	/**
 	 * Loses one of the Nation's Spies abroad, caught by another Nation.
 	 *
 	 * @param spy the Spy, as {@link #spiesInPlace()} or
@@ -397,6 +404,110 @@ class Nation {
 			}
 		}
 		throw new IllegalArgumentException("Not a Warparty of " + name());
+	}
+
+	/**
+	 * Units that joined or left the Army or a Warparty.
+	 *
+	 * @param joined how many of each Unit type joined, in the order given
+	 * @param left how many of each Unit type left, in the order given
+	 */
+	record UnitsChanged(Map<String, Integer> joined, Map<String, Integer> left) {
+	}
+
+	/**
+	 * Has Units join the Army, or leave it if below 0, no more than it has.
+	 *
+	 * @param units how many of each Unit type join or leave
+	 */
+	UnitsChanged changeArmy(Map<String, Integer> units) {
+		UnitsChanged changed = changeUnits(army, units);
+		version++;
+		return changed;
+	}
+
+	/**
+	 * Has Units join one of the Nation's Warparties abroad, or leave it if
+	 * below 0, no more than it holds; its trip takes as long as before. One
+	 * left with no Units disappears.
+	 *
+	 * @param warparty the Warparty, as {@link #warparties()} gave it
+	 * @param units how many of each Unit type join or leave
+	 */
+	UnitsChanged changeWarparty(Warparty warparty, Map<String, Integer> units, Ruleset ruleset) {
+		int at = warparties.indexOf(warparty);
+		Map<String, Integer> holding = new LinkedHashMap<>(warparty.units());
+		UnitsChanged changed = changeUnits(holding, units);
+		if (holding.isEmpty()) {
+			warparties.remove(at);
+		}
+		else {
+			warparties.set(at, warparty.with(holding, ruleset));
+		}
+		version++;
+		return changed;
+	}
+
+	private static UnitsChanged changeUnits(Map<String, Integer> holding, Map<String, Integer> units) {
+		Map<String, Integer> joined = new LinkedHashMap<>();
+		Map<String, Integer> left = new LinkedHashMap<>();
+		units.forEach((unit, count) -> {
+			if (count > 0) {
+				holding.merge(unit, count, Integer::sum);
+				joined.put(unit, count);
+			}
+			else {
+				int leaving = Math.min(-count, holding.getOrDefault(unit, 0));
+				if (leaving > 0) {
+					holding.computeIfPresent(unit, (u, owned) -> owned == leaving ? null : owned - leaving);
+					left.put(unit, leaving);
+				}
+			}
+		});
+		return new UnitsChanged(joined, left);
+	}
+
+	/**
+	 * How many Buildings under construction, Repairs, Rebuilds and Units in
+	 * training started together the Nation has.
+	 */
+	int workInProgress() {
+		return construction.size() + repairs.size() + training.size();
+	}
+
+	/**
+	 * Stalls one piece of work in progress by the given number of Turns, or
+	 * speeds it up if below 0; it still finishes no earlier than as the next
+	 * Turn resolves.
+	 *
+	 * @param pick which one, counting Buildings under construction, then
+	 *        Repairs and Rebuilds, then Units in training, each in the order
+	 *        started, from 0
+	 * @param nextTurn the Turn about to start
+	 * @return the work as it is now
+	 */
+	Work changeWork(int pick, int turns, int nextTurn) {
+		version++;
+		if (pick < construction.size()) {
+			Construction current = construction.get(pick);
+			Construction changed = new Construction(current.building(), Math.max(1, current.turnsLeft() + turns));
+			construction.set(pick, changed);
+			return changed;
+		}
+		pick -= construction.size();
+		if (pick < repairs.size()) {
+			Repair current = repairs.get(pick);
+			Repair changed = new Repair(current.building(), current.rebuild(), current.defense(),
+					Math.max(1, current.turnsLeft() + turns));
+			repairs.set(pick, changed);
+			return changed;
+		}
+		pick -= repairs.size();
+		Training current = training.get(pick);
+		Training changed = new Training(current.unit(), current.count(),
+				Math.max(nextTurn + 1, current.readyOnTurn() + turns));
+		training.set(pick, changed);
+		return changed;
 	}
 
 	/**

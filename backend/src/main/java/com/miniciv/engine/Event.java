@@ -1,8 +1,11 @@
 package com.miniciv.engine;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.random.RandomGenerator;
@@ -12,8 +15,9 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 /**
  * Something that may happen to a Nation or a Warparty as a Turn ends, outside
  * the Players' direct actions. Each Turn, every Nation or Warparty its
- * conditions hold for has the given chance of it happening, and its effects
- * are announced in the Turn Report.
+ * conditions hold for, and that has what its effects need (the Units it loses,
+ * work in progress to stall or speed up, a Spy to catch), has the given chance
+ * of it happening, and its effects are announced in the Turn Report.
  *
  * @param name what the content calls it, unique among Events
  * @param subject what it happens to
@@ -194,7 +198,27 @@ public record Event(String name, Subject subject, double chance, Conditions when
 	}
 
 	/**
-	 * The fixed set of effects an Event may have; one left out is 0.
+	 * Whose Spy an Event catches.
+	 */
+	public enum SpyCaught {
+
+		/**
+		 * One of the Nation's own Spies abroad, caught by the Nation it was
+		 * sent to.
+		 */
+		@JsonProperty("own")
+		OWN,
+
+		/**
+		 * One of another Nation's Spies in place in the Nation's land.
+		 */
+		@JsonProperty("enemy")
+		ENEMY
+
+	}
+
+	/**
+	 * The fixed set of effects an Event may have; one left out is 0 or none.
 	 *
 	 * @param gold how much the Nation's Gold changes by, not below 0
 	 * @param population how much the Nation's Population changes by, not below
@@ -204,19 +228,53 @@ public record Event(String name, Subject subject, double chance, Conditions when
 	 *        damaging or destroying its defensive Buildings as a Battle would
 	 * @param travelTurns how many Turns the Warparty's trip changes by; it
 	 *        still takes at least one more
+	 * @param units how many of each Unit type join the Nation's Army or the
+	 *        Warparty, or leave it if below 0, in the order listed; no more
+	 *        leave than are there
+	 * @param workTurns how many Turns one of the Nation's Buildings under
+	 *        construction, Repairs, Rebuilds or Units in training, picked by
+	 *        luck, is stalled by, or sped up by if below 0; it still takes at
+	 *        least one more
+	 * @param spyCaught whose Spy is caught, picked by luck, or null if none is
 	 */
-	public record Effects(int gold, int population, int research, int damageDefense, int travelTurns) {
+	public record Effects(int gold, int population, int research, int damageDefense, int travelTurns,
+			Map<String, Integer> units, int workTurns, SpyCaught spyCaught) {
 
 		static final Effects NONE = new Effects(0, 0, 0, 0, 0);
+
+		public Effects {
+			units = units == null ? Map.of() : Collections.unmodifiableMap(new LinkedHashMap<>(units));
+		}
+
+		/**
+		 * Effects that change only resources, Defense and travel time.
+		 */
+		public Effects(int gold, int population, int research, int damageDefense, int travelTurns) {
+			this(gold, population, research, damageDefense, travelTurns, null, 0, null);
+		}
 
 		/**
 		 * These effects as luck varies them, drawing once from the given random
 		 * source for each Gold, Population, Research and Defense-damage effect
-		 * that is not 0, in that order; travel Turns never vary.
+		 * that is not 0, in that order, then for each Unit type in the order
+		 * listed, then for work Turns if not 0; travel Turns never vary.
 		 */
 		Effects varied(RandomGenerator random) {
-			return new Effects(varied(gold, random), varied(population, random), varied(research, random),
-					varied(damageDefense, random), travelTurns);
+			int variedGold = varied(gold, random);
+			int variedPopulation = varied(population, random);
+			int variedResearch = varied(research, random);
+			int variedDamage = varied(damageDefense, random);
+			Map<String, Integer> variedUnits = new LinkedHashMap<>();
+			units.forEach((unit, count) -> variedUnits.put(unit, varied(count, random)));
+			return new Effects(variedGold, variedPopulation, variedResearch, variedDamage, travelTurns, variedUnits,
+					varied(workTurns, random), spyCaught);
+		}
+
+		/**
+		 * The Unit types some of which leave, in the order listed.
+		 */
+		List<String> unitsLeaving() {
+			return units.entrySet().stream().filter(change -> change.getValue() < 0).map(Map.Entry::getKey).toList();
 		}
 
 		private static int varied(int authored, RandomGenerator random) {
@@ -243,8 +301,10 @@ public record Event(String name, Subject subject, double chance, Conditions when
 
 	/**
 	 * What is wrong with this Event, if anything.
+	 *
+	 * @param unitTypes the Unit types in the ruleset
 	 */
-	List<String> problems() {
+	List<String> problems(List<UnitType> unitTypes) {
 		List<String> problems = new ArrayList<>();
 		String subjectName = "Event " + name;
 		if (subject == null) {
@@ -266,6 +326,7 @@ public record Event(String name, Subject subject, double chance, Conditions when
 		if (effects.damageDefense() < 0) {
 			problems.add(subjectName + " cannot damage Defense by less than 0.");
 		}
+		problems.addAll(unitProblems(subjectName, effects, unitTypes));
 		if (subject == Subject.WARPARTY) {
 			String unsuited = subjectName + " happens to a Warparty, so it cannot ";
 			unsuited(problems, unsuited + "need populationAtLeast.", when.populationAtLeast() != null);
@@ -277,6 +338,8 @@ public record Event(String name, Subject subject, double chance, Conditions when
 			unsuited(problems, unsuited + "change population.", effects.population() != 0);
 			unsuited(problems, unsuited + "change research.", effects.research() != 0);
 			unsuited(problems, unsuited + "change damageDefense.", effects.damageDefense() != 0);
+			unsuited(problems, unsuited + "change workTurns.", effects.workTurns() != 0);
+			unsuited(problems, unsuited + "change spyCaught.", effects.spyCaught() != null);
 		}
 		if (subject == Subject.NATION) {
 			String unsuited = subjectName + " happens to a Nation, so it cannot ";
@@ -284,15 +347,41 @@ public record Event(String name, Subject subject, double chance, Conditions when
 			unsuited(problems, unsuited + "change travelTurns.", effects.travelTurns() != 0);
 		}
 		if (dilemma()) {
-			problems.addAll(dilemmaProblems(subjectName));
+			problems.addAll(dilemmaProblems(subjectName, unitTypes));
 		}
+		return problems;
+	}
+
+	/**
+	 * What is wrong with the Units some effects gain or lose, if anything.
+	 *
+	 * @param what what has the effects, such as "Event Volunteers" or "Event
+	 *        Mercenaries's choice Hire has an outcome that"
+	 */
+	private List<String> unitProblems(String what, Effects effects, List<UnitType> unitTypes) {
+		List<String> problems = new ArrayList<>();
+		effects.units().forEach((unit, count) -> {
+			Optional<UnitType> type = unitTypes.stream().filter(known -> known.name().equals(unit)).findFirst();
+			if (type.isEmpty()) {
+				problems.add(what + " gains or loses " + unit + ", which is not a Unit type.");
+			}
+			else if (subject == Subject.WARPARTY && (type.get().scout() || type.get().spy())) {
+				problems.add(what + " happens to a Warparty, so it cannot gain or lose " + unit + ".");
+			}
+			else if (type.get().scout()) {
+				problems.add(what + " cannot gain or lose " + unit + ", as Scouts are never in the Army.");
+			}
+			if (count == null || count == 0) {
+				problems.add(what + " cannot gain or lose 0 " + unit + ".");
+			}
+		});
 		return problems;
 	}
 
 	/**
 	 * What is wrong with this Event as a Dilemma, if anything.
 	 */
-	private List<String> dilemmaProblems(String subjectName) {
+	private List<String> dilemmaProblems(String subjectName, List<UnitType> unitTypes) {
 		List<String> problems = new ArrayList<>();
 		if (subject == Subject.WARPARTY) {
 			problems.add(subjectName + " offers choices, so it must happen to a Nation.");
@@ -326,9 +415,10 @@ public record Event(String name, Subject subject, double chance, Conditions when
 				if (choice.effects().damageDefense() < 0) {
 					problems.add(choiceName + " cannot damage Defense by less than 0.");
 				}
+				problems.addAll(unitProblems(choiceName, choice.effects(), unitTypes));
 			}
 			else {
-				problems.addAll(outcomeProblems(choiceName, choice));
+				problems.addAll(outcomeProblems(choiceName, choice, unitTypes));
 			}
 		}
 		return problems;
@@ -337,7 +427,7 @@ public record Event(String name, Subject subject, double chance, Conditions when
 	/**
 	 * What is wrong with the outcomes a Dilemma choice lists, if anything.
 	 */
-	private static List<String> outcomeProblems(String choiceName, Choice choice) {
+	private List<String> outcomeProblems(String choiceName, Choice choice, List<UnitType> unitTypes) {
 		List<String> problems = new ArrayList<>();
 		if (!choice.effects().equals(Effects.NONE)) {
 			problems.add(choiceName + " has outcomes, so its effects belong to its outcomes.");
@@ -360,6 +450,7 @@ public record Event(String name, Subject subject, double chance, Conditions when
 			if (outcome.effects().damageDefense() < 0) {
 				problems.add(choiceName + " has an outcome that damages Defense by less than 0.");
 			}
+			problems.addAll(unitProblems(choiceName + " has an outcome that", outcome.effects(), unitTypes));
 		}
 		// Chances such as 0.1 cannot be added exactly.
 		if (Math.abs(total - 1) > 1e-9) {
