@@ -18,7 +18,7 @@ class HostileMissionsTest {
 	static List<Mission> hostileAndIntel() {
 		List<Mission> missions = new ArrayList<>(SpyMissionsTest.MISSIONS);
 		missions.add(new Mission("Sabotage Defenses", 4, 0.6, new Mission.Harm(8, 0, 0, 0),
-				"Saboteurs undermined your fortifications"));
+				"Saboteurs undermined your Defense"));
 		missions.add(new Mission("Sabotage Buildings", 4, 0.6, new Mission.Harm(0, 1, 0, 0), "Saboteurs struck in the night"));
 		missions.add(new Mission("Poison Army", 4, 0.5, new Mission.Harm(0, 0, 0.2, 0), "Poison was found in your soldiers' wells"));
 		missions.add(new Mission("Incite Unrest", 3, 0.6, new Mission.Harm(0, 0, 0, 4), "Agitators stirred up unrest"));
@@ -114,7 +114,7 @@ class HostileMissionsTest {
 
 		assertThat(game.viewOf("Carthage").defense()).isEqualTo(2);
 		assertThat(report("Carthage"))
-			.contains("Saboteurs undermined your fortifications: your Defense was worn down from 10 to 2, damaging Walls.")
+			.contains("Saboteurs undermined your Defense: your Defense was worn down from 10 to 2, damaging Walls.")
 			.noneMatch(line -> line.contains("Rome") || line.contains("Caesar"));
 		assertThat(report("Rome")).contains("Your Spy in Carthage succeeded at Sabotage Defenses.",
 				"Your Spy in Carthage finished Sabotage Defenses and is Idle; set it a new Mission.");
@@ -224,7 +224,7 @@ class HostileMissionsTest {
 	void counterIntelligenceIsTwiceAsLikelyToCatchASpyOnAHostileMission() {
 		spyArrivesWhereOneSpyIsAtHome();
 
-		game.act("Rome", new Action.SetMission(1, "Sabotage Defenses"));
+		assertThat(game.act("Rome", new Action.SetMission(1, "Sabotage Defenses"))).isEqualTo(ActionResult.ACCEPTED);
 		game.endTurn();
 
 		assertThat(game.viewOf("Rome").spies()).isEmpty();
@@ -235,7 +235,7 @@ class HostileMissionsTest {
 	void counterIntelligenceHasTheUsualChanceAgainstASpyOnAnIntelMission() {
 		spyArrivesWhereOneSpyIsAtHome();
 
-		game.act("Rome", new Action.SetMission(1, "Report Gold"));
+		assertThat(game.act("Rome", new Action.SetMission(1, "Report Gold"))).isEqualTo(ActionResult.ACCEPTED);
 		game.endTurn();
 
 		assertThat(game.viewOf("Rome").spies()).hasSize(1);
