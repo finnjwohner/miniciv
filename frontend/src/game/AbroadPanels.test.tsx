@@ -29,4 +29,43 @@ describe('SpiesPanel', () => {
     const spies = screen.getByRole('region', { name: 'Spies' })
     expect(precedes(within(spies).getByRole('button', { name: 'Send Spy' }), within(spies).getByText(/in place at/))).toBe(true)
   })
+
+  it('shows Spies in place at the same Nation as one row with a count', () => {
+    renderGame({ nation: nationView({ spies: [spy({ id: 1 }), spy({ id: 2 }), spy({ id: 3 })] }) })
+    fireEvent.click(tab('Spies'))
+
+    const spies = screen.getByRole('region', { name: 'Spies' })
+    const rows = within(spies).getAllByRole('listitem')
+    expect(rows).toHaveLength(1)
+    expect(rows[0]).toHaveTextContent('Spy ×3')
+    expect(rows[0]).toHaveTextContent('in place at Egypt')
+  })
+
+  it('keeps Spies to the same Nation with different Turns left as separate rows', () => {
+    renderGame({
+      nation: nationView({ spies: [spy({ id: 1, turnsLeft: 1 }), spy({ id: 2, turnsLeft: 2 }), spy({ id: 3, turnsLeft: 2 })] }),
+    })
+    fireEvent.click(tab('Spies'))
+
+    const rows = within(screen.getByRole('region', { name: 'Spies' })).getAllByRole('listitem')
+    expect(rows).toHaveLength(2)
+    expect(rows[0]).toHaveTextContent('Spy ×1')
+    expect(rows[0]).toHaveTextContent('1 Turn left')
+    expect(rows[1]).toHaveTextContent('Spy ×2')
+    expect(rows[1]).toHaveTextContent('2 Turns left')
+  })
+
+  it('says Spies at home are running counter-intelligence', () => {
+    renderGame({
+      nation: nationView({
+        army: { Spy: 2 },
+        availableUnits: [unit({ name: 'Spy', gold: 30, population: 1, turns: 2, upkeep: 1, strength: 0, spy: true })],
+      }),
+    })
+    fireEvent.click(tab('Spies'))
+
+    const spies = screen.getByRole('region', { name: 'Spies' })
+    expect(within(spies).getByText('2 on counter-intelligence')).toBeInTheDocument()
+    expect(within(spies).getByText(/running counter-intelligence/)).toBeInTheDocument()
+  })
 })

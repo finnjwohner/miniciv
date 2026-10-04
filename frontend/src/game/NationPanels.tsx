@@ -3,7 +3,7 @@ import type { BuildingDamage, BuildingType, NationView, TechTreeEntry, UnitType 
 import { Icon, type IconName } from '../ui/Icon'
 import { Panel } from '../ui/Panel'
 import { CountInput } from './controls'
-import { formatChange, plural } from './format'
+import { formatChange, mergeAlike, plural } from './format'
 import { rowClass, useCountUp, useFreshRows } from './turnStart'
 
 /**
@@ -54,21 +54,6 @@ function describeEffect(building: BuildingType) {
   if (building.researchPerTurn > 0) effects.push(`+${building.researchPerTurn} Research per Turn`)
   if (building.defense > 0) effects.push(`+${building.defense} Defense`)
   return effects.join(', ')
-}
-
-/**
- * The rows in progress that are the same by `sameBy`, each shown once with its `count` summed, in the
- * order first started; the key doubles as the row's React key.
- */
-function mergeAlike<T>(items: T[], sameBy: (item: T) => (string | number | boolean)[], count: (item: T) => number = () => 1) {
-  const rows = new Map<string, { item: T; count: number }>()
-  for (const item of items) {
-    const key = JSON.stringify(sameBy(item))
-    const row = rows.get(key)
-    if (row) row.count += count(item)
-    else rows.set(key, { item, count: count(item) })
-  }
-  return [...rows].map(([key, row]) => ({ key, ...row }))
 }
 
 /** A defensive Building type's Damaged and Destroyed Buildings, with buttons to Repair and Rebuild them. */
