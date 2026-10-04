@@ -27,6 +27,10 @@ class TechTreeTest {
 	static final Ruleset RULESET = new Ruleset(List.of(WARRIOR, HORSEMAN), List.of(FARM, WALLS),
 			List.of(MASONRY, RIDING, CHIVALRY));
 
+	static final Ruleset CHAIN = new Ruleset(List.of(WARRIOR), List.of(FARM),
+			List.of(new Technology("A", 1, List.of("B"), List.of()), new Technology("B", 1, List.of("C"), List.of()),
+					new Technology("C", 1, List.of(), List.of())));
+
 	Game game = new Game(RULESET, Identities.of("Rome", "Carthage"), EVEN_LUCK);
 
 	ActionResult unlock(String technology) {
@@ -117,6 +121,44 @@ class TechTreeTest {
 
 		assertThat(game.viewOf("Rome").availableUnits()).containsExactly(WARRIOR, HORSEMAN);
 		assertThat(game.act("Rome", new Action.TrainUnits("Horseman", 1))).isEqualTo(ActionResult.ACCEPTED);
+	}
+
+	@Test
+	void aNationSeesOnlyOneStepBeyondWhatItCanUnlockNow() {
+		game = new Game(CHAIN, Identities.of("Rome", "Carthage"), EVEN_LUCK);
+
+		assertThat(game.viewOf("Rome").techTree()).extracting(TechTreeEntry::name, TechTreeEntry::standing)
+			.containsExactly(tuple(null, TechTreeEntry.Standing.HIDDEN), tuple("B", TechTreeEntry.Standing.LOCKED),
+					tuple("C", TechTreeEntry.Standing.AVAILABLE));
+
+		researchAtLeast(1);
+		unlock("C");
+
+		assertThat(game.viewOf("Rome").techTree()).extracting(TechTreeEntry::name, TechTreeEntry::standing)
+			.containsExactly(tuple("A", TechTreeEntry.Standing.LOCKED), tuple("B", TechTreeEntry.Standing.AVAILABLE),
+					tuple("C", TechTreeEntry.Standing.UNLOCKED));
+	}
+
+	@Test
+	void aHiddenTechnologyIsAnAnonymousPlaceholder() {
+		game = new Game(CHAIN, Identities.of("Rome", "Carthage"), EVEN_LUCK);
+
+		assertThat(game.viewOf("Rome").techTree().get(0))
+			.isEqualTo(new TechTreeEntry(null, 0, List.of(), List.of(), TechTreeEntry.Standing.HIDDEN));
+	}
+
+	@Test
+	void aTechnologyWithAnyHiddenPrerequisiteIsHidden() {
+		game = new Game(new Ruleset(List.of(WARRIOR, HORSEMAN), List.of(FARM, WALLS), List.of(MASONRY, RIDING, CHIVALRY,
+				new Technology("Engineering", 1, List.of("Chivalry"), List.of()),
+				new Technology("Siege", 1, List.of("Masonry", "Engineering"), List.of()))),
+				Identities.of("Rome", "Carthage"), EVEN_LUCK);
+		researchAtLeast(6);
+		unlock("Masonry");
+
+		assertThat(game.viewOf("Rome").techTree()).extracting(TechTreeEntry::standing)
+			.containsExactly(TechTreeEntry.Standing.UNLOCKED, TechTreeEntry.Standing.AVAILABLE,
+					TechTreeEntry.Standing.LOCKED, TechTreeEntry.Standing.HIDDEN, TechTreeEntry.Standing.HIDDEN);
 	}
 
 	@Test

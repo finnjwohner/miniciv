@@ -1,5 +1,6 @@
 package com.miniciv;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -38,9 +39,20 @@ class TechTreeTest {
 		Ruleset testRuleset() {
 			return new Ruleset(List.of(), List.of(new BuildingType("Walls", 30, 2, 0, 0, 0, 0, 10)),
 					List.of(new Technology("Masonry", 3, List.of(), List.of("Walls")),
-							new Technology("Mathematics", 20, List.of("Masonry"), List.of())));
+							new Technology("Mathematics", 20, List.of("Masonry"), List.of()),
+							new Technology("Astronomy", 40, List.of("Mathematics"), List.of())));
 		}
 
+	}
+
+	/**
+	 * A hidden Technology as it is sent, with nothing to tell which one it is.
+	 */
+	static final Map<String, Object> HIDDEN = new HashMap<>(Map.of("research", 0, "prerequisites", List.of(),
+			"unlocks", List.of(), "standing", "HIDDEN"));
+
+	static {
+		HIDDEN.put("name", null);
 	}
 
 	@LocalServerPort
@@ -109,7 +121,8 @@ class TechTreeTest {
 				Map.of("name", "Masonry", "research", 3, "prerequisites", List.of(), "unlocks", List.of("Walls"),
 						"standing", "AVAILABLE"),
 				Map.of("name", "Mathematics", "research", 20, "prerequisites", List.of("Masonry"), "unlocks", List.of(),
-						"standing", "LOCKED")));
+						"standing", "LOCKED"),
+				HIDDEN));
 
 		send(rome, "/technologies", Map.of("token", rome.token(), "technology", "Masonry"));
 
@@ -119,9 +132,19 @@ class TechTreeTest {
 				Map.of("name", "Masonry", "research", 3, "prerequisites", List.of(), "unlocks", List.of("Walls"),
 						"standing", "UNLOCKED"),
 				Map.of("name", "Mathematics", "research", 20, "prerequisites", List.of("Masonry"), "unlocks", List.of(),
-						"standing", "AVAILABLE")));
+						"standing", "AVAILABLE"),
+				Map.of("name", "Astronomy", "research", 40, "prerequisites", List.of("Mathematics"), "unlocks",
+						List.of(), "standing", "LOCKED")));
 		assertThat(unlocked.get("availableBuildings")).isEqualTo(List.of(Map.of("name", "Walls", "gold", 30, "turns", 2,
 				"populationPerTurn", 0, "goldPerTurn", 0, "goldPerPopulation", 0.0, "researchPerTurn", 0, "defense", 10)));
+	}
+
+	@Test
+	void aHiddenTechnologysNameIsNeverSentToThePlayer() throws Exception {
+		startAndEndFirstTurn();
+		Map<?, ?> view = rome.privately().next();
+
+		assertThat(view.toString()).doesNotContain("Astronomy");
 	}
 
 	@Test

@@ -205,16 +205,19 @@ export type Dilemma = {
 }
 /**
  * A Technology in the Tech Tree as this Nation stands with it: `UNLOCKED`, `AVAILABLE` once all its
- * `prerequisites` are unlocked, otherwise `LOCKED`. Unlocking it costs `research` and gives access to the
- * Unit and Building types it `unlocks`.
+ * `prerequisites` are unlocked, `LOCKED` while each of them is unlocked or available, otherwise `HIDDEN`.
+ * Unlocking it costs `research` and gives access to the Unit and Building types it `unlocks`.
  */
-export type TechTreeEntry = {
+export type TechTreeEntry = KnownTechnology | HiddenTechnology
+export type KnownTechnology = {
   name: string
   research: number
   prerequisites: string[]
   unlocks: string[]
   standing: 'UNLOCKED' | 'AVAILABLE' | 'LOCKED'
 }
+/** A Technology more than one step beyond what the Nation can unlock now, sent with nothing to tell which. */
+export type HiddenTechnology = { name: null; research: 0; prerequisites: []; unlocks: []; standing: 'HIDDEN' }
 /** Another Nation's Warparty that arrived at this one and waits for the Battle as this Turn ends. */
 export type ArrivedWarparty = { nation: string; warparty: number }
 /**

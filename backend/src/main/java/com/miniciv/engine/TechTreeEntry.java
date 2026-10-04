@@ -3,7 +3,8 @@ package com.miniciv.engine;
 import java.util.List;
 
 /**
- * A Technology in the Tech Tree as one Nation stands with it.
+ * A Technology in the Tech Tree as one Nation stands with it. A hidden one is
+ * an anonymous placeholder, with no name, cost, prerequisites or unlocks.
  *
  * @param research the Research it costs to unlock
  * @param prerequisites the Technologies that must be unlocked first
@@ -15,6 +16,10 @@ public record TechTreeEntry(String name, int research, List<String> prerequisite
 	public TechTreeEntry {
 		prerequisites = List.copyOf(prerequisites);
 		unlocks = List.copyOf(unlocks);
+	}
+
+	static TechTreeEntry hidden() {
+		return new TechTreeEntry(null, 0, List.of(), List.of(), Standing.HIDDEN);
 	}
 
 	public enum Standing {
@@ -31,9 +36,16 @@ public record TechTreeEntry(String name, int research, List<String> prerequisite
 		AVAILABLE,
 
 		/**
-		 * Some of its prerequisites are not yet unlocked.
+		 * Some of its prerequisites are not yet unlocked, but each is unlocked or
+		 * available.
 		 */
-		LOCKED
+		LOCKED,
+
+		/**
+		 * Some of its prerequisites are neither unlocked nor available, so the
+		 * Nation knows nothing about it.
+		 */
+		HIDDEN
 
 	}
 
