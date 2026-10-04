@@ -1,6 +1,7 @@
 package com.miniciv.engine;
 
 import java.util.List;
+import java.util.Objects;
 
 import org.junit.jupiter.api.Test;
 
@@ -74,20 +75,115 @@ class RulesetFilesTest {
 					"Cracked foundations");
 	}
 
+	@Test
+	void theShippedRulesetHasFiftyFourEventsAndFortyFourDilemmas() {
+		Ruleset ruleset = RulesetFiles.load("ruleset");
+
+		assertThat(ruleset.events()).filteredOn(event -> !event.dilemma()).hasSize(54);
+		assertThat(ruleset.events()).filteredOn(Event::dilemma).hasSize(44);
+	}
+
+	@Test
+	void everySubjectHasShippedEventsAndTheNationAndItsScoutsHaveShippedDilemmas() {
+		Ruleset ruleset = RulesetFiles.load("ruleset");
+
+		assertThat(ruleset.events()).filteredOn(event -> !event.dilemma())
+			.extracting(Event::subject)
+			.contains(Event.Subject.NATION, Event.Subject.WARPARTY, Event.Subject.SCOUTS);
+		assertThat(ruleset.events()).filteredOn(Event::dilemma)
+			.extracting(Event::subject)
+			.contains(Event.Subject.NATION, Event.Subject.SCOUTS);
+	}
+
+	/**
+	 * The effects of an Event, or of each outcome its choices may lead to.
+	 */
+	static List<Event.Effects> allEffects(Event event) {
+		if (!event.dilemma()) {
+			return List.of(event.effects());
+		}
+		return event.choices().stream().flatMap(choice -> choice.outcomes().stream()).map(Event.Outcome::effects).toList();
+	}
+
+	@Test
+	void everyEffectKindIsUsedByAShippedEvent() {
+		Ruleset ruleset = RulesetFiles.load("ruleset");
+		List<Event.Effects> nationEffects = ruleset.events()
+			.stream()
+			.filter(event -> event.subject() != Event.Subject.WARPARTY)
+			.flatMap(event -> allEffects(event).stream())
+			.toList();
+		List<Event.Effects> warpartyEffects = ruleset.events()
+			.stream()
+			.filter(event -> event.subject() == Event.Subject.WARPARTY)
+			.map(Event::effects)
+			.toList();
+
+		assertThat(nationEffects).as("Army gains Units").anyMatch(effects -> effects.units().values().stream().anyMatch(count -> count > 0));
+		assertThat(nationEffects).as("Army loses Units").anyMatch(effects -> !effects.unitsLeaving().isEmpty());
+		assertThat(warpartyEffects).as("Warparty gains Units").anyMatch(effects -> effects.units().values().stream().anyMatch(count -> count > 0));
+		assertThat(warpartyEffects).as("Warparty loses Units").anyMatch(effects -> !effects.unitsLeaving().isEmpty());
+		assertThat(nationEffects).as("work stalled").anyMatch(effects -> effects.workTurns() > 0);
+		assertThat(nationEffects).as("work sped up").anyMatch(effects -> effects.workTurns() < 0);
+		assertThat(nationEffects).as("own Spy caught").anyMatch(effects -> effects.spyCaught() == Event.SpyCaught.OWN);
+		assertThat(nationEffects).as("enemy Spy caught").anyMatch(effects -> effects.spyCaught() == Event.SpyCaught.ENEMY);
+		assertThat(nationEffects).as("Scouts lost").anyMatch(effects -> effects.scoutsLost() > 0);
+		List<Event.Lasting> lasting = nationEffects.stream().map(Event.Effects::lasting).filter(Objects::nonNull).toList();
+		assertThat(lasting).as("Lasting Gold").anyMatch(each -> each.gold() != 0);
+		assertThat(lasting).as("Lasting Population").anyMatch(each -> each.population() != 0);
+		assertThat(lasting).as("Lasting Research").anyMatch(each -> each.research() != 0);
+		assertThat(lasting).as("Lasting halt to growth").anyMatch(Event.Lasting::noGrowth);
+	}
+
+	/**
+	 * The Gold a fresh Nation begins the Game with.
+	 */
+	private static final int FRESH_GOLD = 50;
+
+	@Test
+	void noShippedEventCanCostMoreGoldThanAFreshNationHasUnlessItNeedsThatMuch() {
+		Ruleset ruleset = RulesetFiles.load("ruleset");
+
+		assertThat(ruleset.events()).allSatisfy(event -> {
+			int largestLoss = allEffects(event).stream().mapToInt(effects -> -effects.gold()).max().orElse(0);
+			if (largestLoss > FRESH_GOLD) {
+				assertThat(event.when().goldAtLeast()).as(event.name()).isNotNull().isGreaterThanOrEqualTo(largestLoss);
+			}
+		});
+	}
+
 	/**
 	 * Rough worth of each effect in Gold, for weighing Dilemma choices against
 	 * each other: a Population is worth the Gold it earns over a few Turns,
 	 * a Research about three Gold, a point of Defense lost about six
-	 * Gold to repair or rebuild, and a Scout lost about twenty Gold to train
-	 * again.
+	 * Gold to repair or rebuild, a Scout lost about twenty Gold to train
+	 * again, a Unit what it costs to train, a Turn of work stalled about ten
+	 * Gold, a Spy of the Nation's own caught what it cost and another
+	 * Nation's caught half that, and a Lasting Event its per-Turn changes
+	 * over its Turns, a halt to growth costing the two Population a Nation
+	 * grows by each Turn.
 	 */
-	static double worth(Event.Effects effects) {
+	static double worth(Event.Effects effects, Ruleset ruleset) {
+		double units = effects.units()
+			.entrySet()
+			.stream()
+			.mapToDouble(change -> change.getValue() * ruleset.unit(change.getKey()).orElseThrow().gold())
+			.sum();
+		double spyGold = ruleset.unit("Spy").orElseThrow().gold();
+		double spy = effects.spyCaught() == null ? 0 : effects.spyCaught() == Event.SpyCaught.OWN ? -spyGold : spyGold / 2;
+		Event.Lasting lasting = effects.lasting();
+		double lastingWorth = lasting == null ? 0
+				: lasting.turns() * (lasting.gold() + 6.0 * lasting.population() + 3.0 * lasting.research()
+						- (lasting.noGrowth() ? 6.0 * 2 : 0));
 		return effects.gold() + 6.0 * effects.population() + 3.0 * effects.research() - 6.0 * effects.damageDefense()
-				- 20.0 * effects.scoutsLost();
+				- 20.0 * effects.scoutsLost() + units - 10.0 * effects.workTurns() + spy + lastingWorth;
 	}
 
-	static double expectedWorth(Event.Choice choice) {
-		return choice.outcomes().stream().mapToDouble(outcome -> outcome.chance() * worth(outcome.effects())).sum();
+	static double expectedWorth(Event.Choice choice, Ruleset ruleset) {
+		return choice.outcomes()
+			.stream()
+			.mapToDouble(outcome -> outcome.chance() * worth(outcome.effects(), ruleset))
+			.sum();
 	}
 
 	@Test
@@ -95,10 +191,24 @@ class RulesetFilesTest {
 		Ruleset ruleset = RulesetFiles.load("ruleset");
 
 		assertThat(ruleset.events()).filteredOn(Event::dilemma).allSatisfy(dilemma -> {
-			double worst = expectedWorth(dilemma.worstChoice());
+			double worst = expectedWorth(dilemma.worstChoice(), ruleset);
 			assertThat(dilemma.choices()).filteredOn(choice -> !choice.worst())
-				.allSatisfy(choice -> assertThat(expectedWorth(choice)).as(dilemma.name() + ": " + choice.name())
+				.allSatisfy(choice -> assertThat(expectedWorth(choice, ruleset))
+					.as(dilemma.name() + ": " + choice.name())
 					.isGreaterThan(worst));
+		});
+	}
+
+	@Test
+	void everyShippedDilemmaChoiceCanTurnOutBadly() {
+		Ruleset ruleset = RulesetFiles.load("ruleset");
+
+		assertThat(ruleset.events()).filteredOn(Event::dilemma).allSatisfy(dilemma -> {
+			for (Event.Choice choice : dilemma.choices()) {
+				double expected = expectedWorth(choice, ruleset);
+				assertThat(choice.outcomes()).as(dilemma.name() + ": " + choice.name())
+					.anyMatch(outcome -> worth(outcome.effects(), ruleset) < expected);
+			}
 		});
 	}
 
