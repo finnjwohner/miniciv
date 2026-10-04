@@ -11,6 +11,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.ToIntFunction;
+import java.util.stream.Collectors;
 
 /**
  * A Nation's state inside the engine.
@@ -522,17 +523,35 @@ class Nation {
 	}
 
 	/**
-	 * Every Technology in the Tech Tree as the Nation stands with it.
+	 * Every Technology in the Tech Tree as the Nation stands with it, hiding those
+	 * more than one step beyond what it can unlock now.
 	 */
 	private List<TechTreeEntry> techTree(Ruleset ruleset) {
-		return ruleset.technologies()
+		Set<String> available = ruleset.technologies()
 			.stream()
-			.map(technology -> new TechTreeEntry(technology.name(), technology.research(),
-					technology.prerequisites(), technology.unlocks(),
-					technologies.contains(technology.name()) ? TechTreeEntry.Standing.UNLOCKED
-							: technologies.containsAll(technology.prerequisites()) ? TechTreeEntry.Standing.AVAILABLE
-									: TechTreeEntry.Standing.LOCKED))
-			.toList();
+			.filter(technology -> !technologies.contains(technology.name())
+					&& technologies.containsAll(technology.prerequisites()))
+			.map(Technology::name)
+			.collect(Collectors.toSet());
+		return ruleset.technologies().stream().map(technology -> {
+			if (technologies.contains(technology.name())) {
+				return techTreeEntry(technology, TechTreeEntry.Standing.UNLOCKED);
+			}
+			if (available.contains(technology.name())) {
+				return techTreeEntry(technology, TechTreeEntry.Standing.AVAILABLE);
+			}
+			if (technology.prerequisites()
+				.stream()
+				.allMatch(prerequisite -> technologies.contains(prerequisite) || available.contains(prerequisite))) {
+				return techTreeEntry(technology, TechTreeEntry.Standing.LOCKED);
+			}
+			return TechTreeEntry.hidden();
+		}).toList();
+	}
+
+	private static TechTreeEntry techTreeEntry(Technology technology, TechTreeEntry.Standing standing) {
+		return new TechTreeEntry(technology.name(), technology.research(), technology.prerequisites(),
+				technology.unlocks(), standing);
 	}
 
 	/**

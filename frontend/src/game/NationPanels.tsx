@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { BuildingDamage, BuildingType, GoldForecast, NationView, TechTreeEntry, UnitType } from '../api'
+import type { BuildingDamage, BuildingType, GoldForecast, KnownTechnology, NationView, UnitType } from '../api'
 import { Icon, type IconName } from '../ui/Icon'
 import { Panel } from '../ui/Panel'
 import { CountSlider } from './controls'
@@ -333,7 +333,7 @@ export function TrainPanel({
   )
 }
 
-const standingTags: Record<TechTreeEntry['standing'], string> = {
+const standingTags: Record<KnownTechnology['standing'], string> = {
   UNLOCKED: 'tag tag--good',
   AVAILABLE: 'tag tag--accent',
   LOCKED: 'tag tag--muted',
@@ -341,7 +341,7 @@ const standingTags: Record<TechTreeEntry['standing'], string> = {
 
 /**
  * The Tech Tree: every Technology, whether it is unlocked, available or locked, what it costs and what it
- * unlocks, with a button to unlock each available one.
+ * unlocks, with a button to unlock each available one. A hidden Technology is a bare "???".
  */
 export function TechTreePanel({
   nation,
@@ -359,7 +359,14 @@ export function TechTreePanel({
         <p className="muted">There are no Technologies in this Game.</p>
       ) : (
         <ul className="list">
-          {nation.techTree.map((t) => {
+          {nation.techTree.map((t, i) => {
+            if (t.standing === 'HIDDEN') {
+              return (
+                <li key={i} className="row row--wrap row--locked">
+                  <span className="row__name">???</span>
+                </li>
+              )
+            }
             const missing = t.prerequisites.filter((p) => !unlocked.has(p))
             return (
               <li key={t.name} className={t.standing === 'LOCKED' ? 'row row--wrap row--locked' : 'row row--wrap'}>

@@ -1,5 +1,6 @@
 import { fireEvent, screen, within } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
+import type { HiddenTechnology } from '../api'
 import { nationView, renderGame, tab, TURN, unit } from '../test/fixtures'
 import { buttonsIn, precedes } from '../test/order'
 
@@ -236,5 +237,27 @@ describe('ResourcesPanel', () => {
     renderGame({ nation: nationView({ upkeep: 25, goldForecast: { income: 10, upkeep: 25 } }) })
 
     expect(screen.getByText('Next Turn: −15 Gold (income 10 − upkeep 25)')).toHaveClass('report__loss')
+  })
+})
+
+describe('TechTreePanel', () => {
+  it('shows each hidden Technology as a bare ??? card, with no cost, prerequisites or unlocks', () => {
+    const hidden: HiddenTechnology = { name: null, research: 0, prerequisites: [], unlocks: [], standing: 'HIDDEN' }
+    renderGame({
+      nation: nationView({
+        techTree: [
+          { name: 'Masonry', research: 10, prerequisites: [], unlocks: ['Granary'], standing: 'AVAILABLE' },
+          { name: 'Mathematics', research: 25, prerequisites: ['Masonry'], unlocks: ['Walls'], standing: 'LOCKED' },
+          hidden,
+          hidden,
+        ],
+      }),
+    })
+    fireEvent.click(tab('Tech'))
+
+    const cards = within(screen.getByRole('region', { name: 'Tech Tree' })).getAllByRole('listitem')
+    expect(cards).toHaveLength(4)
+    expect(cards[2]).toHaveTextContent(/^\?\?\?$/)
+    expect(cards[3]).toHaveTextContent(/^\?\?\?$/)
   })
 })

@@ -59,7 +59,7 @@ class ShippedTechTreeTest {
 
 	@Test
 	void engineeringIsLockedUntilBothMathematicsAndConstructionAreUnlocked() {
-		assertThat(standingOf("Engineering")).isEqualTo(TechTreeEntry.Standing.LOCKED);
+		assertThat(standingOf("Engineering")).isEqualTo(TechTreeEntry.Standing.HIDDEN);
 
 		unlockAll("Masonry", "Mathematics");
 		assertThat(standingOf("Engineering")).isEqualTo(TechTreeEntry.Standing.LOCKED);
@@ -77,29 +77,39 @@ class ShippedTechTreeTest {
 	@Test
 	void astronomyIsLockedUntilBothPhilosophyAndMathematicsAreUnlocked() {
 		unlockAll("Writing", "Philosophy");
+		assertThat(standingOf("Astronomy")).isEqualTo(TechTreeEntry.Standing.HIDDEN);
+
+		unlockAll("Masonry");
 		assertThat(standingOf("Astronomy")).isEqualTo(TechTreeEntry.Standing.LOCKED);
 
-		unlockAll("Masonry", "Mathematics");
+		unlockAll("Mathematics");
 		assertThat(standingOf("Astronomy")).isEqualTo(TechTreeEntry.Standing.AVAILABLE);
 	}
 
 	@Test
 	void chivalryIsLockedUntilBothIronWorkingAndCurrencyAreUnlocked() {
 		unlockAll("Bronze Working", "Iron Working");
+		assertThat(standingOf("Chivalry")).isEqualTo(TechTreeEntry.Standing.HIDDEN);
+
+		unlockAll("Writing", "Masonry", "Mathematics");
 		assertThat(standingOf("Chivalry")).isEqualTo(TechTreeEntry.Standing.LOCKED);
 
-		unlockAll("Writing", "Masonry", "Mathematics", "Currency");
+		unlockAll("Currency");
 		assertThat(standingOf("Chivalry")).isEqualTo(TechTreeEntry.Standing.AVAILABLE);
 	}
 
+	/**
+	 * How Rome stands with a Technology, which is hidden if its name is not in
+	 * Rome's view.
+	 */
 	TechTreeEntry.Standing standingOf(String technology) {
 		return game.viewOf("Rome")
 			.techTree()
 			.stream()
-			.filter(entry -> entry.name().equals(technology))
+			.filter(entry -> technology.equals(entry.name()))
 			.findFirst()
-			.orElseThrow()
-			.standing();
+			.map(TechTreeEntry::standing)
+			.orElse(TechTreeEntry.Standing.HIDDEN);
 	}
 
 	/**

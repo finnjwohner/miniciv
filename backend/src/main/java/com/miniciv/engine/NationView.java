@@ -50,7 +50,7 @@ import java.util.Map;
  *        met
  * @param techTree every Technology in the Tech Tree, in the ruleset's order,
  *        and whether the Nation has unlocked it, may unlock it or must first
- *        unlock its prerequisites
+ *        unlock its prerequisites, or only that it is there if it is hidden
  * @param dilemmas the Dilemmas awaiting the Player's choice before this Turn
  *        ends, in the order they happened
  * @param conqueredBy the Nation or Nations that conquered this one, such as
