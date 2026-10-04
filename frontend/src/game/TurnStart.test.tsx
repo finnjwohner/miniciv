@@ -5,6 +5,7 @@ import { fakeWebAudio, gesture, timesPlayed, type Tone } from '../test/audio'
 import { passes } from '../test/clock'
 import { nationView, renderGame, reportLine, roomView, tab, TURN } from '../test/fixtures'
 import { prefersReducedMotion } from '../test/motion'
+import { rowNameReading } from '../test/order'
 
 /** The Room and Rome on the next Turn, Rome adjusted by `nation`. */
 function nextTurn(nation: Partial<NationView> = {}) {
@@ -43,7 +44,7 @@ function statValue(label: string) {
  */
 function row(panel: string, name: string) {
   const region = screen.getByRole('region', { name: panel, hidden: true })
-  return within(region).getAllByText(name, { selector: '.row__name' }).at(-1)!.closest('li') as HTMLElement
+  return within(region).getAllByText(rowNameReading(name)).at(-1)!.closest('li') as HTMLElement
 }
 
 describe('resources at the start of a Turn', () => {

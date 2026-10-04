@@ -1269,3 +1269,10 @@ input[type='range'] {
     letter-spacing: 0;
   }
 }
+
+/* The name of a Unit type, Building or Technology with its icon */
+
+.type-name .icon {
+  margin-right: 0.3em;
+  vertical-align: middle;
+}

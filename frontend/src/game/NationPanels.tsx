@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import type { BuildingDamage, BuildingType, GoldForecast, KnownTechnology, NationView, UnitType } from '../api'
 import { Icon, type IconName } from '../ui/Icon'
 import { Panel } from '../ui/Panel'
+import { TypeName, TypeNames } from '../ui/TypeIcon'
 import { CountSlider } from './controls'
 import { formatChange, mergeAlike, plural } from './format'
 import { rowClass, useCountUp, useFreshRows } from './turnStart'
@@ -154,7 +155,9 @@ export function BuildPanel({
       <ul className="list">
         {nation.availableBuildings.map((b) => (
           <li key={b.name} className="row row--wrap">
-            <span className="row__name">{b.name}</span>
+            <span className="row__name">
+              <TypeName name={b.name} kind="building" size={24} />
+            </span>
             <span className="row__meta">
               {b.gold} Gold, {plural(b.turns, 'Turn')} — {describeEffect(b)}
             </span>
@@ -174,7 +177,9 @@ export function BuildPanel({
             const sellValue = nation.sellValues[name]
             return [
               <li key={name} className={rowClass(isFresh(name))}>
-                <span className="row__name">{name}</span>
+                <span className="row__name">
+                  <TypeName name={name} kind="building" size={24} />
+                </span>
                 <span className="row__meta">×{count}</span>
                 {sellValue !== undefined && (
                   <button aria-label={`Sell ${name}`} onClick={() => onSell(name)}>
@@ -196,7 +201,7 @@ export function BuildPanel({
           {construction.map(({ key, item: c, count }) => (
             <li key={key} className={rowClass(isFresh(key))}>
               <span className="row__name">
-                {c.building} ×{count}
+                <TypeName name={c.building} kind="building" size={24} /> ×{count}
               </span>
               <span className="tag tag--muted">constructing</span>
               <span className="row__meta">{plural(c.turnsLeft, 'Turn')} left</span>
@@ -205,7 +210,7 @@ export function BuildPanel({
           {repairs.map(({ key, item: r, count }) => (
             <li key={key} className={rowClass(isFresh(key))}>
               <span className="row__name">
-                {r.building} ×{count}
+                <TypeName name={r.building} kind="building" size={24} /> ×{count}
               </span>
               <span className="tag tag--muted">{r.rebuild ? 'being Rebuilt' : 'being Repaired'}</span>
               <span className="row__meta">{plural(r.turnsLeft, 'Turn')} left</span>
@@ -221,7 +226,7 @@ export function BuildPanel({
  * A Unit type's cost, Strength (or, for Scouts and Spies, its role), upkeep and counters, as labelled entries;
  * wide entries take a line to themselves. Counters are left out when it counters nothing.
  */
-function unitDetails(unit: UnitType): { label: string; value: string; wide?: boolean }[] {
+function unitDetails(unit: UnitType): { label: string; value: ReactNode; wide?: boolean }[] {
   const role = unit.scout
     ? "Roams the wilds, where it may discover Warparties abroad and catch other Nations' travelling Spies"
     : unit.spy
@@ -235,7 +240,7 @@ function unitDetails(unit: UnitType): { label: string; value: string; wide?: boo
     },
     role ? { label: 'Role', value: role, wide: true } : { label: 'Strength', value: String(unit.strength) },
     { label: 'Upkeep', value: `${unit.upkeep} Gold per Turn` },
-    ...(unit.counters.length > 0 ? [{ label: 'Counters', value: unit.counters.join(', '), wide: true }] : []),
+    ...(unit.counters.length > 0 ? [{ label: 'Counters', value: <TypeNames names={unit.counters} kind="unit" />, wide: true }] : []),
   ]
 }
 
@@ -265,7 +270,9 @@ function TrainUnit({
   if (trainable >= 1 && count > trainable) setCount(trainable)
   return (
     <li className="row row--wrap">
-      <span className="row__name">{unit.name}</span>
+      <span className="row__name">
+        <TypeName name={unit.name} kind="unit" size={24} />
+      </span>
       <dl className="row__meta facts facts--paired" aria-label={`${unit.name} details`}>
         {unitDetails(unit).map(({ label, value, wide }) => (
           <div key={label} className={wide ? 'facts__entry facts__entry--wide' : 'facts__entry'}>
@@ -322,7 +329,7 @@ export function TrainPanel({
           {training.map(({ key, item: t, count }) => (
             <li key={key} className={rowClass(isFresh(key))}>
               <span className="row__name">
-                {t.unit} ×{count}
+                <TypeName name={t.unit} kind="unit" size={24} /> ×{count}
               </span>
               <span className="row__meta">{plural(t.readyOnTurn - nation.turn, 'Turn')} left</span>
             </li>
@@ -370,11 +377,18 @@ export function TechTreePanel({
             const missing = t.prerequisites.filter((p) => !unlocked.has(p))
             return (
               <li key={t.name} className={t.standing === 'LOCKED' ? 'row row--wrap row--locked' : 'row row--wrap'}>
-                <span className="row__name">{t.name}</span>
+                <span className="row__name">
+                  <TypeName name={t.name} kind="technology" size={24} />
+                </span>
                 <span className={standingTags[t.standing]}>{t.standing.toLowerCase()}</span>
                 <span className="row__meta">
                   {t.research} Research
-                  {t.unlocks.length > 0 && ` — unlocks ${t.unlocks.join(', ')}`}
+                  {t.unlocks.length > 0 && (
+                    <>
+                      {' '}
+                      — unlocks <TypeNames names={t.unlocks} />
+                    </>
+                  )}
                   {t.standing === 'LOCKED'
                     ? `; requires ${missing.join(', ')}`
                     : t.prerequisites.length > 0 && `; requires ${t.prerequisites.join(', ')}`}

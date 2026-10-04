@@ -2,7 +2,7 @@ import { fireEvent, screen, within } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import type { HiddenTechnology } from '../api'
 import { nationView, renderGame, tab, TURN, unit } from '../test/fixtures'
-import { buttonsIn, precedes } from '../test/order'
+import { buttonsIn, precedes, rowNamed } from '../test/order'
 
 describe('BuildPanel', () => {
   it('keeps the Build buttons where they are, before the state rows, as construction starts', () => {
@@ -27,6 +27,11 @@ describe('BuildPanel', () => {
     expect(precedes(lastBuild, within(build).getAllByRole('button', { name: /^Sell / })[0])).toBe(true)
   })
 })
+
+/** The pixel-art icon drawn beside the name `name`, the only text in its element, within `container`. */
+function iconBeside(name: string, container: HTMLElement = document.body) {
+  return within(container).getByText(name).querySelector(`svg[data-icon="${name}"]`)
+}
 
 /** The labelled details of the Unit type `name` in the Train panel, label to value, in order. */
 function readUnitDetails(name: string) {
@@ -108,6 +113,15 @@ describe('TrainPanel', () => {
     )
   })
 
+  it('draws an icon beside each Unit type it counters', () => {
+    renderGame({ nation: nationView({ availableUnits: [unit({ name: 'Archer', gold: 20, population: 2, turns: 2, upkeep: 1, strength: 4, counters: ['Horseman', 'Knight'] })] }) })
+    fireEvent.click(tab('Train'))
+
+    const details = screen.getByLabelText('Archer details')
+    expect(iconBeside('Horseman', details)).toBeInTheDocument()
+    expect(iconBeside('Knight', details)).toBeInTheDocument()
+  })
+
   it('shows a Spy’s role in place of Strength, and no Counters when it counters nothing', () => {
     renderGame({
       nation: nationView({
@@ -140,7 +154,7 @@ describe('TrainPanel', () => {
     const lastTrain = within(train)
       .getAllByRole('button', { name: /^Train / })
       .at(-1)!
-    expect(precedes(lastTrain, within(train).getByText('Warrior ×1'))).toBe(true)
+    expect(precedes(lastTrain, rowNamed(train, 'Warrior ×1'))).toBe(true)
   })
 })
 
@@ -259,5 +273,21 @@ describe('TechTreePanel', () => {
     expect(cards).toHaveLength(4)
     expect(cards[2]).toHaveTextContent(/^\?\?\?$/)
     expect(cards[3]).toHaveTextContent(/^\?\?\?$/)
+  })
+
+  it('draws an icon beside each Technology and each Unit and Building it unlocks', () => {
+    renderGame({
+      nation: nationView({
+        techTree: [
+          { name: 'Writing', research: 15, prerequisites: [], unlocks: ['Spy', 'Library'], standing: 'AVAILABLE' },
+        ],
+      }),
+    })
+    fireEvent.click(tab('Tech'))
+
+    const tree = screen.getByRole('region', { name: 'Tech Tree' })
+    expect(iconBeside('Writing', tree)).toBeInTheDocument()
+    expect(iconBeside('Spy', tree)).toBeInTheDocument()
+    expect(iconBeside('Library', tree)).toBeInTheDocument()
   })
 })

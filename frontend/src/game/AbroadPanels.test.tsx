@@ -1,7 +1,7 @@
 import { fireEvent, screen, within } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { nationView, renderGame, spy, tab, unit, warparty } from '../test/fixtures'
-import { precedes } from '../test/order'
+import { precedes, rowNamed } from '../test/order'
 
 describe('ArmyPanel', () => {
   it('puts the send-Warparty form before the Army at home and the Warparties abroad', () => {
@@ -10,7 +10,7 @@ describe('ArmyPanel', () => {
 
     const army = screen.getByRole('region', { name: 'Army & Warparties' })
     const send = within(army).getByRole('button', { name: 'Send Warparty' })
-    expect(precedes(send, within(army).getByText('Warrior ×3'))).toBe(true)
+    expect(precedes(send, rowNamed(army, 'Warrior ×3'))).toBe(true)
     expect(precedes(send, within(army).getByRole('button', { name: /^Recall/ }))).toBe(true)
   })
 
