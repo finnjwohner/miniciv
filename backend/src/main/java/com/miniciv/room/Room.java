@@ -105,6 +105,12 @@ public class Room {
 	 */
 	private static final Duration DISCONNECTION_ALLOWANCE = Duration.ofMinutes(5);
 
+	/**
+	 * How long a Room may go with none of its Players connected before it is
+	 * removed.
+	 */
+	private static final Duration EMPTY_ALLOWANCE = Duration.ofSeconds(60);
+
 	private final String code;
 
 	private int version;
@@ -129,11 +135,18 @@ public class Room {
 	 */
 	private Instant pausedSince;
 
+	/**
+	 * Since when none of the Room's Players has been connected, or null while
+	 * any is; a Player joining restarts it, giving them time to connect.
+	 */
+	private Instant emptySince;
+
 	Room(String code, Clock clock, Ruleset ruleset, Supplier<RandomGenerator> luck) {
 		this.code = code;
 		this.clock = clock;
 		this.ruleset = ruleset;
 		this.luck = luck;
+		this.emptySince = clock.instant();
 	}
 
 	public String code() {
@@ -157,6 +170,9 @@ public class Room {
 		}
 		Player player = new Player(name, firstFree(COLOURS, Player::colour), firstFree(EMBLEMS, Player::emblem));
 		players.add(player);
+		if (emptySince != null) {
+			emptySince = clock.instant();
+		}
 		version++;
 		return new Joined(player.id(), player.token());
 	}
@@ -299,6 +315,7 @@ public class Room {
 	synchronized void connected(String playerId, String connection) {
 		List<Player> waitingFor = waitingFor();
 		playerWithId(playerId).connected(connection);
+		emptySince = null;
 		presenceChanged(waitingFor);
 	}
 
@@ -309,7 +326,25 @@ public class Room {
 	synchronized void disconnected(String playerId, String connection) {
 		List<Player> waitingFor = waitingFor();
 		playerWithId(playerId).disconnected(connection);
+		if (emptySince == null && players.stream().noneMatch(Player::connected)) {
+			emptySince = clock.instant();
+		}
 		presenceChanged(waitingFor);
+	}
+
+	/**
+	 * Whether none of the Room's Players is connected.
+	 */
+	public synchronized boolean empty() {
+		return emptySince != null;
+	}
+
+	/**
+	 * Whether none of the Room's Players has been connected for as long as the
+	 * Room may go empty, whether or not its Game has started or ended.
+	 */
+	synchronized boolean abandoned() {
+		return emptySince != null && !clock.instant().isBefore(emptySince.plus(EMPTY_ALLOWANCE));
 	}
 
 	private void presenceChanged(List<Player> waitingForBefore) {
