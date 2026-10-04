@@ -730,6 +730,22 @@ input[type='range'] {
   color: var(--accent);
 }
 
+/* As a new Turn arrives, each part of the Turn Report fades in and rises into place, one after another (see turnStart.ts). */
+.report__enter {
+  animation: report-enter 250ms ease-out both;
+}
+
+@keyframes report-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
 .turn__timer {
   font-family: var(--font-pixel);
   font-size: 1.75rem;

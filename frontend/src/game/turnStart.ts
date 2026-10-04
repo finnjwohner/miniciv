@@ -1,5 +1,5 @@
 // What marks the start of a Turn: resources counting to their new values, new rows flashing, and cues.
-import { useEffect, useEffectEvent, useRef, useState } from 'react'
+import { useEffect, useEffectEvent, useRef, useState, type CSSProperties } from 'react'
 import type { NationView, TurnReportKind } from '../api'
 import { useCue, useSettings } from '../settings'
 import type { Cue } from '../sound'
@@ -54,6 +54,30 @@ export function useFreshRows(version: number, keys: string[]) {
 /** A list row's classes, flashing if it is `fresh`. */
 export function rowClass(fresh: boolean) {
   return fresh ? 'row row--fresh' : 'row'
+}
+
+/** How long to leave between one part of the Turn Report starting to come in and the next. */
+const ENTRANCE_STAGGER_MILLIS = 60
+
+/** An element's classes and style, bringing it in at its step or leaving it still. */
+export type Entrance = (step: number, className?: string) => { className?: string; style?: CSSProperties }
+
+/**
+ * How the parts of the Turn Report of `turn` come in: each step a little after the one before, as a
+ * new Turn arrives. Nothing comes in for the Turn the screen opens on, as on joining or reconnecting,
+ * nor for a Turn that arrived while motion was reduced, even once motion is back on.
+ */
+export function useReportEntrance(turn: number | undefined): Entrance {
+  const { settings } = useSettings()
+  const [arrival, setArrival] = useState({ turn, entering: false })
+  if (arrival.turn !== turn) setArrival({ turn, entering: !settings.reducedMotion })
+  return (step, className) =>
+    arrival.entering
+      ? {
+          className: className ? `${className} report__enter` : 'report__enter',
+          style: { animationDelay: `${step * ENTRANCE_STAGGER_MILLIS}ms` },
+        }
+      : { className }
 }
 
 /** How long to leave between one Turn-start cue and the next. */

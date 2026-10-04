@@ -5,6 +5,7 @@ import { Icon, type IconName } from '../ui/Icon'
 import { NationName } from '../ui/NationName'
 import { Panel } from '../ui/Panel'
 import { formatChange, formatCountdown } from './format'
+import { useReportEntrance, type Entrance } from './turnStart'
 
 /** How a Player stands in the Game, as a tag beside their Nation. */
 function PlayerStanding({ player, game }: { player: PlayerView; game: GameView }) {
@@ -40,15 +41,26 @@ const RESOURCE_NAMES: [keyof NetChange, string][] = [
   ['research', 'Research'],
 ]
 
+/** The resources that moved as the last Turn resolved, as the net-change line names them. */
+function changedResources(netChange: NetChange) {
+  return RESOURCE_NAMES.filter(([resource]) => netChange[resource] !== 0)
+}
+
 /**
- * How the Nation's resources moved as the last Turn resolved, such as "+14 Gold · −2 Research",
- * gains in green and losses in red, leaving out those that did not change; nothing if none did.
+ * How the Nation's resources moved as the last Turn resolved, such as "+14 Gold · −2 Research", the
+ * `changed` ones, gains in green and losses in red.
  */
-function NetChangeLine({ netChange }: { netChange: NetChange }) {
-  const changed = RESOURCE_NAMES.filter(([resource]) => netChange[resource] !== 0)
-  if (changed.length === 0) return null
+function NetChangeLine({
+  netChange,
+  changed,
+  enter,
+}: {
+  netChange: NetChange
+  changed: [keyof NetChange, string][]
+  enter: Entrance
+}) {
   return (
-    <p className="report__net">
+    <p {...enter(0, 'report__net')}>
       {changed.map(([resource, name], i) => {
         const amount = netChange[resource]
         return (
@@ -90,35 +102,50 @@ function ReportLineText({ line }: { line: ReportLine }) {
   })
 }
 
-/** The Turn Report's sections with something in them, each under its heading, in the order sent. */
-function ReportSections({ report }: { report: TurnReport | null }) {
+/**
+ * The Turn Report's sections with something in them, each under its heading, in the order sent. Each
+ * heading and line comes in after the one above it, from step `first`.
+ */
+function ReportSections({ report, first, enter }: { report: TurnReport | null; first: number; enter: Entrance }) {
   const sections = report?.sections.filter((section) => section.lines.length > 0) ?? []
   if (sections.length === 0) return <p className="muted">Nothing has happened yet.</p>
-  return sections.map(({ kind, lines }) => (
-    <div key={kind} className="report__section">
-      <h4 className="report__heading" id={`report-${kind}`}>
-        {SECTION_HEADINGS[kind]}
-      </h4>
-      <ul className="report" aria-labelledby={`report-${kind}`}>
-        {lines.map((line, i) => (
-          <li key={i}>
-            <ReportLineText line={line} />
-          </li>
-        ))}
-      </ul>
-    </div>
-  ))
+  /** The step the `s`th section's heading comes in at: after every heading and line above it. */
+  const headingStep = (s: number) =>
+    first + sections.slice(0, s).reduce((steps, { lines }) => steps + 1 + lines.length, 0)
+  return sections.map(({ kind, lines }, s) => {
+    const step = headingStep(s)
+    return (
+      <div key={kind} className="report__section">
+        <h4 {...enter(step, 'report__heading')} id={`report-${kind}`}>
+          {SECTION_HEADINGS[kind]}
+        </h4>
+        <ul className="report" aria-labelledby={`report-${kind}`}>
+          {lines.map((line, i) => (
+            <li key={i} {...enter(step + 1 + i)}>
+              <ReportLineText line={line} />
+            </li>
+          ))}
+        </ul>
+      </div>
+    )
+  })
 }
 
 /**
- * What happened as the last Turn resolved: how the resources moved, then by section, filling the
- * space left and scrolling within it.
+ * What happened as the last Turn resolved: how the resources moved, if they did, then by section,
+ * filling the space left and scrolling within it. As a new Turn arrives, its parts come in one after
+ * another, the net change first.
  */
 export function TurnReportPanel({ report }: { report: TurnReport | null }) {
+  const enter = useReportEntrance(report?.turn)
+  const changed = report ? changedResources(report.netChange) : []
   return (
     <Panel title="Turn Report" icon="book" className="dash__report">
-      {report && <NetChangeLine netChange={report.netChange} />}
-      <ReportSections report={report} />
+      {/* Keyed by Turn, so each new Turn's parts come in afresh. */}
+      <Fragment key={report?.turn}>
+        {report && changed.length > 0 && <NetChangeLine netChange={report.netChange} changed={changed} enter={enter} />}
+        <ReportSections report={report} first={changed.length > 0 ? 1 : 0} enter={enter} />
+      </Fragment>
     </Panel>
   )
 }

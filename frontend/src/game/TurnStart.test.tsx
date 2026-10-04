@@ -251,3 +251,60 @@ describe('sounds at the start of a Turn', () => {
     expect(tones).toEqual([])
   })
 })
+
+describe('the Turn Report at the start of a Turn', () => {
+  const sections: TurnReportSection[] = [
+    { kind: 'COMPLETED', lines: [reportLine('Your Farm has been built.'), reportLine('Your Market has been built.')] },
+    { kind: 'EVENTS', lines: [reportLine('A good harvest.')] },
+  ]
+
+  /** What of the Turn Report animates in, in the order shown, each with its delay. */
+  function entering() {
+    const region = screen.getByRole('region', { name: 'Turn Report' })
+    return [...region.querySelectorAll<HTMLElement>('.report__enter')].map((element) => [
+      element.textContent,
+      element.style.animationDelay,
+    ])
+  }
+
+  it('brings in the net change, headings and lines one after another as a new Turn arrives', () => {
+    const { rerenderGame } = renderGame()
+
+    rerenderGame(nextTurn({ turnReport: report({ gold: 14 }, sections) }))
+
+    expect(entering()).toEqual([
+      ['+14 Gold', '0ms'],
+      ['Completed', '60ms'],
+      ['Your Farm has been built.', '120ms'],
+      ['Your Market has been built.', '180ms'],
+      ['Events', '240ms'],
+      ['A good harvest.', '300ms'],
+    ])
+  })
+
+  it('brings in nothing with reduced motion', () => {
+    prefersReducedMotion(true)
+    const { rerenderGame } = renderGame()
+
+    rerenderGame(nextTurn({ turnReport: report({ gold: 14 }, sections) }))
+
+    expect(entering()).toEqual([])
+  })
+
+  it('brings in nothing on turning reduced motion off after a Turn has arrived', () => {
+    prefersReducedMotion(true)
+    const { rerenderGame } = renderGame()
+    rerenderGame(nextTurn({ turnReport: report({ gold: 14 }, sections) }))
+
+    fireEvent.click(screen.getByRole('button', { name: 'Settings' }))
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Reduce motion' }))
+
+    expect(entering()).toEqual([])
+  })
+
+  it('brings in nothing when the Game screen first opens, as on joining or reconnecting', () => {
+    renderGame({ nation: nationView({ turnReport: report({ gold: 14 }, sections) }) })
+
+    expect(entering()).toEqual([])
+  })
+})
