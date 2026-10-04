@@ -1359,6 +1359,24 @@ class Nation {
 	}
 
 	/**
+	 * Whether the Nation is Breached: it has a destroyed defensive Building,
+	 * or none at all.
+	 */
+	boolean breached(Ruleset ruleset) {
+		boolean anyDefensive = false;
+		for (String building : buildings.keySet()) {
+			BuildingType type = ruleset.building(building).orElseThrow();
+			if (defensive(type)) {
+				anyDefensive = true;
+				if (defenseLost.getOrDefault(building, 0) >= type.defense()) {
+					return true;
+				}
+			}
+		}
+		return !anyDefensive;
+	}
+
+	/**
 	 * Loses Population to a Warparty, as much as the Nation has.
 	 *
 	 * @return the Population lost

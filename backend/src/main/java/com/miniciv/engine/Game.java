@@ -71,6 +71,12 @@ public class Game {
 	private static final int EXPOSED_POPULATION_MULTIPLIER = 2;
 
 	/**
+	 * How much of the Strength a Warparty has left once Defense is down it
+	 * takes to Damage one of a Breached target's non-defensive Buildings.
+	 */
+	private static final int STRENGTH_PER_BUILDING_DAMAGED = 5;
+
+	/**
 	 * The share of a conquered Nation's Gold and Research its conqueror seizes.
 	 */
 	private static final double CONQUEST_SHARE = 0.75;
@@ -546,11 +552,14 @@ public class Game {
 	 *        in the order they fought in the Battle
 	 * @param shares the plunder each attacking Warparty took or, if the
 	 *        Nation was conquered, its share of what was seized
+	 * @param buildingsDamaged how many of each of the Nation's non-defensive
+	 *        Building types were Damaged, in the order first Damaged
 	 * @param exposure how exposed the Nation's Population was
 	 * @param conquest how the Nation was conquered, or null if it was not
 	 */
 	private record BattleFought(Nation defender, List<Arrival> arrivals, Battle battle, List<Plunder> shares,
-			Nation.DefenseWorn defenseWorn, int populationLost, Exposure exposure, Nation.Conquest conquest) {
+			Nation.DefenseWorn defenseWorn, Map<String, Integer> buildingsDamaged, int populationLost, Exposure exposure,
+			Nation.Conquest conquest) {
 
 		/**
 		 * Whether some of the attacking Warparty's Units at the given index
@@ -575,11 +584,16 @@ public class Game {
 	 * Army as one. The Warparties' surviving Strength, rounded down, wears the
 	 * Nation's Defense down, and what is left once Defense is 0 reduces its
 	 * Population, more so if its Army was wiped out or it had neither Army nor
-	 * Defense. A Nation left with neither Population nor Army is conquered,
-	 * unless the Warparties were all wiped out too; otherwise the survivors
-	 * take plunder scaled by their remaining Strength, rounded down. What is
-	 * plundered or seized is split between the Warparties in proportion to
-	 * their surviving Strength, so one wiped out gets none of it.
+	 * Defense. If the Nation is then Breached, half of what is left, rounded
+	 * down, Damages one of its undamaged non-defensive Buildings for every
+	 * {@value #STRENGTH_PER_BUILDING_DAMAGED} Strength (see
+	 * {@link #damageBuildings}), and whatever of that half cannot be used
+	 * reduces its Population with the rest. A Nation left with neither
+	 * Population nor Army is conquered, unless the Warparties were all wiped
+	 * out too; otherwise the survivors take plunder scaled by their remaining
+	 * Strength, rounded down. What is plundered or seized is split between the
+	 * Warparties in proportion to their surviving Strength, so one wiped out
+	 * gets none of it.
 	 */
 	private BattleFought fight(Nation defender) {
 		List<Arrival> arrivals = new ArrayList<>();
@@ -599,6 +613,13 @@ public class Game {
 		int wholeStrength = (int) Math.floor(strength);
 		Nation.DefenseWorn defenseWorn = defender.wearDefense(wholeStrength, ruleset);
 		int strengthLeft = wholeStrength - defenseWorn.worn();
+		Map<String, Integer> buildingsDamaged = Map.of();
+		if (defender.breached(ruleset)) {
+			int againstBuildings = strengthLeft / 2;
+			buildingsDamaged = damageBuildings(defender, againstBuildings / STRENGTH_PER_BUILDING_DAMAGED);
+			strengthLeft -= buildingsDamaged.values().stream().mapToInt(Integer::intValue).sum()
+					* STRENGTH_PER_BUILDING_DAMAGED;
+		}
 		Exposure exposure = Exposure.of(battle, defenseWorn);
 		int multiplier = exposure == Exposure.DEFENDED ? 1 : EXPOSED_POPULATION_MULTIPLIER;
 		int populationLost = defender.losePopulation(strengthLeft * POPULATION_PER_STRENGTH * multiplier);
@@ -631,7 +652,7 @@ public class Game {
 			attacker.foughtBattle(arrivals.get(i).warparty(), battle.warpartySurvivors(i),
 					conquered ? Plunder.NONE : shares.get(i), shares.get(i), ruleset);
 		}
-		return new BattleFought(defender, arrivals, battle, shares, defenseWorn, populationLost, exposure,
+		return new BattleFought(defender, arrivals, battle, shares, defenseWorn, buildingsDamaged, populationLost, exposure,
 				conquered ? turnBackFrom(defender, taken) : null);
 	}
 
@@ -742,6 +763,13 @@ public class Game {
 						+ defenseWorn.worn() + ", " + buildingsHarmed(defenseWorn) + "."));
 			defenderReport.add(WARFARE, warpartiesOf(survivors) + " wore your Defense down from " + defenseWorn.before()
 					+ " to " + defenseWorn.after() + ", " + buildingsHarmed(defenseWorn) + ".");
+		}
+		Map<String, Integer> buildingsDamaged = fought.buildingsDamaged();
+		if (!buildingsDamaged.isEmpty()) {
+			attackers.forEach(attacker -> reports.get(attacker)
+				.add(WARFARE, warpartiesFrom(attacker, survivors) + " damaged " + defender + "'s "
+						+ listed(buildingsDamaged) + "."));
+			defenderReport.add(WARFARE, warpartiesOf(survivors) + " damaged your " + listed(buildingsDamaged) + ".");
 		}
 		if (fought.populationLost() > 0) {
 			String attackerReason = switch (fought.exposure()) {
@@ -857,6 +885,28 @@ public class Game {
 			harmed.add("damaging " + joined(defenseWorn.damaged()));
 		}
 		return String.join(" and ", harmed);
+	}
+
+	/**
+	 * Damages up to the given number of a Nation's undamaged non-defensive
+	 * Buildings, each picked by one draw from the seeded random source from
+	 * those still undamaged (see {@link Nation#undamagedNonDefensive}).
+	 *
+	 * @return how many of each Building type were Damaged, in the order first
+	 *         Damaged
+	 */
+	private Map<String, Integer> damageBuildings(Nation nation, int count) {
+		Map<String, Integer> damaged = new LinkedHashMap<>();
+		for (int left = count; left > 0; left--) {
+			List<String> undamaged = nation.undamagedNonDefensive(ruleset);
+			if (undamaged.isEmpty()) {
+				break;
+			}
+			String building = undamaged.get((int) (random.nextDouble() * undamaged.size()));
+			nation.damage(building);
+			damaged.merge(building, 1, Integer::sum);
+		}
+		return damaged;
 	}
 
 	private static String lost(Map<String, Integer> units) {
@@ -1408,16 +1458,7 @@ public class Game {
 						+ defenseWorn.after() + ", " + buildingsHarmed(defenseWorn)));
 			}
 		}
-		Map<String, Integer> damaged = new LinkedHashMap<>();
-		for (int left = effects.damageBuildings(); left > 0; left--) {
-			List<String> undamaged = nation.undamagedNonDefensive(ruleset);
-			if (undamaged.isEmpty()) {
-				break;
-			}
-			String building = undamaged.get((int) (random.nextDouble() * undamaged.size()));
-			nation.damage(building);
-			damaged.merge(building, 1, Integer::sum);
-		}
+		Map<String, Integer> damaged = damageBuildings(nation, effects.damageBuildings());
 		if (!damaged.isEmpty()) {
 			int count = damaged.values().stream().mapToInt(Integer::intValue).sum();
 			changes.add(Line.of("your " + listed(damaged) + (count == 1 ? " was" : " were") + " damaged"));
