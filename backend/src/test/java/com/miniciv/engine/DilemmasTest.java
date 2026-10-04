@@ -1,6 +1,8 @@
 package com.miniciv.engine;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.random.RandomGenerator;
 
 import org.junit.jupiter.api.Test;
@@ -234,6 +236,96 @@ class DilemmasTest {
 
 		assertThat(game.winner()).contains("Rome");
 		assertThat(game.viewOf("Rome").dilemmas()).isEmpty();
+	}
+
+	/**
+	 * A Dilemma that comes up on every Turn and whose choices change nothing.
+	 */
+	static Event certain(String name) {
+		return new Event(name, Event.Subject.NATION, 1, null, null, name + " troubles your Nation",
+				List.of(new Event.Choice("Act", Event.Effects.NONE, false, "You acted on " + name),
+						new Event.Choice("Wait", Event.Effects.NONE, true, "You waited on " + name)));
+	}
+
+	static List<String> names(NationView view) {
+		return view.dilemmas().stream().map(Dilemma::name).toList();
+	}
+
+	@Test
+	void aNationForWhichSeveralDilemmasComeUpFacesOnlyOneOfThemPickedByLuck() {
+		GameTest.Rigged luck = new GameTest.Rigged();
+		// Each Dilemma for Rome then Carthage, then Rome's pick, then Carthage's.
+		luck.then(0, 0, 0, 0, 0.9, 0.1);
+		play(luck, certain("Flood"), certain("Drought"));
+
+		game.endTurn();
+
+		assertThat(names(game.viewOf("Rome"))).containsExactly("Drought");
+		assertThat(report("Rome")).containsExactly(
+				"Drought troubles your Nation; choose what to do before this Turn ends.", BASE_INCOME_REPORT);
+		assertThat(names(game.viewOf("Carthage"))).containsExactly("Flood");
+		assertThat(report("Carthage")).containsExactly(
+				"Flood troubles your Nation; choose what to do before this Turn ends.", BASE_INCOME_REPORT);
+	}
+
+	@Test
+	void aNationFacesADilemmaItHasNeverFacedWhileAnyThatCameUpIsUnfacedThenAnyOfThem() {
+		GameTest.Rigged luck = new GameTest.Rigged();
+		luck.always(0);
+		play(luck, certain("Flood"), certain("Drought"), certain("Locusts"));
+
+		List<String> faced = new ArrayList<>();
+		for (int turns = 0; turns < 4; turns++) {
+			game.endTurn();
+			assertThat(game.viewOf("Rome").dilemmas()).hasSize(1);
+			faced.addAll(names(game.viewOf("Rome")));
+		}
+
+		assertThat(faced).containsExactly("Flood", "Drought", "Locusts", "Flood");
+	}
+
+	@Test
+	void aDilemmaThatAloneCameUpIsFacedEvenIfFacedBefore() {
+		play(ALWAYS, certain("Flood"));
+
+		game.endTurn();
+		game.endTurn();
+
+		assertThat(names(game.viewOf("Rome"))).containsExactly("Flood");
+		assertThat(report("Rome")).contains("Flood troubles your Nation; choose what to do before this Turn ends.");
+	}
+
+	@Test
+	void ordinaryEventsStillHappenOnATurnADilemmaIsFaced() {
+		Event harvest = new Event("Harvest", Event.Subject.NATION, 1, null, new Event.Effects(10, 0, 0, 0, 0),
+				"Your harvest was good");
+		GameTest.Rigged luck = new GameTest.Rigged();
+		luck.always(0.5);
+		play(luck, certain("Flood"), harvest, certain("Drought"));
+
+		game.endTurn();
+
+		assertThat(game.viewOf("Rome").dilemmas()).hasSize(1);
+		assertThat(report("Rome")).contains("Your harvest was good: your Nation gained 10 Gold.");
+	}
+
+	@Test
+	void tributeIsStillOfferedOnATurnADilemmaIsFaced() {
+		game = new Game(new Ruleset(RULESET.units(), RULESET.buildings(), List.of(),
+				List.of(certain("Flood"), certain("Drought"))), Identities.of("Rome", "Carthage"), GameTest.EVEN_LUCK);
+		game.act("Rome", new Action.TrainUnits("Warrior", 2));
+		game.endTurn();
+		game.act("Rome", new Action.SendWarparty("Carthage", Map.of("Warrior", 2)));
+		game.endTurn();
+		game.endTurn();
+		game.endTurn();
+		assertThat(game.viewOf("Carthage").dilemmas()).hasSize(1);
+
+		assertThat(game.act("Carthage", new Action.OfferTribute("Rome", 1, 10, 0))).isEqualTo(ActionResult.ACCEPTED);
+
+		assertThat(game.viewOf("Rome").tributes()).hasSize(1);
+		assertThat(game.viewOf("Rome").dilemmas()).hasSize(1);
+		assertThat(game.viewOf("Carthage").dilemmas()).hasSize(1);
 	}
 
 }

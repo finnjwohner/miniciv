@@ -873,8 +873,16 @@ public class Game {
 	 * the Nation it happened to, or that sent the Warparty. An Event
 	 * whose effects need what the Nation or Warparty does not have (see
 	 * {@link #canBefall}) is not rolled for it.
+	 * <p>
+	 * A Dilemma that happens is not faced at once: once every Event is rolled,
+	 * each Nation still in the Game in order faces at most one of the Dilemmas
+	 * that happened for it. It is picked from those the Nation has never
+	 * faced, or from all of them if it has faced them all, by one more draw
+	 * from the seeded random source, made only when there are several to pick
+	 * from.
 	 */
 	private void rollEvents(Map<String, TurnReport.Draft> reports, List<Witnessed> witnessed) {
+		Map<Nation, List<Event>> happened = new LinkedHashMap<>();
 		for (Event event : ruleset.events()) {
 			for (Nation nation : remaining()) {
 				TurnReport.Draft report = reports.get(nation.name());
@@ -884,8 +892,7 @@ public class Game {
 								&& event.when().holdForNation(turn, nation, nation.defense(ruleset), largestApproaching(nation))
 								&& canBefall(event.effects(), nation) && happens(event)) {
 							if (event.dilemma()) {
-								nation.faceDilemma(event);
-								report.add(DECISIONS_AND_ALERTS, event.text() + "; choose what to do before this Turn ends.");
+								happened.computeIfAbsent(nation, ignored -> new ArrayList<>()).add(event);
 							}
 							else {
 								report.add(EVENTS,
@@ -903,6 +910,19 @@ public class Game {
 					}
 				}
 			}
+		}
+		for (Nation nation : remaining()) {
+			List<Event> dilemmas = happened.getOrDefault(nation, List.of());
+			if (dilemmas.isEmpty()) {
+				continue;
+			}
+			List<Event> unfaced = dilemmas.stream().filter(dilemma -> !nation.hasFaced(dilemma)).toList();
+			List<Event> pickable = unfaced.isEmpty() ? dilemmas : unfaced;
+			Event faced = pickable.size() == 1 ? pickable.getFirst()
+					: pickable.get((int) (random.nextDouble() * pickable.size()));
+			nation.faceDilemma(faced);
+			reports.get(nation.name())
+				.add(DECISIONS_AND_ALERTS, faced.text() + "; choose what to do before this Turn ends.");
 		}
 	}
 
