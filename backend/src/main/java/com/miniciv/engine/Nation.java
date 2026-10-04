@@ -11,6 +11,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.ToIntFunction;
+import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 
 /**
@@ -424,8 +425,24 @@ class Nation {
 	 * @param spy the Spy, as it is now or was earlier this Turn
 	 */
 	void fleeHome(Spy spy) {
-		spies.replaceAll(current -> current.id() == spy.id() ? current.turnedBack() : current);
+		changeSpy(spy, Spy::turnedBack);
+	}
+
+	/**
+	 * Changes one of the Nation's Spies abroad.
+	 *
+	 * @param spy the Spy, as it is now or was earlier this Turn
+	 */
+	void changeSpy(Spy spy, UnaryOperator<Spy> change) {
+		spies.replaceAll(current -> current.id() == spy.id() ? change.apply(current) : current);
 		version++;
+	}
+
+	/**
+	 * The Nation's Spies Escaping, in the order sent.
+	 */
+	List<Spy> spiesEscaping() {
+		return spies.stream().filter(Spy::escaping).toList();
 	}
 
 	/**
@@ -1116,6 +1133,9 @@ class Nation {
 				return ActionResult.rejected(current.homeward() ? "Your Spy is heading home."
 						: "Your Spy has not yet arrived at " + current.target() + ".");
 			}
+			if (current.escaping()) {
+				return ActionResult.rejected("Your Spy is Escaping from " + current.target() + ".");
+			}
 			it.set(current.onMission(mission));
 			version++;
 			return ActionResult.ACCEPTED;
@@ -1134,7 +1154,7 @@ class Nation {
 		List<Spy> ended = new ArrayList<>();
 		for (var it = spies.listIterator(); it.hasNext();) {
 			Spy current = it.next();
-			if (!current.inPlace() || current.mission() == null) {
+			if (!current.inPlace() || current.mission() == null || current.escaping()) {
 				continue;
 			}
 			it.set(current.workedOnMission());
@@ -1148,7 +1168,7 @@ class Nation {
 
 	/**
 	 * Moves every Spy heading home one Turn on; one reaching home rejoins the
-	 * Army.
+	 * Army and hands over any Haul it carries.
 	 *
 	 * @return those that came home
 	 */
@@ -1165,6 +1185,11 @@ class Nation {
 			else {
 				it.remove();
 				army.merge(current.unit(), 1, Integer::sum);
+				if (current.haul() != null) {
+					Haul haul = current.haul();
+					gain(haul.resource() == Resource.GOLD ? haul.amount() : 0, 0,
+							haul.resource() == Resource.RESEARCH ? haul.amount() : 0);
+				}
 				returned.add(current);
 			}
 		}
