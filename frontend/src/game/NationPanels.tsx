@@ -74,7 +74,8 @@ function Damage({
         <li className="row row--nested">
           <span className="tag tag--warn">Damaged</span>
           <span className="row__meta">
-            1 Building, {damage.damaged} Defense lost · Repair {damage.repairGold} Gold, {plural(damage.repairTurns, 'Turn')}
+            1 Building, {damage.damaged} Defense lost · Repair {damage.repairGold} Gold,{' '}
+            {plural(damage.repairTurns, 'Turn')}
           </span>
           <button
             aria-label={`Repair ${damage.building}`}
@@ -89,7 +90,8 @@ function Damage({
         <li className="row row--nested">
           <span className="tag tag--bad">Destroyed</span>
           <span className="row__meta">
-            {plural(damage.destroyed, 'Building')} · Rebuild {damage.rebuildGold} Gold, {plural(damage.rebuildTurns, 'Turn')}
+            {plural(damage.destroyed, 'Building')} · Rebuild {damage.rebuildGold} Gold,{' '}
+            {plural(damage.rebuildTurns, 'Turn')}
           </span>
           <button
             aria-label={`Rebuild ${damage.building}`}
@@ -207,7 +209,7 @@ export function BuildPanel({
 function describeUnit(unit: UnitType) {
   const counters = unit.counters.length > 0 ? `, counters ${unit.counters.join(', ')}` : ''
   const role = unit.scout
-    ? 'stays home and may discover Warparties abroad'
+    ? "roams the wilds, where it may discover Warparties abroad and catch other Nations' travelling Spies"
     : unit.spy
       ? "sent on its own to report another Nation's hidden state"
       : `Strength ${unit.strength}`
@@ -255,8 +257,15 @@ export function TrainPanel({
   rejection: string | null
   onTrain: (unit: string, count: number) => void
 }) {
-  const training = mergeAlike(nation.training, (t) => [t.unit, t.readyOnTurn], (t) => t.count)
-  const isFresh = useFreshRows(nation.version, training.map(({ key }) => key))
+  const training = mergeAlike(
+    nation.training,
+    (t) => [t.unit, t.readyOnTurn],
+    (t) => t.count,
+  )
+  const isFresh = useFreshRows(
+    nation.version,
+    training.map(({ key }) => key),
+  )
   return (
     <Panel title="Train" icon="sword" rejection={rejection}>
       <h3>Units</h3>
@@ -324,7 +333,11 @@ export function TechTreePanel({
                     : t.prerequisites.length > 0 && `; requires ${t.prerequisites.join(', ')}`}
                 </span>
                 {t.standing === 'AVAILABLE' && (
-                  <button aria-label={`Unlock ${t.name}`} onClick={() => onUnlock(t.name)} disabled={t.research > nation.research}>
+                  <button
+                    aria-label={`Unlock ${t.name}`}
+                    onClick={() => onUnlock(t.name)}
+                    disabled={t.research > nation.research}
+                  >
                     Unlock
                   </button>
                 )}

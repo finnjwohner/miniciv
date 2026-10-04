@@ -17,8 +17,18 @@ export const MY_PLAYER_ID = 'player-rome'
 export const TURN = 3
 
 /** Each Nation's name, Ruler, colour and emblem, as its Player picked them in the Room. */
-const ROME = { name: 'Rome', ruler: 'Augustus', colour: '#c0392b', emblem: 'sword' }
-const EGYPT = { name: 'Egypt', ruler: 'Cleopatra', colour: '#2980b9', emblem: 'sun' }
+const ROME = {
+  name: 'Rome',
+  ruler: 'Augustus',
+  colour: '#c0392b',
+  emblem: 'sword',
+}
+const EGYPT = {
+  name: 'Egypt',
+  ruler: 'Cleopatra',
+  colour: '#2980b9',
+  emblem: 'sun',
+}
 
 /** The tests' Player, playing Rome, and Egypt's Player, both still deciding. */
 function playerViews(): PlayerView[] {
@@ -88,11 +98,36 @@ export function nationView(overrides: Partial<NationView> = {}): NationView {
     damage: [],
     sellValues: { Farm: 15, Market: 20, Palisade: 20 },
     availableUnits: [
-      unit({ name: 'Warrior', gold: 20, population: 2, turns: 1, upkeep: 1, strength: 3, counters: ['Horseman'] }),
-      unit({ name: 'Archer', gold: 25, population: 2, turns: 2, upkeep: 1, strength: 3, counters: ['Warrior'] }),
-      unit({ name: 'Scout', gold: 15, population: 1, turns: 1, upkeep: 1, strength: 0, scout: true }),
+      unit({
+        name: 'Warrior',
+        gold: 20,
+        population: 2,
+        turns: 1,
+        upkeep: 1,
+        strength: 3,
+        counters: ['Horseman'],
+      }),
+      unit({
+        name: 'Archer',
+        gold: 25,
+        population: 2,
+        turns: 2,
+        upkeep: 1,
+        strength: 3,
+        counters: ['Warrior'],
+      }),
+      unit({
+        name: 'Scout',
+        gold: 15,
+        population: 1,
+        turns: 1,
+        upkeep: 1,
+        strength: 0,
+        scout: true,
+      }),
     ],
     army: { Warrior: 3 },
+    scouts: 0,
     training: [{ unit: 'Archer', count: 2, readyOnTurn: 5 }],
     warparties: [],
     spies: [],
@@ -107,16 +142,37 @@ export function nationView(overrides: Partial<NationView> = {}): NationView {
     tributes: [],
     encounters: [],
     techTree: [
-      { name: 'Bronze Working', research: 10, prerequisites: [], unlocks: ['Archer'], standing: 'UNLOCKED' },
-      { name: 'Writing', research: 15, prerequisites: [], unlocks: ['Spy', 'Library'], standing: 'UNLOCKED' },
-      { name: 'Iron Working', research: 25, prerequisites: ['Bronze Working'], unlocks: ['Horseman'], standing: 'AVAILABLE' },
+      {
+        name: 'Bronze Working',
+        research: 10,
+        prerequisites: [],
+        unlocks: ['Archer'],
+        standing: 'UNLOCKED',
+      },
+      {
+        name: 'Writing',
+        research: 15,
+        prerequisites: [],
+        unlocks: ['Spy', 'Library'],
+        standing: 'UNLOCKED',
+      },
+      {
+        name: 'Iron Working',
+        research: 25,
+        prerequisites: ['Bronze Working'],
+        unlocks: ['Horseman'],
+        standing: 'AVAILABLE',
+      },
     ],
     turnReport: {
       turn: 2,
       netChange: { gold: 12, population: 6, research: 3 },
       sections: [
         { kind: 'COMPLETED', lines: ['Your Farm has been built.'] },
-        { kind: 'EVENTS', lines: ['A good harvest filled your granaries: your Nation gained 4 Population.'] },
+        {
+          kind: 'EVENTS',
+          lines: ['A good harvest filled your granaries: your Nation gained 4 Population.'],
+        },
       ],
     },
     dilemmas: [
@@ -175,7 +231,10 @@ export function renderGame(props: Partial<ComponentProps<typeof GameScreen>> = {
     </SettingsProvider>
   )
   const result = render(gameScreen(props), { wrapper })
-  return { ...result, rerenderGame: (overrides: Partial<ComponentProps<typeof GameScreen>>) => result.rerender(gameScreen(overrides)) }
+  return {
+    ...result,
+    rerenderGame: (overrides: Partial<ComponentProps<typeof GameScreen>>) => result.rerender(gameScreen(overrides)),
+  }
 }
 
 /** Rome's Warparty of two Warriors travelling to Egypt, a Turn from arriving. */
@@ -196,7 +255,15 @@ export function warparty(overrides: Partial<Warparty> = {}): Warparty {
 
 /** Rome's Spy in place at Egypt. */
 export function spy(overrides: Partial<Spy> = {}): Spy {
-  return { id: 2, unit: 'Spy', target: 'Egypt', homeward: false, turnsLeft: 0, turnsTravelled: 2, ...overrides }
+  return {
+    id: 2,
+    unit: 'Spy',
+    target: 'Egypt',
+    homeward: false,
+    turnsLeft: 0,
+    turnsTravelled: 2,
+    ...overrides,
+  }
 }
 
 /** The action tab named `name`, whatever its badge says. */
@@ -205,15 +272,36 @@ export function tab(name: string) {
 }
 
 function player(nation: typeof ROME): Omit<PlayerView, 'id'> {
-  return { nationName: nation.name, ruler: nation.ruler, colour: nation.colour, emblem: nation.emblem, ready: true, done: false }
+  return {
+    nationName: nation.name,
+    ruler: nation.ruler,
+    colour: nation.colour,
+    emblem: nation.emblem,
+    ready: true,
+    done: false,
+  }
 }
 
 function noFacts(): Facts {
-  return { gold: null, population: null, research: null, army: null, buildings: null, defense: null }
+  return {
+    gold: null,
+    population: null,
+    research: null,
+    army: null,
+    buildings: null,
+    defense: null,
+  }
 }
 
 function building(type: Pick<BuildingType, 'name' | 'gold' | 'turns'> & Partial<BuildingType>): BuildingType {
-  return { populationPerTurn: 0, goldPerTurn: 0, goldPerPopulation: 0, researchPerTurn: 0, defense: 0, ...type }
+  return {
+    populationPerTurn: 0,
+    goldPerTurn: 0,
+    goldPerPopulation: 0,
+    researchPerTurn: 0,
+    defense: 0,
+    ...type,
+  }
 }
 
 /** A Unit type, with no counters and neither Scout nor Spy unless given. */

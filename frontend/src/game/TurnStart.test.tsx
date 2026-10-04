@@ -16,8 +16,15 @@ function nextTurn(nation: Partial<NationView> = {}) {
 }
 
 /** The Turn Report of the Turn just resolved, with `netChange` and `sections`. */
-function report(netChange: Partial<NonNullable<NationView['turnReport']>['netChange']>, sections: TurnReportSection[] = []) {
-  return { turn: TURN, netChange: { gold: 0, population: 0, research: 0, ...netChange }, sections }
+function report(
+  netChange: Partial<NonNullable<NationView['turnReport']>['netChange']>,
+  sections: TurnReportSection[] = [],
+) {
+  return {
+    turn: TURN,
+    netChange: { gold: 0, population: 0, research: 0, ...netChange },
+    sections,
+  }
 }
 
 /** The resource labelled `label` in the Resources panel. */

@@ -66,8 +66,11 @@ export function ArmyPanel({
   const army = Object.entries(nation.army)
   const strengthOf = (name: string, count: number) => (types.get(name)?.strength ?? 0) * count
   const strength = army.reduce((total, [name, count]) => total + strengthOf(name, count), 0)
-  const isFresh = useFreshRows(nation.version, army.map(([name]) => name))
-  const sendable = army.filter(([name]) => !types.get(name)?.scout && !types.get(name)?.spy)
+  const isFresh = useFreshRows(
+    nation.version,
+    army.map(([name]) => name),
+  )
+  const sendable = army.filter(([name]) => !types.get(name)?.spy)
   const units: Record<string, number> = {}
   for (const [name, owned] of sendable) {
     const count = Math.min(chosen[name] ?? 0, owned)
@@ -120,8 +123,8 @@ export function ArmyPanel({
               : `Strength ${formatAmount(sending)} · arrives in ${plural(travelTurns(nation.travelBrackets, sending), 'Turn')}`}
           </p>
           <p className="muted">
-            Turns to arrive by Strength: {describeBrackets(nation.travelBrackets)}. The trip home takes the
-            bracket for the Strength that survives, longer when carrying a large haul.
+            Turns to arrive by Strength: {describeBrackets(nation.travelBrackets)}. The trip home takes the bracket for
+            the Strength that survives, longer when carrying a large haul.
           </p>
         </div>
       )}
@@ -186,7 +189,8 @@ function describeSpy(spy: Spy, map: MapNation[]) {
 
 /**
  * A form to send a Spy from the Army to another Nation, what the Spies at home are doing, then the
- * Nation's Spies abroad, those with the same target and state merged into one row.
+ * Nation's Spies abroad, those with the same target and state merged into one row, then its Scouts
+ * roaming the wilds and what they do.
  */
 export function SpiesPanel({
   nation,
@@ -205,7 +209,12 @@ export function SpiesPanel({
     .filter(([name]) => spyTypes.has(name))
     .reduce((total, [, count]) => total + count, 0)
   return (
-    <Panel title="Spies" icon="eye" actions={<span className="muted">{atHome} on counter-intelligence</span>} rejection={rejection}>
+    <Panel
+      title="Spies & Scouts"
+      icon="eye"
+      actions={<span className="muted">{atHome} on counter-intelligence</span>}
+      rejection={rejection}
+    >
       {atHome === 0 ? (
         <p className="muted">Train a Spy to send one abroad. Spies kept at home run counter-intelligence.</p>
       ) : targets.length === 0 ? (
@@ -223,8 +232,8 @@ export function SpiesPanel({
       )}
       {atHome > 0 && (
         <p className="muted">
-          Your Spies at home are running counter-intelligence, giving your Nation a chance each Turn to catch
-          enemy Spies in its land.
+          Your Spies at home are running counter-intelligence, giving your Nation a chance each Turn to catch enemy
+          Spies in its land.
         </p>
       )}
       {nation.spies.length === 0 ? (
@@ -240,6 +249,22 @@ export function SpiesPanel({
             </li>
           ))}
         </ul>
+      )}
+      <h3>Scouts</h3>
+      {nation.scouts === 0 ? (
+        <p className="muted">No Scouts yet. Train some to roam the wilds.</p>
+      ) : (
+        <>
+          <ul className="list">
+            <li className="row">
+              <span className="row__name">Scouts roaming the wilds ×{nation.scouts}</span>
+            </li>
+          </ul>
+          <p className="muted">
+            They give your Nation a chance each Turn to discover Warparties abroad and catch other Nations' Spies still
+            travelling, better the more Scouts you have.
+          </p>
+        </>
       )}
     </Panel>
   )

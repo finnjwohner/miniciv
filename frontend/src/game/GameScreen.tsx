@@ -196,9 +196,15 @@ function GameScreen({
                   onSell={from('build', onSellBuilding)}
                 />
               ),
-              train: <TrainPanel nation={nation} rejection={rejectionIn('train')} onTrain={from('train', onTrainUnits)} />,
+              train: (
+                <TrainPanel nation={nation} rejection={rejectionIn('train')} onTrain={from('train', onTrainUnits)} />
+              ),
               tech: (
-                <TechTreePanel nation={nation} rejection={rejectionIn('tech')} onUnlock={from('tech', onUnlockTechnology)} />
+                <TechTreePanel
+                  nation={nation}
+                  rejection={rejectionIn('tech')}
+                  onUnlock={from('tech', onUnlockTechnology)}
+                />
               ),
               army: (
                 <ArmyPanel

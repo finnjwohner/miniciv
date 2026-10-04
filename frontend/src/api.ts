@@ -47,13 +47,18 @@ export type RoomView = {
 }
 
 /** The kinds of section a Turn Report is grouped into. */
-export type TurnReportKind = 'DECISIONS_AND_ALERTS' | 'WARFARE' | 'COMPLETED' | 'EVENTS' | 'SPIES_AND_SCOUTS' | 'RESOURCES'
+export type TurnReportKind =
+  'DECISIONS_AND_ALERTS' | 'WARFARE' | 'COMPLETED' | 'EVENTS' | 'SPIES_AND_SCOUTS' | 'RESOURCES'
 /** One section of a Turn Report: what happened of one kind, in the order it happened. */
 export type TurnReportSection = { kind: TurnReportKind; lines: string[] }
 /** How a Nation's Gold, Population and Research moved as a Turn resolved, not counting what it spent during the Turn. */
 export type NetChange = { gold: number; population: number; research: number }
 /** What happened to a Nation as a Turn resolved: how its resources moved, and the sections with something in them, in their fixed order. */
-export type TurnReport = { turn: number; netChange: NetChange; sections: TurnReportSection[] }
+export type TurnReport = {
+  turn: number
+  netChange: NetChange
+  sections: TurnReportSection[]
+}
 /** A kind of Building; once complete it adds its Population, Gold and Research every Turn, and raises Defense while standing. */
 export type BuildingType = {
   name: string
@@ -81,7 +86,12 @@ export type BuildingDamage = {
   rebuildTurns: number
 }
 /** A defensive Building being repaired, or rebuilt if `rebuild`, restoring `defense` once done. */
-export type Repair = { building: string; rebuild: boolean; defense: number; turnsLeft: number }
+export type Repair = {
+  building: string
+  rebuild: boolean
+  defense: number
+  turnsLeft: number
+}
 /** A Building under construction. */
 export type Construction = { building: string; turnsLeft: number }
 /** A kind of Unit, trained by paying Gold and Population upfront and then Gold upkeep every Turn. */
@@ -94,7 +104,10 @@ export type UnitType = {
   strength: number
   /** The Unit types this one multiplies its Strength against. */
   counters: string[]
-  /** Whether it is a Scout: never fights or leaves its Nation, but may discover other Nations' Warparties abroad. */
+  /**
+   * Whether it is a Scout: roams the wilds from the moment it is trained, never in the Army and never fighting,
+   * but may discover other Nations' Warparties abroad and catch their travelling Spies.
+   */
   scout: boolean
   /** Whether it is a Spy: sent on its own, never in a Warparty, to stay in another Nation and report its hidden state. */
   spy: boolean
@@ -140,8 +153,7 @@ export function travelTurns(brackets: TravelBracket[], strength: number): number
  */
 export function recallTurns(brackets: TravelBracket[], warparty: Warparty): number {
   const turns = Math.ceil(
-    (warparty.turnsTravelled * travelTurns(brackets, warparty.strength)) /
-      travelTurns(brackets, warparty.strengthSent),
+    (warparty.turnsTravelled * travelTurns(brackets, warparty.strength)) / travelTurns(brackets, warparty.strengthSent),
   )
   return Math.max(1, Math.min(warparty.turnsTravelled, turns))
 }
@@ -168,7 +180,12 @@ export type Choice = { name: string; worst: boolean }
  * A Dilemma this Player may answer, by its `name`, until the Turn ends; `chosen` is the name of the
  * choice they made, or null. The choice made, or else the worst, applies as the Turn ends.
  */
-export type Dilemma = { name: string; text: string; choices: Choice[]; chosen: string | null }
+export type Dilemma = {
+  name: string
+  text: string
+  choices: Choice[]
+  chosen: string | null
+}
 /**
  * A Technology in the Tech Tree as this Nation stands with it: `UNLOCKED`, `AVAILABLE` once all its
  * `prerequisites` are unlocked, otherwise `LOCKED`. Unlocking it costs `research` and gives access to the
@@ -264,8 +281,10 @@ export type NationView = {
   sellValues: Record<string, number>
   /** The Unit types the Nation may train: those needing no Technology, or one it has unlocked. */
   availableUnits: UnitType[]
-  /** How many of each Unit type the Nation has at home. */
+  /** How many of each Unit type the Nation has at home; never its Scouts. */
   army: Record<string, number>
+  /** How many Scouts the Nation has roaming the wilds. */
+  scouts: number
   training: Training[]
   /** The Nation's Warparties abroad, in the order sent. */
   warparties: Warparty[]

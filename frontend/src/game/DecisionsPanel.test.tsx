@@ -25,7 +25,13 @@ describe('DecisionsPanel', () => {
   it('highlights the choice made, keeps every choice clickable and tags the card chosen', () => {
     const nation = nationView()
     const onAnswerDilemma = vi.fn()
-    renderGame({ nation: { ...nation, dilemmas: [{ ...nation.dilemmas[0], chosen: 'Build levees' }] }, onAnswerDilemma })
+    renderGame({
+      nation: {
+        ...nation,
+        dilemmas: [{ ...nation.dilemmas[0], chosen: 'Build levees' }],
+      },
+      onAnswerDilemma,
+    })
 
     const [levees, flood] = choiceButtons()
     expect(levees).toHaveClass('button--chosen')
@@ -42,11 +48,24 @@ describe('DecisionsPanel', () => {
 
   it("keeps an Encounter's Fight and Let it pass after choosing, highlighting the choice", () => {
     const encounter: Encounter = {
-      first: { nation: 'Rome', warparty: 1, units: { Warrior: 3 }, choice: 'FIGHT' },
-      second: { nation: 'Egypt', warparty: 1, units: { Warrior: 1 }, choice: 'NONE' },
+      first: {
+        nation: 'Rome',
+        warparty: 1,
+        units: { Warrior: 3 },
+        choice: 'FIGHT',
+      },
+      second: {
+        nation: 'Egypt',
+        warparty: 1,
+        units: { Warrior: 1 },
+        choice: 'NONE',
+      },
     }
     const onAnswerEncounter = vi.fn()
-    renderGame({ nation: nationView({ dilemmas: [], encounters: [encounter] }), onAnswerEncounter })
+    renderGame({
+      nation: nationView({ dilemmas: [], encounters: [encounter] }),
+      onAnswerEncounter,
+    })
 
     const fight = screen.getByRole('button', { name: 'Fight' })
     const pass = screen.getByRole('button', { name: 'Let it pass' })

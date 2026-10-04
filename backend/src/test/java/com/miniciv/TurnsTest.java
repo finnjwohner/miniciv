@@ -219,6 +219,7 @@ class TurnsTest {
 						Map.of("name", "Catapult", "gold", 50, "population", 1, "turns", 1, "upkeep", 1, "strength", 20.0,
 								"counters", List.of(), "scout", false, "spy", false)));
 		view.put("army", Map.of());
+		view.put("scouts", 0);
 		view.put("training", training);
 		view.put("warparties", List.of());
 		view.put("spies", List.of());
