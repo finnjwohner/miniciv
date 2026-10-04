@@ -1083,6 +1083,30 @@ class Nation {
 	}
 
 	/**
+	 * Loses some of the Nation's Scouts, no more than it has, taking its Scout
+	 * types in the reverse of the order first trained.
+	 *
+	 * @return how many of each Scout type were lost
+	 */
+	Map<String, Integer> loseScouts(int count) {
+		Map<String, Integer> lost = new LinkedHashMap<>();
+		int left = count;
+		for (String type : List.copyOf(scouts.keySet()).reversed()) {
+			if (left == 0) {
+				break;
+			}
+			int losing = Math.min(left, scouts.get(type));
+			scouts.computeIfPresent(type, (unit, owned) -> owned == losing ? null : owned - losing);
+			lost.put(type, losing);
+			left -= losing;
+		}
+		if (!lost.isEmpty()) {
+			version++;
+		}
+		return lost;
+	}
+
+	/**
 	 * How many Spies the Nation has at home.
 	 */
 	int spiesAtHome(Ruleset ruleset) {

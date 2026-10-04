@@ -13,16 +13,17 @@ import java.util.random.RandomGenerator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 /**
- * Something that may happen to a Nation or a Warparty as a Turn ends, outside
- * the Players' direct actions. Each Turn, every Nation or Warparty its
- * conditions hold for, and that has what its effects need (the Units it loses,
- * work in progress to stall or speed up, a Spy to catch), has the given chance
- * of it happening, and its effects are announced in the Turn Report.
+ * Something that may happen to a Nation, a Warparty or a Nation's Scouts as a
+ * Turn ends, outside the Players' direct actions. Each Turn, every Nation,
+ * Warparty or Nation with Scouts its conditions hold for, and that has what its
+ * effects need (the Units it loses, work in progress to stall or speed up, a
+ * Spy to catch), has the given chance of it happening, and its effects are
+ * announced in the Turn Report.
  *
  * @param name what the content calls it, unique among Events
  * @param subject what it happens to
- * @param chance how likely it is to happen to each Nation or Warparty its
- *        conditions hold for, above 0 and at most 1
+ * @param chance how likely it is to happen to each Nation, Warparty or
+ *        Nation with Scouts its conditions hold for, above 0 and at most 1
  * @param when the conditions that must all hold for it to happen
  * @param effects what it changes when it happens
  * @param text how the Turn Report announces it, such as "A dust storm swept
@@ -160,7 +161,15 @@ public record Event(String name, Subject subject, double chance, Conditions when
 		 * waiting at its target for the Battle.
 		 */
 		@JsonProperty("Warparty")
-		WARPARTY
+		WARPARTY,
+
+		/**
+		 * The Scouts roaming the wilds of a Nation still in the Game that has
+		 * at least one; its conditions and effects are those of the Nation,
+		 * and it alone can lose Scouts.
+		 */
+		@JsonProperty("Scouts")
+		SCOUTS
 
 	}
 
@@ -236,9 +245,12 @@ public record Event(String name, Subject subject, double chance, Conditions when
 	 *        luck, is stalled by, or sped up by if below 0; it still takes at
 	 *        least one more
 	 * @param spyCaught whose Spy is caught, picked by luck, or null if none is
+	 * @param scoutsLost how many of the Nation's Scouts are lost, no more than
+	 *        it has; luck never varies it, so "a Scout was lost" loses exactly
+	 *        one
 	 */
 	public record Effects(int gold, int population, int research, int damageDefense, int travelTurns,
-			Map<String, Integer> units, int workTurns, SpyCaught spyCaught) {
+			Map<String, Integer> units, int workTurns, SpyCaught spyCaught, int scoutsLost) {
 
 		static final Effects NONE = new Effects(0, 0, 0, 0, 0);
 
@@ -254,10 +266,19 @@ public record Event(String name, Subject subject, double chance, Conditions when
 		}
 
 		/**
+		 * Effects that lose no Scouts.
+		 */
+		public Effects(int gold, int population, int research, int damageDefense, int travelTurns,
+				Map<String, Integer> units, int workTurns, SpyCaught spyCaught) {
+			this(gold, population, research, damageDefense, travelTurns, units, workTurns, spyCaught, 0);
+		}
+
+		/**
 		 * These effects as luck varies them, drawing once from the given random
 		 * source for each Gold, Population, Research and Defense-damage effect
 		 * that is not 0, in that order, then for each Unit type in the order
-		 * listed, then for work Turns if not 0; travel Turns never vary.
+		 * listed, then for work Turns if not 0; travel Turns and Scouts lost
+		 * never vary.
 		 */
 		Effects varied(RandomGenerator random) {
 			int variedGold = varied(gold, random);
@@ -267,7 +288,7 @@ public record Event(String name, Subject subject, double chance, Conditions when
 			Map<String, Integer> variedUnits = new LinkedHashMap<>();
 			units.forEach((unit, count) -> variedUnits.put(unit, varied(count, random)));
 			return new Effects(variedGold, variedPopulation, variedResearch, variedDamage, travelTurns, variedUnits,
-					varied(workTurns, random), spyCaught);
+					varied(workTurns, random), spyCaught, scoutsLost);
 		}
 
 		/**
@@ -308,7 +329,7 @@ public record Event(String name, Subject subject, double chance, Conditions when
 		List<String> problems = new ArrayList<>();
 		String subjectName = "Event " + name;
 		if (subject == null) {
-			problems.add(subjectName + " must happen to a Nation or a Warparty.");
+			problems.add(subjectName + " must happen to a Nation, a Warparty or Scouts.");
 		}
 		if (!(chance > 0 && chance <= 1)) {
 			problems.add(subjectName + " must have a chance above 0 and at most 1.");
@@ -327,6 +348,9 @@ public record Event(String name, Subject subject, double chance, Conditions when
 			problems.add(subjectName + " cannot damage Defense by less than 0.");
 		}
 		problems.addAll(unitProblems(subjectName, effects, unitTypes));
+		if (effects.scoutsLost() < 0) {
+			problems.add(subjectName + " cannot lose less than 0 Scouts.");
+		}
 		if (subject == Subject.WARPARTY) {
 			String unsuited = subjectName + " happens to a Warparty, so it cannot ";
 			unsuited(problems, unsuited + "need populationAtLeast.", when.populationAtLeast() != null);
@@ -340,11 +364,17 @@ public record Event(String name, Subject subject, double chance, Conditions when
 			unsuited(problems, unsuited + "change damageDefense.", effects.damageDefense() != 0);
 			unsuited(problems, unsuited + "change workTurns.", effects.workTurns() != 0);
 			unsuited(problems, unsuited + "change spyCaught.", effects.spyCaught() != null);
+			unsuited(problems, unsuited + "change scoutsLost.", effects.scoutsLost() != 0);
 		}
-		if (subject == Subject.NATION) {
-			String unsuited = subjectName + " happens to a Nation, so it cannot ";
+		if (subject == Subject.NATION || subject == Subject.SCOUTS) {
+			String unsuited = subjectName + (subject == Subject.NATION ? " happens to a Nation" : " happens to Scouts")
+					+ ", so it cannot ";
 			unsuited(problems, unsuited + "need unitsAtLeast.", when.unitsAtLeast() != null);
 			unsuited(problems, unsuited + "change travelTurns.", effects.travelTurns() != 0);
+		}
+		if (subject == Subject.NATION) {
+			unsuited(problems, subjectName + " happens to a Nation, so it cannot change scoutsLost.",
+					effects.scoutsLost() != 0);
 		}
 		if (dilemma()) {
 			problems.addAll(dilemmaProblems(subjectName, unitTypes));
@@ -384,7 +414,7 @@ public record Event(String name, Subject subject, double chance, Conditions when
 	private List<String> dilemmaProblems(String subjectName, List<UnitType> unitTypes) {
 		List<String> problems = new ArrayList<>();
 		if (subject == Subject.WARPARTY) {
-			problems.add(subjectName + " offers choices, so it must happen to a Nation.");
+			problems.add(subjectName + " offers choices, so it must happen to a Nation or its Scouts.");
 		}
 		if (!effects.equals(Effects.NONE)) {
 			problems.add(subjectName + " offers choices, so its effects belong to its choices.");
@@ -416,6 +446,7 @@ public record Event(String name, Subject subject, double chance, Conditions when
 					problems.add(choiceName + " cannot damage Defense by less than 0.");
 				}
 				problems.addAll(unitProblems(choiceName, choice.effects(), unitTypes));
+				problems.addAll(scoutProblems(subjectName, choiceName, choice.effects()));
 			}
 			else {
 				problems.addAll(outcomeProblems(choiceName, choice, unitTypes));
@@ -429,6 +460,7 @@ public record Event(String name, Subject subject, double chance, Conditions when
 	 */
 	private List<String> outcomeProblems(String choiceName, Choice choice, List<UnitType> unitTypes) {
 		List<String> problems = new ArrayList<>();
+		String subjectName = "Event " + name;
 		if (!choice.effects().equals(Effects.NONE)) {
 			problems.add(choiceName + " has outcomes, so its effects belong to its outcomes.");
 		}
@@ -451,12 +483,31 @@ public record Event(String name, Subject subject, double chance, Conditions when
 				problems.add(choiceName + " has an outcome that damages Defense by less than 0.");
 			}
 			problems.addAll(unitProblems(choiceName + " has an outcome that", outcome.effects(), unitTypes));
+			problems.addAll(scoutProblems(subjectName, choiceName + " has an outcome that", outcome.effects()));
 		}
 		// Chances such as 0.1 cannot be added exactly.
 		if (Math.abs(total - 1) > 1e-9) {
 			problems.add(choiceName + " has outcome chances totalling " + Math.round(total * 1e6) / 1e6 + ", not 1.");
 		}
 		return problems;
+	}
+
+	/**
+	 * What is wrong with the Scouts a Dilemma's choice or outcome loses, if
+	 * anything.
+	 *
+	 * @param what what has the effects, such as "Event Lost trail's choice
+	 *        Press on" or "Event Lost trail's choice Press on has an outcome
+	 *        that"
+	 */
+	private List<String> scoutProblems(String subjectName, String what, Effects effects) {
+		if (effects.scoutsLost() < 0) {
+			return List.of(what + " cannot lose less than 0 Scouts.");
+		}
+		if (effects.scoutsLost() > 0 && subject != Subject.SCOUTS) {
+			return List.of(what + " cannot lose Scouts, as " + subjectName + " happens to a Nation.");
+		}
+		return List.of();
 	}
 
 	private static void notBelowZero(List<String> problems, String subject, String condition, Integer least) {
