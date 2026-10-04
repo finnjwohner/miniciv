@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { NationView, TurnReportSection } from '../api'
 import { fakeWebAudio, gesture, timesPlayed, type Tone } from '../test/audio'
 import { passes } from '../test/clock'
-import { nationView, renderGame, roomView, tab, TURN } from '../test/fixtures'
+import { nationView, renderGame, reportLine, roomView, tab, TURN } from '../test/fixtures'
 import { prefersReducedMotion } from '../test/motion'
 
 /** The Room and Rome on the next Turn, Rome adjusted by `nation`. */
@@ -201,7 +201,7 @@ describe('sounds at the start of a Turn', () => {
   }
 
   it('plays the new-Turn cue alone for a Turn with nothing completed and no Battle', () => {
-    arriveWith([{ kind: 'EVENTS', lines: ['A good harvest.'] }])
+    arriveWith([{ kind: 'EVENTS', lines: [reportLine('A good harvest.')] }])
 
     expect(timesPlayed(tones, 'newTurn')).toBe(1)
     expect(timesPlayed(tones, 'completed')).toBe(0)
@@ -210,8 +210,8 @@ describe('sounds at the start of a Turn', () => {
 
   it('plays the completed and Battle cues after the new-Turn cue when the report has those sections', () => {
     arriveWith([
-      { kind: 'WARFARE', lines: ['Your Warparty fought at Egypt.'] },
-      { kind: 'COMPLETED', lines: ['Your Farm has been built.'] },
+      { kind: 'WARFARE', lines: [reportLine('Your Warparty fought at Egypt.')] },
+      { kind: 'COMPLETED', lines: [reportLine('Your Farm has been built.')] },
     ])
 
     expect(timesPlayed(tones, 'newTurn')).toBe(1)
@@ -220,7 +220,7 @@ describe('sounds at the start of a Turn', () => {
   })
 
   it('plays nothing again for a later Nation view of the same Turn', () => {
-    const sameTurnAgain = arriveWith([{ kind: 'COMPLETED', lines: ['Your Farm has been built.'] }])
+    const sameTurnAgain = arriveWith([{ kind: 'COMPLETED', lines: [reportLine('Your Farm has been built.')] }])
 
     sameTurnAgain()
 
@@ -238,8 +238,8 @@ describe('sounds at the start of a Turn', () => {
   it('plays nothing with sound off', () => {
     arriveWith(
       [
-        { kind: 'WARFARE', lines: ['Your Warparty fought at Egypt.'] },
-        { kind: 'COMPLETED', lines: ['Your Farm has been built.'] },
+        { kind: 'WARFARE', lines: [reportLine('Your Warparty fought at Egypt.')] },
+        { kind: 'COMPLETED', lines: [reportLine('Your Farm has been built.')] },
       ],
       () => {
         fireEvent.click(screen.getByRole('button', { name: 'Settings' }))

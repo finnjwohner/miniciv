@@ -10,6 +10,7 @@ import java.util.random.RandomGenerator;
 
 import org.junit.jupiter.api.Test;
 
+import static com.miniciv.engine.TurnReport.Amount.Effect.GAIN;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 import static org.assertj.core.api.Assertions.entry;
@@ -38,6 +39,14 @@ class GameTest {
 			List.of(FARM, GRANARY, BANK, WALLS, MOAT), List.of());
 
 	static final String BASE_INCOME_REPORT = incomeReport(10);
+
+	/**
+	 * {@link #BASE_INCOME_REPORT} with its amounts marked.
+	 */
+	static final TurnReport.Line BASE_INCOME_LINE = new TurnReport.Line(List.of(
+			new TurnReport.Text("Your Population earned "), new TurnReport.Amount(Resource.GOLD, 10, GAIN),
+			new TurnReport.Text(", and your Nation gained "), new TurnReport.Amount(Resource.POPULATION, 2, GAIN),
+			new TurnReport.Text(" and "), new TurnReport.Amount(Resource.RESEARCH, 3, GAIN), new TurnReport.Text(".")));
 
 	/**
 	 * The Turn Report's income line for a Nation whose Population earned the
@@ -205,7 +214,7 @@ class GameTest {
 				List.of(FARM, GRANARY, BANK, WALLS, MOAT), Map.of(), List.of(), List.of(), 0, List.of(), Map.of(),
 				List.of(WARRIOR, ARCHER, HORSEMAN, SCOUT), Map.of(), 0, List.of(), List.of(), List.of(), TravelBracket.ALL, 3, 0, List.of(), List.of(), List.of(), List.of(),
 				new TurnReport(1, new TurnReport.NetChange(10, 2, 3),
-						List.of(new TurnReport.Section(TurnReport.Kind.RESOURCES, List.of(BASE_INCOME_REPORT)))),
+						List.of(new TurnReport.Section(TurnReport.Kind.RESOURCES, List.of(BASE_INCOME_LINE)))),
 				List.of(), null, null));
 	}
 
@@ -651,7 +660,7 @@ class GameTest {
 		assertThat(carthage.research()).isEqualTo(carthageResearch - 6 + 3);
 		assertThat(carthage.turnReport().lines()).containsExactly(
 				"Caesar of Rome's Warparty of Warrior ×2 met no Army at your Nation.",
-				"Caesar of Rome's Warparty reduced your Population by 12, doubled as you had no Army or Defense.",
+				"Caesar of Rome's Warparty cost your Nation 12 Population, doubled as you had no Army or Defense.",
 				"Caesar of Rome's Warparty took 18 Gold and 6 Research from you and is heading home.",
 				incomeReport(carthagePopulation - 12));
 	}
@@ -704,7 +713,7 @@ class GameTest {
 		assertThat(carthage.research()).isEqualTo(carthageResearch - 12 + 3);
 		assertThat(carthage.turnReport().lines()).containsExactly(
 				"Your Army of Warrior ×1 fought Caesar of Rome's Warparty of Warrior ×4. You lost Warrior ×1 and Rome lost no Units.",
-				"Caesar of Rome's Warparty reduced your Population by 24, doubled as your Army was wiped out.",
+				"Caesar of Rome's Warparty cost your Nation 24 Population, doubled as your Army was wiped out.",
 				"Caesar of Rome's Warparty took 36 Gold and 12 Research from you and is heading home.",
 				incomeReport(carthagePopulation - 24));
 	}
@@ -860,10 +869,10 @@ class GameTest {
 		assertThat(carthage.population()).isEqualTo(carthagePopulation - 8 + 2);
 		assertThat(carthage.turnReport().lines()).containsSequence(
 				"Caesar of Rome's Warparty wore your Defense down from 4 to 0, destroying Moat ×1.",
-				"Caesar of Rome's Warparty reduced your Population by 8.");
+				"Caesar of Rome's Warparty cost your Nation 8 Population.");
 		assertThat(game.viewOf("Rome").turnReport().lines()).containsSequence(
 				"Your Warparty wore Carthage's Defense down by 4, destroying Moat ×1.",
-				"Your Warparty reduced Carthage's Population by 8.");
+				"Your Warparty cost Carthage 8 Population.");
 	}
 
 	@Test
@@ -878,8 +887,8 @@ class GameTest {
 
 		assertThat(game.viewOf("Carthage").population()).isEqualTo(carthagePopulation - 3 + 2);
 		assertThat(game.viewOf("Carthage").turnReport().lines())
-			.contains("Caesar of Rome's Warparty reduced your Population by 3.");
-		assertThat(game.viewOf("Rome").turnReport().lines()).contains("Your Warparty reduced Carthage's Population by 3.");
+			.contains("Caesar of Rome's Warparty cost your Nation 3 Population.");
+		assertThat(game.viewOf("Rome").turnReport().lines()).contains("Your Warparty cost Carthage 3 Population.");
 	}
 
 	@Test
@@ -897,9 +906,9 @@ class GameTest {
 		assertThat(game.viewOf("Carthage").army()).isEmpty();
 		assertThat(game.viewOf("Carthage").population()).isEqualTo(carthagePopulation - 12 + 2);
 		assertThat(game.viewOf("Carthage").turnReport().lines())
-			.contains("Caesar of Rome's Warparty reduced your Population by 12, doubled as your Army was wiped out.");
+			.contains("Caesar of Rome's Warparty cost your Nation 12 Population, doubled as your Army was wiped out.");
 		assertThat(game.viewOf("Rome").turnReport().lines())
-			.contains("Your Warparty reduced Carthage's Population by 12, doubled as Carthage's Army was wiped out.");
+			.contains("Your Warparty cost Carthage 12 Population, doubled as Carthage's Army was wiped out.");
 	}
 
 	@Test
@@ -913,8 +922,8 @@ class GameTest {
 		game.endTurn();
 
 		assertThat(game.viewOf("Carthage").population()).isZero();
-		assertThat(game.viewOf("Carthage").turnReport().lines()).contains("Caesar of Rome's Warparty reduced your Population by "
-				+ carthagePopulation + ", doubled as you had no Army or Defense.");
+		assertThat(game.viewOf("Carthage").turnReport().lines()).contains("Caesar of Rome's Warparty cost your Nation " + carthagePopulation
+				+ " Population, doubled as you had no Army or Defense.");
 	}
 
 	@Test
@@ -1280,7 +1289,8 @@ class GameTest {
 		assertThat(carthage.turnReport().lines()).containsExactly(
 				"Caesar of Rome's Warparty conquered your Nation, seizing " + seized + ". You are knocked out of the Game.",
 				"Caesar of Rome's Warparty of Giant ×1 met no Army at your Nation.",
-				"Caesar of Rome's Warparty reduced your Population by " + carthagePopulation + ", doubled as you had no Army or Defense.");
+				"Caesar of Rome's Warparty cost your Nation " + carthagePopulation
+						+ " Population, doubled as you had no Army or Defense.");
 		NationView rome = game.viewOf("Rome");
 		assertThat(rome.gold()).isEqualTo(romeGold + seizedGold + romePopulation - 1);
 		assertThat(rome.research()).isEqualTo(romeResearch + seizedResearch + 3);
@@ -1468,15 +1478,15 @@ class GameTest {
 			.containsExactly(new Warparty(1, "Carthage", Map.of("Warrior", 1), 3, true, 3, 3, new Plunder(9, 3), 6));
 		assertThat(game.viewOf("Rome").turnReport().lines()).contains(
 				"Your Warparty of Warrior ×2 fought Carthage's Army of Warrior ×3 alongside Egypt's Warparty of Warrior ×2. You lost Warrior ×1 and Carthage lost Warrior ×3.",
-				"Your Warparty and Egypt's reduced Carthage's Population by 12, doubled as Carthage's Army was wiped out.",
+				"Your Warparty and Egypt's cost Carthage 12 Population, doubled as Carthage's Army was wiped out.",
 				"Your Warparty took 9 Gold and 3 Research from Carthage as its share and is heading home.");
 		assertThat(game.viewOf("Egypt").turnReport().lines()).contains(
 				"Your Warparty of Warrior ×2 fought Carthage's Army of Warrior ×3 alongside Rome's Warparty of Warrior ×2. You lost Warrior ×1 and Carthage lost Warrior ×3.",
-				"Your Warparty and Rome's reduced Carthage's Population by 12, doubled as Carthage's Army was wiped out.",
+				"Your Warparty and Rome's cost Carthage 12 Population, doubled as Carthage's Army was wiped out.",
 				"Your Warparty took 9 Gold and 3 Research from Carthage as its share and is heading home.");
 		assertThat(game.viewOf("Carthage").turnReport().lines()).containsExactly(
 				"Your Army of Warrior ×3 fought Caesar of Rome's Warparty of Warrior ×2 and Cleopatra of Egypt's Warparty of Warrior ×2. You lost Warrior ×3, Rome lost Warrior ×1 and Egypt lost Warrior ×1.",
-				"Caesar of Rome's and Cleopatra of Egypt's Warparties reduced your Population by 12, doubled as your Army was wiped out.",
+				"Caesar of Rome's and Cleopatra of Egypt's Warparties cost your Nation 12 Population, doubled as your Army was wiped out.",
 				"Caesar of Rome's Warparty took 9 Gold and 3 Research from you and is heading home.",
 				"Cleopatra of Egypt's Warparty took 9 Gold and 3 Research from you and is heading home.",
 				incomeReport(carthagePopulation - 12));
@@ -1509,7 +1519,7 @@ class GameTest {
 				"Your Warparty took 27 Gold and 9 Research from Carthage as its share and is heading home.");
 		assertThat(game.viewOf("Carthage").turnReport().lines()).containsExactly(
 				"Caesar of Rome's Warparty of Warrior ×1 and Cleopatra of Egypt's Warparty of Warrior ×3 met no Army at your Nation.",
-				"Caesar of Rome's and Cleopatra of Egypt's Warparties reduced your Population by 24, doubled as you had no Army or Defense.",
+				"Caesar of Rome's and Cleopatra of Egypt's Warparties cost your Nation 24 Population, doubled as you had no Army or Defense.",
 				"Caesar of Rome's Warparty took 9 Gold and 3 Research from you and is heading home.",
 				"Cleopatra of Egypt's Warparty took 27 Gold and 9 Research from you and is heading home.",
 				incomeReport(carthagePopulation - 24));
@@ -1540,7 +1550,7 @@ class GameTest {
 			.contains("Your Warparty took 9 Gold and 3 Research from Carthage and is heading home.");
 		assertThat(game.viewOf("Carthage").turnReport().lines()).containsExactly(
 				"Your Army of Warrior ×4 fought Caesar of Rome's Warparty of Warrior ×1 and Cleopatra of Egypt's Warparty of Warrior ×3. You lost Warrior ×2, Rome lost Warrior ×1 and Egypt lost Warrior ×2.",
-				"Caesar of Rome's Warparty was destroyed.", "Cleopatra of Egypt's Warparty reduced your Population by 3.",
+				"Caesar of Rome's Warparty was destroyed.", "Cleopatra of Egypt's Warparty cost your Nation 3 Population.",
 				"Cleopatra of Egypt's Warparty took 9 Gold and 3 Research from you and is heading home.",
 				incomeReport(carthagePopulation - 3), "Your Units' upkeep cost 2 Gold.");
 	}
@@ -1562,10 +1572,10 @@ class GameTest {
 				new Warparty(2, "Carthage", Map.of("Warrior", 1), 3, true, 3, 3, new Plunder(9, 3), 6));
 		String battle = "Your Warparty of Warrior ×2 fought Carthage's Army of Warrior ×3 alongside your Warparty of Warrior ×2. You lost Warrior ×1 and Carthage lost Warrior ×3.";
 		assertThat(game.viewOf("Rome").turnReport().lines()).containsSubsequence(battle, battle,
-				"Your Warparties reduced Carthage's Population by 12, doubled as Carthage's Army was wiped out.");
+				"Your Warparties cost Carthage 12 Population, doubled as Carthage's Army was wiped out.");
 		assertThat(game.viewOf("Carthage").turnReport().lines()).contains(
 				"Your Army of Warrior ×3 fought Caesar of Rome's Warparty of Warrior ×2 and Caesar of Rome's Warparty of Warrior ×2. You lost Warrior ×3, Rome lost Warrior ×1 and Rome lost Warrior ×1.",
-				"Caesar of Rome's Warparties reduced your Population by 12, doubled as your Army was wiped out.");
+				"Caesar of Rome's Warparties cost your Nation 12 Population, doubled as your Army was wiped out.");
 	}
 
 	@Test
@@ -1601,8 +1611,8 @@ class GameTest {
 				"Caesar of Rome's and Cleopatra of Egypt's Warparties conquered your Nation, seizing " + seized
 						+ ". You are knocked out of the Game.",
 				"Caesar of Rome's Warparty of Giant ×1 and Cleopatra of Egypt's Warparty of Giant ×1 met no Army at your Nation.",
-				"Caesar of Rome's and Cleopatra of Egypt's Warparties reduced your Population by " + carthagePopulation
-						+ ", doubled as you had no Army or Defense.");
+				"Caesar of Rome's and Cleopatra of Egypt's Warparties cost your Nation " + carthagePopulation
+						+ " Population, doubled as you had no Army or Defense.");
 		NationView rome = game.viewOf("Rome");
 		assertThat(rome.gold()).isEqualTo(romeGold + romeShare + romePopulation - 1);
 		assertThat(rome.warparties()).containsExactly(new Warparty(1, "Carthage", Map.of("Giant", 1), 100, true, 7, 7));

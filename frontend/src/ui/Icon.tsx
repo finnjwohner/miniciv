@@ -88,6 +88,7 @@ export function Icon({ name, size = 24, label }: { name: IconName; size?: number
   return (
     <Svg
       className="icon"
+      data-icon={name}
       width={size}
       height={size}
       role={label ? 'img' : undefined}

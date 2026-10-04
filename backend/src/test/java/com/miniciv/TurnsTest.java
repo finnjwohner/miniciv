@@ -51,7 +51,21 @@ class TurnsTest {
 
 	}
 
-	static final String BASE_INCOME_REPORT = "Your Population earned 10 Gold, and your Nation gained 2 Population and 3 Research.";
+	/**
+	 * The Turn Report's income line for a Nation whose Population earned 10
+	 * Gold, as its Player receives it: text with each amount marked.
+	 */
+	static final Map<String, Object> BASE_INCOME_REPORT = Map.of("parts",
+			List.of(Map.of("text", "Your Population earned "), amount("GOLD", 10, "GAIN"),
+					Map.of("text", ", and your Nation gained "), amount("POPULATION", 2, "GAIN"), Map.of("text", " and "),
+					amount("RESEARCH", 3, "GAIN"), Map.of("text", ".")));
+
+	/**
+	 * An amount in a Turn Report line, as its Player receives it.
+	 */
+	static Map<String, Object> amount(String resource, int amount, String effect) {
+		return Map.of("resource", resource, "amount", amount, "effect", effect);
+	}
 
 	@LocalServerPort
 	int port;

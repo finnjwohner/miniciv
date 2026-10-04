@@ -276,7 +276,7 @@ class DisconnectionsTest {
 		Map<?, ?> report = (Map<?, ?>) carthage.privately().next().get("turnReport");
 		Map<?, ?> alerts = (Map<?, ?>) ((List<?>) report.get("sections")).getFirst();
 		assertThat(alerts.get("kind")).isEqualTo("DECISIONS_AND_ALERTS");
-		assertThat((List<?>) alerts.get("lines")).first().isEqualTo(REMOVAL_REPORT);
+		assertThat((List<?>) alerts.get("lines")).first().isEqualTo(Map.of("parts", List.of(Map.of("text", REMOVAL_REPORT))));
 	}
 
 	@Test
