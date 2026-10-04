@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useEffectEvent } from 'react'
-import type { GameView, NetChange, PlayerView, TurnReport, TurnReportKind } from '../api'
+import type { GameView, NetChange, PlayerView, ReportAmount, ReportLine, Resource, TurnReport, TurnReportKind } from '../api'
 import { useCue, useSettings } from '../settings'
-import { Icon } from '../ui/Icon'
+import { Icon, type IconName } from '../ui/Icon'
 import { NationName } from '../ui/NationName'
 import { Panel } from '../ui/Panel'
 import { formatChange, formatCountdown } from './format'
@@ -62,6 +62,34 @@ function NetChangeLine({ netChange }: { netChange: NetChange }) {
   )
 }
 
+/** Each resource's name and icon, the same as the Resources panel's. */
+const RESOURCES: Record<Resource, { name: string; icon: IconName }> = {
+  GOLD: { name: 'Gold', icon: 'coins' },
+  POPULATION: { name: 'Population', icon: 'human' },
+  RESEARCH: { name: 'Research', icon: 'lightbulb' },
+}
+
+/** The class colouring an amount by what it was to the reader: green for a gain, red for a loss. */
+const EFFECT_CLASSES: Record<ReportAmount['effect'], string> = {
+  GAIN: 'report__amount report__gain',
+  LOSS: 'report__amount report__loss',
+  NEUTRAL: 'report__amount',
+}
+
+/** A Turn Report line's text, each amount in it, such as "20 Gold", shown with its resource's icon and colour. */
+function ReportLineText({ line }: { line: ReportLine }) {
+  return line.parts.map((part, i) => {
+    if ('text' in part) return <Fragment key={i}>{part.text}</Fragment>
+    const { name, icon } = RESOURCES[part.resource]
+    return (
+      <span key={i} className={EFFECT_CLASSES[part.effect]}>
+        <Icon name={icon} size={12} />
+        {`${part.amount} ${name}`}
+      </span>
+    )
+  })
+}
+
 /** The Turn Report's sections with something in them, each under its heading, in the order sent. */
 function ReportSections({ report }: { report: TurnReport | null }) {
   const sections = report?.sections.filter((section) => section.lines.length > 0) ?? []
@@ -73,7 +101,9 @@ function ReportSections({ report }: { report: TurnReport | null }) {
       </h4>
       <ul className="report" aria-labelledby={`report-${kind}`}>
         {lines.map((line, i) => (
-          <li key={i}>{line}</li>
+          <li key={i}>
+            <ReportLineText line={line} />
+          </li>
         ))}
       </ul>
     </div>

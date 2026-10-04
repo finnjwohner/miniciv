@@ -49,8 +49,17 @@ export type RoomView = {
 /** The kinds of section a Turn Report is grouped into. */
 export type TurnReportKind =
   'DECISIONS_AND_ALERTS' | 'WARFARE' | 'COMPLETED' | 'EVENTS' | 'SPIES_AND_SCOUTS' | 'RESOURCES'
+/** A resource a Nation owns and spends. */
+export type Resource = 'GOLD' | 'POPULATION' | 'RESEARCH'
+/**
+ * An amount of a resource in a Turn Report line, such as 20 Gold, never negative, and what it was to the
+ * Nation reading it: a gain, a loss, or neutral when it is about another Nation or nothing changed hands.
+ */
+export type ReportAmount = { resource: Resource; amount: number; effect: 'GAIN' | 'LOSS' | 'NEUTRAL' }
+/** One line of a Turn Report: its plain text and amounts, in the order read. */
+export type ReportLine = { parts: ({ text: string } | ReportAmount)[] }
 /** One section of a Turn Report: what happened of one kind, in the order it happened. */
-export type TurnReportSection = { kind: TurnReportKind; lines: string[] }
+export type TurnReportSection = { kind: TurnReportKind; lines: ReportLine[] }
 /** How a Nation's Gold, Population and Research moved as a Turn resolved, not counting what it spent during the Turn. */
 export type NetChange = { gold: number; population: number; research: number }
 /** What happened to a Nation as a Turn resolved: how its resources moved, and the sections with something in them, in their fixed order. */

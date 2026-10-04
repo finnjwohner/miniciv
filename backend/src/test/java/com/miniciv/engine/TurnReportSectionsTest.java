@@ -1,6 +1,7 @@
 package com.miniciv.engine;
 
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -18,6 +19,7 @@ import static com.miniciv.engine.TurnReport.Kind.RESOURCES;
 import static com.miniciv.engine.TurnReport.Kind.SPIES_AND_SCOUTS;
 import static com.miniciv.engine.TurnReport.Kind.WARFARE;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.entry;
 
 class TurnReportSectionsTest {
 
@@ -28,12 +30,19 @@ class TurnReportSectionsTest {
 	}
 
 	List<String> section(String nation, TurnReport.Kind kind) {
-		return report(nation).sections()
-			.stream()
-			.filter(section -> section.kind() == kind)
-			.findFirst()
-			.map(TurnReport.Section::lines)
-			.orElse(List.of());
+		return sections(nation).getOrDefault(kind, List.of());
+	}
+
+	/**
+	 * Each section of a Nation's Turn Report, in order, with its lines as plain
+	 * text.
+	 */
+	Map<TurnReport.Kind, List<String>> sections(String nation) {
+		Map<TurnReport.Kind, List<String>> sections = new LinkedHashMap<>();
+		report(nation).sections()
+			.forEach(section -> sections.put(section.kind(),
+					section.lines().stream().map(TurnReport.Line::text).toList()));
+		return sections;
 	}
 
 	void armyOf(String nation, String unit, int count) {
@@ -47,8 +56,7 @@ class TurnReportSectionsTest {
 	void incomeLandsInResourcesAndATurnWithNothingElseHasNoOtherSection() {
 		game.endTurn();
 
-		assertThat(report("Rome").sections())
-			.containsExactly(new TurnReport.Section(RESOURCES, List.of(BASE_INCOME_REPORT)));
+		assertThat(sections("Rome")).containsExactly(entry(RESOURCES, List.of(BASE_INCOME_REPORT)));
 	}
 
 	@Test
@@ -57,9 +65,8 @@ class TurnReportSectionsTest {
 
 		game.endTurn();
 
-		assertThat(report("Rome").sections()).containsExactly(
-				new TurnReport.Section(COMPLETED, List.of("Your Moat has been built.")),
-				new TurnReport.Section(RESOURCES, List.of(incomeReport(10))));
+		assertThat(sections("Rome")).containsExactly(entry(COMPLETED, List.of("Your Moat has been built.")),
+				entry(RESOURCES, List.of(incomeReport(10))));
 	}
 
 	@Test
@@ -85,10 +92,9 @@ class TurnReportSectionsTest {
 
 		game.endTurn();
 
-		assertThat(report("Rome").sections()).containsExactly(
-				new TurnReport.Section(EVENTS,
-						List.of("A good harvest filled your granaries: your Nation gained 3 Population.")),
-				new TurnReport.Section(RESOURCES, List.of(incomeReport(12))));
+		assertThat(sections("Rome")).containsExactly(
+				entry(EVENTS, List.of("A good harvest filled your granaries: your Nation gained 3 Population.")),
+				entry(RESOURCES, List.of(incomeReport(12))));
 		assertThat(report("Rome").lines()).containsExactly(
 				"A good harvest filled your granaries: your Nation gained 3 Population.", incomeReport(12));
 	}

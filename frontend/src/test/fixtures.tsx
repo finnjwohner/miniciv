@@ -1,7 +1,18 @@
 // A Game in progress, as the server would send it, for tests to render and adjust.
 import { render, screen } from '@testing-library/react'
 import type { ComponentProps, ReactNode } from 'react'
-import type { BuildingType, Facts, GameView, NationView, PlayerView, Spy, UnitType, Warparty } from '../api'
+import type {
+  BuildingType,
+  Facts,
+  GameView,
+  NationView,
+  PlayerView,
+  ReportAmount,
+  ReportLine,
+  Spy,
+  UnitType,
+  Warparty,
+} from '../api'
 import GameScreen from '../game/GameScreen'
 import { SettingsProvider } from '../SettingsProvider'
 import { SettingsMenu } from '../ui/SettingsMenu'
@@ -168,10 +179,16 @@ export function nationView(overrides: Partial<NationView> = {}): NationView {
       turn: 2,
       netChange: { gold: 12, population: 6, research: 3 },
       sections: [
-        { kind: 'COMPLETED', lines: ['Your Farm has been built.'] },
+        { kind: 'COMPLETED', lines: [reportLine('Your Farm has been built.')] },
         {
           kind: 'EVENTS',
-          lines: ['A good harvest filled your granaries: your Nation gained 4 Population.'],
+          lines: [
+            reportLine(
+              'A good harvest filled your granaries: your Nation gained ',
+              amount('POPULATION', 4, 'GAIN'),
+              '.',
+            ),
+          ],
         },
       ],
     },
@@ -307,4 +324,18 @@ function building(type: Pick<BuildingType, 'name' | 'gold' | 'turns'> & Partial<
 /** A Unit type, with no counters and neither Scout nor Spy unless given. */
 export function unit(type: Omit<UnitType, 'counters' | 'scout' | 'spy'> & Partial<UnitType>): UnitType {
   return { counters: [], scout: false, spy: false, ...type }
+}
+
+/** A Turn Report line made of the given text and amounts, in order. */
+export function reportLine(...pieces: (string | ReportAmount)[]): ReportLine {
+  return { parts: pieces.map((piece) => (typeof piece === 'string' ? { text: piece } : piece)) }
+}
+
+/** An amount in a Turn Report line, such as 20 Gold lost. */
+export function amount(
+  resource: ReportAmount['resource'],
+  count: number,
+  effect: ReportAmount['effect'],
+): ReportAmount {
+  return { resource, amount: count, effect }
 }

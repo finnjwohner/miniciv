@@ -13,10 +13,12 @@ public record Plunder(int gold, int research) {
 	}
 
 	/**
-	 * Such as "12 Gold and 4 Research", for Turn Reports.
+	 * Such as "12 Gold and 4 Research", for Turn Reports, each amount having
+	 * the given effect on the Nation reading it.
 	 */
-	String described() {
-		return gold + " Gold and " + research + " Research";
+	TurnReport.Line described(TurnReport.Amount.Effect effect) {
+		return TurnReport.Line.of(new TurnReport.Amount(Resource.GOLD, gold, effect), " and ",
+				new TurnReport.Amount(Resource.RESEARCH, research, effect));
 	}
 
 }

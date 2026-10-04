@@ -50,16 +50,19 @@ public record Tribute(String from, String to, int warparty, int gold, int popula
 	}
 
 	/**
-	 * Such as "20 Gold and 3 Population".
+	 * Such as "20 Gold and 3 Population", for Turn Reports, each amount having
+	 * the given effect on the Nation reading it.
 	 */
-	String described() {
+	TurnReport.Line described(TurnReport.Amount.Effect effect) {
+		TurnReport.Amount goldAmount = new TurnReport.Amount(Resource.GOLD, gold, effect);
+		TurnReport.Amount populationAmount = new TurnReport.Amount(Resource.POPULATION, population, effect);
 		if (population == 0) {
-			return gold + " Gold";
+			return TurnReport.Line.of(goldAmount);
 		}
 		if (gold == 0) {
-			return population + " Population";
+			return TurnReport.Line.of(populationAmount);
 		}
-		return gold + " Gold and " + population + " Population";
+		return TurnReport.Line.of(goldAmount, " and ", populationAmount);
 	}
 
 }

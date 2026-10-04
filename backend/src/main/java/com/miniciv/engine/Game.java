@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.EnumMap;
 import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -14,12 +15,21 @@ import java.util.function.Supplier;
 import java.util.random.RandomGenerator;
 import java.util.stream.IntStream;
 
+import static com.miniciv.engine.Resource.GOLD;
+import static com.miniciv.engine.Resource.POPULATION;
+import static com.miniciv.engine.Resource.RESEARCH;
+import static com.miniciv.engine.TurnReport.Amount.gain;
+import static com.miniciv.engine.TurnReport.Amount.loss;
+import static com.miniciv.engine.TurnReport.Amount.neutral;
 import static com.miniciv.engine.TurnReport.Kind.COMPLETED;
 import static com.miniciv.engine.TurnReport.Kind.DECISIONS_AND_ALERTS;
 import static com.miniciv.engine.TurnReport.Kind.EVENTS;
 import static com.miniciv.engine.TurnReport.Kind.RESOURCES;
 import static com.miniciv.engine.TurnReport.Kind.SPIES_AND_SCOUTS;
 import static com.miniciv.engine.TurnReport.Kind.WARFARE;
+
+import com.miniciv.engine.TurnReport.Amount.Effect;
+import com.miniciv.engine.TurnReport.Line;
 
 /**
  * One match of miniciv. The engine knows only Nations and Turns: no time,
@@ -321,11 +331,11 @@ public class Game {
 				.filter(Warparty::awaitingBattle)
 				.isPresent()) {
 				reports.get(lapsed.to())
-					.add(WARFARE, "You did not answer " + ruled(lapsed.from()) + "'s Tribute of " + lapsed.described()
-							+ " in time.");
+					.add(WARFARE, Line.of("You did not answer " + ruled(lapsed.from()) + "'s Tribute of ",
+							lapsed.described(Effect.NEUTRAL), " in time."));
 				reports.get(lapsed.from())
-					.add(WARFARE, ruled(lapsed.to()) + " did not answer your Tribute of " + lapsed.described()
-							+ " in time, so the Battle went ahead.");
+					.add(WARFARE, Line.of(ruled(lapsed.to()) + " did not answer your Tribute of ",
+							lapsed.described(Effect.NEUTRAL), " in time, so the Battle went ahead."));
 			}
 		}
 		tributes.clear();
@@ -336,9 +346,9 @@ public class Game {
 			// outcome's effects, Nation by Nation and Dilemma by Dilemma.
 			for (Nation.FacedDilemma faced : nation.settleDilemmas()) {
 				Event.Outcome outcome = faced.applying().outcome(random);
-				String line = announced(outcome.text(), befall(outcome.effects(), nation));
+				Line line = announced(outcome.text(), befall(outcome.effects(), nation));
 				report.add(EVENTS, faced.chosen() == null
-						? "You did not choose in time what to do about " + faced.dilemma().name() + ". " + line
+						? Line.of("You did not choose in time what to do about " + faced.dilemma().name() + ". ", line)
 						: line);
 			}
 			for (String completed : nation.progressConstruction()) {
@@ -357,10 +367,11 @@ public class Game {
 		}
 		for (Nation nation : inPlay) {
 			for (Warparty returned : nation.travelHome()) {
-				String plunder = returned.plunder().isNone() ? "" : " with " + returned.plunder().described() + ",";
+				Line plunder = returned.plunder().isNone() ? Line.of()
+						: Line.of(" with ", returned.plunder().described(Effect.GAIN), ",");
 				reports.get(nation.name())
-					.add(WARFARE, "Your Warparty came home from " + returned.target() + plunder + " and "
-							+ listed(returned.units()) + " rejoined your Army.");
+					.add(WARFARE, Line.of("Your Warparty came home from " + returned.target(), plunder,
+							" and " + listed(returned.units()) + " rejoined your Army."));
 			}
 			for (Spy returned : nation.spiesTravelHome()) {
 				reports.get(nation.name()).add(SPIES_AND_SCOUTS, "Your Spy came home from " + returned.target() + " and rejoined your Army.");
@@ -392,8 +403,9 @@ public class Game {
 			int populationGold = nation.goldFromPopulation();
 			nation.gain(populationGold + buildingGold, POPULATION_PER_TURN + buildingPopulation,
 					RESEARCH_PER_TURN + buildingResearch);
-			report.add(RESOURCES, "Your Population earned " + populationGold + " Gold, and your Nation gained "
-					+ POPULATION_PER_TURN + " Population and " + RESEARCH_PER_TURN + " Research.");
+			report.add(RESOURCES, Line.of("Your Population earned ", gain(GOLD, populationGold),
+					", and your Nation gained ", gain(POPULATION, POPULATION_PER_TURN), " and ",
+					gain(RESEARCH, RESEARCH_PER_TURN), "."));
 			buildingsAddedLine(buildingPopulation, buildingGold, buildingResearch).ifPresent(line -> report.add(RESOURCES, line));
 			for (Nation.Desertion desertion : nation.desertUntilUpkeepIsAffordable(ruleset)) {
 				if (desertion.scouts()) {
@@ -413,7 +425,7 @@ public class Game {
 			}
 			int upkeep = nation.payUpkeep(ruleset);
 			if (upkeep > 0) {
-				report.add(RESOURCES, "Your Units' upkeep cost " + upkeep + " Gold.");
+				report.add(RESOURCES, Line.of("Your Units' upkeep cost ", loss(GOLD, upkeep), "."));
 			}
 		}
 		rollEvents(reports);
@@ -667,17 +679,18 @@ public class Game {
 				case UNDEFENDED -> ", doubled as you had no Army or Defense";
 			};
 			attackers.forEach(attacker -> reports.get(attacker)
-				.add(WARFARE, warpartiesFrom(attacker, survivors) + " reduced " + defender + "'s Population by "
-						+ fought.populationLost() + attackerReason + "."));
-			defenderReport.add(WARFARE, warpartiesOf(survivors) + " reduced your Population by " + fought.populationLost()
-					+ defenderReason + ".");
+				.add(WARFARE, Line.of(warpartiesFrom(attacker, survivors) + " cost " + defender + " ",
+						neutral(POPULATION, fought.populationLost()), attackerReason + ".")));
+			defenderReport.add(WARFARE, Line.of(warpartiesOf(survivors) + " cost your Nation ",
+					loss(POPULATION, fought.populationLost()), defenderReason + "."));
 		}
 		Nation.Conquest conquest = fought.conquest();
 		if (conquest != null) {
-			String seized = conquest.seized().described();
+			Plunder seized = conquest.seized();
 			if (survivors.size() == 1) {
 				reports.get(attackers.getFirst())
-					.add(WARFARE, "Your Warparty conquered " + defender + ", seizing " + seized + ", and is heading home.");
+					.add(WARFARE, Line.of("Your Warparty conquered " + defender + ", seizing ",
+							seized.described(Effect.GAIN), ", and is heading home."));
 			}
 			else {
 				for (String attacker : attackers) {
@@ -685,14 +698,15 @@ public class Game {
 					for (int i = 0; i < arrivals.size(); i++) {
 						if (fought.survived(i) && arrivals.get(i).attacker().name().equals(attacker)) {
 							reports.get(attacker)
-								.add(WARFARE, "Your Warparty of " + listed(battle.warparties().get(i)) + " seized "
-										+ fought.shares().get(i).described() + " as its share and is heading home.");
+								.add(WARFARE, Line.of("Your Warparty of " + listed(battle.warparties().get(i)) + " seized ",
+										fought.shares().get(i).described(Effect.GAIN),
+										" as its share and is heading home."));
 						}
 					}
 				}
 			}
-			defenderReport.add(DECISIONS_AND_ALERTS, warpartiesOf(survivors) + " conquered your Nation, seizing " + seized
-					+ ". You are knocked out of the Game.");
+			defenderReport.add(DECISIONS_AND_ALERTS, Line.of(warpartiesOf(survivors) + " conquered your Nation, seizing ",
+					seized.described(Effect.LOSS), ". You are knocked out of the Game."));
 			reports.forEach((nation, report) -> {
 				if (!attackers.contains(nation) && !nation(nation).conquered()) {
 					report.add(DECISIONS_AND_ALERTS, joined(attackers.stream().map(this::ruled).toList()) + " conquered " + defender + ".");
@@ -720,10 +734,10 @@ public class Game {
 			}
 			else {
 				reports.get(attacker)
-					.add(WARFARE, "Your Warparty took " + plunder.described() + " from " + defender + share
-							+ " and is heading home.");
-				defenderReport.add(WARFARE,
-						ruled(attacker) + "'s Warparty took " + plunder.described() + " from you and is heading home.");
+					.add(WARFARE, Line.of("Your Warparty took ", plunder.described(Effect.GAIN),
+							" from " + defender + share + " and is heading home."));
+				defenderReport.add(WARFARE, Line.of(ruled(attacker) + "'s Warparty took ",
+						plunder.described(Effect.LOSS), " from you and is heading home."));
 			}
 		}
 	}
@@ -802,8 +816,8 @@ public class Game {
 						for (Warparty warparty : nation.warparties()) {
 							if (!warparty.awaitingBattle() && event.when().holdForWarparty(turn, warparty)
 									&& happens(event)) {
-								report.add(EVENTS, announced(event.text(),
-										List.of(delayed(warparty, nation.delay(warparty, event.effects().travelTurns())))));
+								report.add(EVENTS, announced(event.text(), List
+									.of(Line.of(delayed(warparty, nation.delay(warparty, event.effects().travelTurns()))))));
 							}
 						}
 					}
@@ -1002,30 +1016,31 @@ public class Game {
 				Nation target = nation(spy.target());
 				String name = target.name();
 				Facts facts = spying.learnedOf(name);
-				String reported = switch (SpiedFact.picked(random.nextDouble())) {
+				Line reported = switch (SpiedFact.picked(random.nextDouble())) {
 					case GOLD -> {
 						facts = facts.withGold(target.gold(), turn);
-						yield name + " has " + target.gold() + " Gold";
+						yield Line.of(name + " has ", neutral(GOLD, target.gold()));
 					}
 					case POPULATION -> {
 						facts = facts.withPopulation(target.population(), turn);
-						yield name + " has " + target.population() + " Population";
+						yield Line.of(name + " has ", neutral(POPULATION, target.population()));
 					}
 					case RESEARCH -> {
 						facts = facts.withResearch(target.research(), turn);
-						yield name + " has " + target.research() + " Research";
+						yield Line.of(name + " has ", neutral(RESEARCH, target.research()));
 					}
 					case ARMY -> {
 						facts = facts.withArmy(target.army(), turn);
-						yield armyFact(target);
+						yield Line.of(armyFact(target));
 					}
 					case BUILDINGS -> {
 						facts = facts.withBuildings(target.buildings(), target.defense(ruleset), turn);
-						yield buildingsFact(target);
+						yield Line.of(buildingsFact(target));
 					}
 				};
 				spying.learn(name, facts);
-				reports.get(spying.name()).add(SPIES_AND_SCOUTS, "Your Spy in " + name + " reported that " + reported + ".");
+				reports.get(spying.name())
+					.add(SPIES_AND_SCOUTS, Line.of("Your Spy in " + name + " reported that ", reported, "."));
 			}
 		}
 	}
@@ -1143,9 +1158,9 @@ public class Game {
 				.withResearch(sender.research(), turn)
 				.withArmy(sender.army(), turn)
 				.withBuildings(sender.buildings(), sender.defense(ruleset), turn));
-			report.add(SPIES_AND_SCOUTS, "From its confession, " + sender.name() + " has " + sender.gold() + " Gold, "
-					+ sender.population() + " Population and " + sender.research() + " Research; "
-					+ armyFact(sender) + "; " + buildingsFact(sender) + ".");
+			report.add(SPIES_AND_SCOUTS, Line.of("From its confession, " + sender.name() + " has ",
+					neutral(GOLD, sender.gold()), ", ", neutral(POPULATION, sender.population()), " and ",
+					neutral(RESEARCH, sender.research()), "; " + armyFact(sender) + "; " + buildingsFact(sender) + "."));
 		}
 		else {
 			report.add(SPIES_AND_SCOUTS, caught + captured.toCatcher + ".");
@@ -1212,39 +1227,40 @@ public class Game {
 	 *
 	 * @return what changed, such as "your Nation gained 4 Population"
 	 */
-	private List<String> befall(Event.Effects authored, Nation nation) {
+	private List<Line> befall(Event.Effects authored, Nation nation) {
 		Event.Effects effects = authored.varied(random);
-		List<String> changes = new ArrayList<>();
+		List<Line> changes = new ArrayList<>();
 		Nation.Change change = nation.change(effects.gold(), effects.population(), effects.research());
-		Map<String, Integer> changed = new LinkedHashMap<>();
-		changed.put("Gold", change.gold());
-		changed.put("Population", change.population());
-		changed.put("Research", change.research());
-		List<String> gained = new ArrayList<>();
-		List<String> lost = new ArrayList<>();
+		Map<Resource, Integer> changed = new EnumMap<>(Resource.class);
+		changed.put(GOLD, change.gold());
+		changed.put(POPULATION, change.population());
+		changed.put(RESEARCH, change.research());
+		List<Line> gained = new ArrayList<>();
+		List<Line> lost = new ArrayList<>();
 		changed.forEach((resource, amount) -> {
 			if (amount > 0) {
-				gained.add(amount + " " + resource);
+				gained.add(Line.of(gain(resource, amount)));
 			}
 			else if (amount < 0) {
-				lost.add(-amount + " " + resource);
+				lost.add(Line.of(loss(resource, -amount)));
 			}
 		});
-		List<String> resources = new ArrayList<>();
+		List<Line> resources = new ArrayList<>();
 		if (!gained.isEmpty()) {
-			resources.add("gained " + joined(gained));
+			resources.add(Line.of("gained ", Line.joined(gained)));
 		}
 		if (!lost.isEmpty()) {
-			resources.add("lost " + joined(lost));
+			resources.add(Line.of("lost ", Line.joined(lost)));
 		}
 		if (!resources.isEmpty()) {
-			changes.add("your Nation " + String.join(" and ", resources));
+			changes.add(Line.of("your Nation ", resources.getFirst(),
+					resources.size() > 1 ? Line.of(" and ", resources.getLast()) : Line.of()));
 		}
 		if (effects.damageDefense() > 0) {
 			Nation.DefenseWorn defenseWorn = nation.wearDefense(effects.damageDefense(), ruleset);
 			if (defenseWorn.worn() > 0) {
-				changes.add("your Defense was worn down from " + defenseWorn.before() + " to " + defenseWorn.after()
-						+ ", " + buildingsHarmed(defenseWorn));
+				changes.add(Line.of("your Defense was worn down from " + defenseWorn.before() + " to "
+						+ defenseWorn.after() + ", " + buildingsHarmed(defenseWorn)));
 			}
 		}
 		return changes;
@@ -1265,8 +1281,19 @@ public class Game {
 	 * An Event's or a Dilemma outcome's line in the Turn Report: its text, then
 	 * what it changed.
 	 */
-	private static String announced(String text, List<String> changes) {
-		return text + (changes.isEmpty() ? "." : ": " + String.join(" and ", changes) + ".");
+	private static Line announced(String text, List<Line> changes) {
+		if (changes.isEmpty()) {
+			return Line.of(text + ".");
+		}
+		List<Object> pieces = new ArrayList<>(List.of(text + ": "));
+		for (int i = 0; i < changes.size(); i++) {
+			if (i > 0) {
+				pieces.add(" and ");
+			}
+			pieces.add(changes.get(i));
+		}
+		pieces.add(".");
+		return Line.of(pieces.toArray());
 	}
 
 	/**
@@ -1434,25 +1461,26 @@ public class Game {
 			tributes.set(tributes.indexOf(tribute), tribute.answered(Tribute.Answer.REFUSED));
 			attacker.changed();
 			defender.changed();
-			pendingReport(attacker)
-				.add(WARFARE, "You refused " + defender.ruled() + "'s Tribute of " + tribute.described() + ".");
-			pendingReport(defender).add(WARFARE, attacker.ruled() + " refused your Tribute of " + tribute.described() + ".");
+			pendingReport(attacker).add(WARFARE,
+					Line.of("You refused " + defender.ruled() + "'s Tribute of ", tribute.described(Effect.NEUTRAL), "."));
+			pendingReport(defender).add(WARFARE,
+					Line.of(attacker.ruled() + " refused your Tribute of ", tribute.described(Effect.NEUTRAL), "."));
 			return ActionResult.ACCEPTED;
 		}
 		if (!defender.canAfford(tribute.gold(), tribute.population())) {
 			return ActionResult.rejected(
-					defender.name() + " can no longer afford its Tribute of " + tribute.described() + ".");
+					defender.name() + " can no longer afford its Tribute of " + tribute.described(Effect.NEUTRAL).text() + ".");
 		}
 		attacker.recall(warparty.get());
 		defender.gain(-tribute.gold(), -tribute.population(), 0);
 		attacker.gain(tribute.gold(), tribute.population(), 0);
 		defender.changed();
 		tributes.set(tributes.indexOf(tribute), tribute.answered(Tribute.Answer.ACCEPTED));
-		pendingReport(attacker).add(WARFARE, "You accepted " + defender.ruled() + "'s Tribute of "
-				+ tribute.described() + ", and your Warparty of " + listed(warparty.get().units())
-				+ " turned back home.");
-		pendingReport(defender).add(WARFARE, attacker.ruled() + " accepted your Tribute of " + tribute.described()
-				+ ", and its Warparty turned back home before the Battle.");
+		pendingReport(attacker).add(WARFARE, Line.of("You accepted " + defender.ruled() + "'s Tribute of ",
+				tribute.described(Effect.GAIN), ", and your Warparty of " + listed(warparty.get().units())
+						+ " turned back home."));
+		pendingReport(defender).add(WARFARE, Line.of(attacker.ruled() + " accepted your Tribute of ",
+				tribute.described(Effect.LOSS), ", and its Warparty turned back home before the Battle."));
 		return ActionResult.ACCEPTED;
 	}
 
@@ -1509,18 +1537,19 @@ public class Game {
 		return ActionResult.rejected("There is no Building called " + building + ".");
 	}
 
-	private static Optional<String> buildingsAddedLine(int population, int gold, int research) {
-		List<String> added = new ArrayList<>();
+	private static Optional<Line> buildingsAddedLine(int population, int gold, int research) {
+		List<Line> added = new ArrayList<>();
 		if (population > 0) {
-			added.add(population + " Population");
+			added.add(Line.of(gain(POPULATION, population)));
 		}
 		if (gold > 0) {
-			added.add(gold + " Gold");
+			added.add(Line.of(gain(GOLD, gold)));
 		}
 		if (research > 0) {
-			added.add(research + " Research");
+			added.add(Line.of(gain(RESEARCH, research)));
 		}
-		return added.isEmpty() ? Optional.empty() : Optional.of("Your Buildings added " + joined(added) + ".");
+		return added.isEmpty() ? Optional.empty()
+				: Optional.of(Line.of("Your Buildings added ", Line.joined(added), "."));
 	}
 
 	/**

@@ -690,6 +690,15 @@ input[type='range'] {
   color: var(--bad);
 }
 
+.report__amount {
+  white-space: nowrap;
+}
+
+.report__amount .icon {
+  margin-right: 0.2em;
+  vertical-align: -0.1em;
+}
+
 .report__section + .report__section {
   margin-top: calc(var(--space) * 1.5);
 }
