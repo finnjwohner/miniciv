@@ -1245,9 +1245,8 @@ public class Game {
 					Event.Effects.varied(Math.max(1, (int) Math.round(units * harm.armyKilled())), random));
 			Map<String, Integer> died = new LinkedHashMap<>();
 			for (int left = dying; left > 0; left--) {
-				Map<String, Integer> army = target.army();
-				int pick = (int) (random.nextDouble() * army.values().stream().mapToInt(Integer::intValue).sum());
-				for (Map.Entry<String, Integer> unit : army.entrySet()) {
+				int pick = (int) (random.nextDouble() * (units - dying + left));
+				for (Map.Entry<String, Integer> unit : target.army().entrySet()) {
 					if (pick < unit.getValue()) {
 						target.changeArmy(Map.of(unit.getKey(), -1));
 						died.merge(unit.getKey(), 1, Integer::sum);
@@ -1320,9 +1319,9 @@ public class Game {
 	 * Has each Nation still in the Game in order try to catch other Nations'
 	 * Spies: with its Spies at home, those in place at it, each Spy on a
 	 * hostile Mission {@value #HOSTILE_CATCH_MULTIPLIER} times as likely to be
-	 * caught as any other; then with its
-	 * Scouts, and then with each of its travelling Warparties in the
-	 * order sent, those still travelling anywhere. Each try takes the other
+	 * caught as any other; then with its Scouts, and then with each of its
+	 * travelling Warparties in the order sent, those still travelling
+	 * anywhere. Each try takes the other
 	 * Nations in order and each one's Spies in the order sent, drawing once
 	 * from the seeded random source for each Spy not yet caught; a Spy caught
 	 * draws once more for what becomes of it. See {@link #caught}.
@@ -1333,9 +1332,12 @@ public class Game {
 			if (spies > 0) {
 				for (Nation other : others(catching)) {
 					for (Spy spy : other.spiesInPlace()) {
+						if (!spy.target().equals(catching.name())) {
+							continue;
+						}
 						double perSpy = onHostileMission(spy) ? HOSTILE_CATCH_MULTIPLIER * CATCH_CHANCE_PER_SPY_AT_HOME
 								: CATCH_CHANCE_PER_SPY_AT_HOME;
-						if (spy.target().equals(catching.name()) && random.nextDouble() < 1 - Math.pow(1 - perSpy, spies)) {
+						if (random.nextDouble() < 1 - Math.pow(1 - perSpy, spies)) {
 							caught(spy, other, catching, "Your Spies", reports, witnessed);
 						}
 					}
