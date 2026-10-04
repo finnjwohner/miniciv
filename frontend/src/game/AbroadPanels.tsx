@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { otherNations, recallTurns, travelTurns } from '../api'
-import type { Fact, MapNation, NationView, Spy, TravelBracket, Warparty } from '../api'
+import type { Fact, MapNation, NationView, Spy, Warparty } from '../api'
 import { NationEmblem } from '../ui/NationName'
 import { Panel } from '../ui/Panel'
-import { CountInput, TargetSelect } from './controls'
+import { CountSlider, TargetSelect } from './controls'
 import { currentTarget, formatAmount, listCounts, mergeAlike, plural } from './format'
 import { MapName } from './MapName'
 import { rowClass, useFreshRows } from './turnStart'
@@ -28,17 +28,6 @@ function describeWarparty(warparty: Warparty, map: MapNation[]) {
       {plunder}, {plural(warparty.turnsLeft, 'Turn')} left
     </>
   )
-}
-
-/** The travel brackets, such as "0–9: 3 · 10–24: 4 · 25+: 5". */
-function describeBrackets(brackets: TravelBracket[]) {
-  return brackets
-    .map((bracket, i) => {
-      const next = brackets[i + 1]
-      const range = next ? `${bracket.strength}–${next.strength - 1}` : `${bracket.strength}+`
-      return `${range}: ${bracket.turns}`
-    })
-    .join(' · ')
 }
 
 /**
@@ -99,8 +88,8 @@ export function ArmyPanel({
           <ul className="list">
             {sendable.map(([name, owned]) => (
               <li key={name} className="row">
-                <CountInput
-                  value={chosen[name] ?? 0}
+                <CountSlider
+                  value={Math.min(chosen[name] ?? 0, owned)}
                   min={0}
                   max={owned}
                   label={`How many ${name} to send`}
@@ -121,10 +110,6 @@ export function ArmyPanel({
             {Object.keys(units).length === 0
               ? 'Choose Units to send.'
               : `Strength ${formatAmount(sending)} · arrives in ${plural(travelTurns(nation.travelBrackets, sending), 'Turn')}`}
-          </p>
-          <p className="muted">
-            Turns to arrive by Strength: {describeBrackets(nation.travelBrackets)}. The trip home takes the bracket for
-            the Strength that survives, longer when carrying a large haul.
           </p>
         </div>
       )}

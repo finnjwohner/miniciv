@@ -2,7 +2,7 @@ import { useState } from 'react'
 import type { BuildingDamage, BuildingType, GoldForecast, NationView, TechTreeEntry, UnitType } from '../api'
 import { Icon, type IconName } from '../ui/Icon'
 import { Panel } from '../ui/Panel'
-import { CountInput } from './controls'
+import { CountSlider } from './controls'
 import { formatChange, mergeAlike, plural } from './format'
 import { rowClass, useCountUp, useFreshRows } from './turnStart'
 
@@ -228,7 +228,15 @@ function describeUnit(unit: UnitType) {
   return `${role}, upkeep ${unit.upkeep} Gold per Turn${counters}`
 }
 
-/** One Unit type the Player can train, as many at once as they choose. */
+/** How many of something costing `cost` each can be paid for out of `held`; any number if it costs nothing. */
+function affordableCount(held: number, cost: number) {
+  return cost > 0 ? Math.floor(held / cost) : Infinity
+}
+
+/**
+ * One Unit type the Player can train, as many at once as they choose, up to the most the Nation's Gold
+ * and Population pay for. The count drops to that most when it falls below it.
+ */
 function TrainUnit({
   unit,
   nation,
@@ -239,7 +247,11 @@ function TrainUnit({
   onTrain: (unit: string, count: number) => void
 }) {
   const [count, setCount] = useState(1)
-  const affordable = count >= 1 && unit.gold * count <= nation.gold && unit.population * count <= nation.population
+  const trainable = Math.min(
+    affordableCount(nation.gold, unit.gold),
+    affordableCount(nation.population, unit.population),
+  )
+  if (trainable >= 1 && count > trainable) setCount(trainable)
   return (
     <li className="row row--wrap">
       <span className="row__name">{unit.name}</span>
@@ -247,8 +259,8 @@ function TrainUnit({
         {unit.gold} Gold and {unit.population} Population, {plural(unit.turns, 'Turn')} — {describeUnit(unit)}
       </span>
       <span className="button-row">
-        <CountInput value={count} min={1} label={`How many ${unit.name} to train`} onChange={setCount} />
-        <button aria-label={`Train ${unit.name}`} onClick={() => onTrain(unit.name, count)} disabled={!affordable}>
+        <CountSlider value={count} min={1} max={trainable} label={`How many ${unit.name} to train`} onChange={setCount} />
+        <button aria-label={`Train ${unit.name}`} onClick={() => onTrain(unit.name, count)} disabled={trainable < 1}>
           Train
         </button>
       </span>

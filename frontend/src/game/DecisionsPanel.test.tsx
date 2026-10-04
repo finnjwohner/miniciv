@@ -9,6 +9,17 @@ function choiceButtons() {
 }
 
 describe('DecisionsPanel', () => {
+  it('runs the Tribute sliders from 0 to the Gold and Population held', () => {
+    renderGame({ nation: nationView({ gold: 75, population: 9, arrivals: [{ nation: 'Egypt', warparty: 1 }] }) })
+
+    const gold = screen.getByRole('slider', { name: 'Gold to offer Egypt' })
+    expect(gold).toHaveAttribute('min', '0')
+    expect(gold).toHaveAttribute('max', '75')
+    const population = screen.getByRole('slider', { name: 'Population to offer Egypt' })
+    expect(population).toHaveAttribute('min', '0')
+    expect(population).toHaveAttribute('max', '9')
+  })
+
   it('shows a button per Dilemma choice, tagging only the worst', () => {
     renderGame()
 
