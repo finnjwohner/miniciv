@@ -243,6 +243,12 @@ class TurnsTest {
 						Map.of("strength", 100, "turns", 7)));
 		view.put("spyTravelTurns", 3);
 		view.put("upkeep", 0);
+		// Only the Population earns Gold, and every Unit here costs 1 upkeep.
+		int trainedNextTurn = training.stream()
+			.filter(order -> order.get("readyOnTurn").equals(turn + 1))
+			.mapToInt(order -> (int) order.get("count"))
+			.sum();
+		view.put("goldForecast", Map.of("income", population, "upkeep", trainedNextTurn));
 		view.put("arrivals", List.of());
 		view.put("tributes", List.of());
 		view.put("encounters", List.of());

@@ -103,6 +103,14 @@ export type Repair = {
 }
 /** A Building under construction. */
 export type Construction = { building: string; turnsLeft: number }
+/**
+ * What a Nation's Gold will change by as this Turn resolves: its Population's and Buildings' income less its
+ * Units' upkeep, after any it cannot pay for desert. Events, Dilemmas, Battles, Plunder and Tribute aside.
+ */
+export type GoldForecast = {
+  income: number
+  upkeep: number
+}
 /** A kind of Unit, trained by paying Gold and Population upfront and then Gold upkeep every Turn. */
 export type UnitType = {
   name: string
@@ -305,6 +313,8 @@ export type NationView = {
   spyTravelTurns: number
   /** The Gold the Nation's Units cost each Turn, at home and abroad. */
   upkeep: number
+  /** The Gold the Nation will gain or lose as this Turn resolves, if nothing but its income and upkeep changes it. */
+  goldForecast: GoldForecast
   /** Other Nations' Warparties that arrived at this one and wait for the Battle as this Turn ends. */
   arrivals: ArrivedWarparty[]
   /** The Tribute this Nation offered or was offered this Turn, in the order offered. */

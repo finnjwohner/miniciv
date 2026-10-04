@@ -120,6 +120,25 @@ class Nation {
 		this.research = research;
 	}
 
+	/**
+	 * A copy of the Nation's resources, Buildings, work in progress and Units
+	 * that can be changed without changing the Nation, such as to forecast
+	 * what resolving the Turn would do to it.
+	 */
+	Nation copy() {
+		Nation copy = new Nation(identity, gold, population, research);
+		copy.construction.addAll(construction);
+		copy.buildings.putAll(buildings);
+		copy.defenseLost.putAll(defenseLost);
+		copy.repairs.addAll(repairs);
+		copy.training.addAll(training);
+		copy.army.putAll(army);
+		copy.scouts.putAll(scouts);
+		copy.warparties.addAll(warparties);
+		copy.spies.addAll(spies);
+		return copy;
+	}
+
 	String name() {
 		return identity.name();
 	}
@@ -141,7 +160,8 @@ class Nation {
 	}
 
 	NationView view(int turn, List<MapNation> map, List<ArrivedWarparty> arrivals,
-			List<Tribute> tributes, List<Encounter> encounters, Ruleset ruleset, String winner) {
+			List<Tribute> tributes, List<Encounter> encounters, Ruleset ruleset, GoldForecast goldForecast,
+			String winner) {
 		List<BuildingType> availableBuildings = ruleset.buildings()
 			.stream()
 			.filter(building -> hasAccessTo(building.name(), ruleset))
@@ -152,6 +172,7 @@ class Nation {
 				sellValues(ruleset),
 				availableUnits,
 				Collections.unmodifiableMap(new LinkedHashMap<>(army)), scouts(), training, warparties, spies, TravelBracket.ALL, Spy.TRAVEL_TURNS, upkeep(ruleset),
+				goldForecast,
 				arrivals, tributes, encounters, techTree(ruleset), turnReport, awaitingChoice(winner),
 				conqueredBy, winner);
 	}
@@ -1058,10 +1079,29 @@ class Nation {
 	}
 
 	/**
+	 * The Buildings, repairs and Units that finished as a Turn resolved.
+	 *
+	 * @param built the Buildings completed, in the order started
+	 * @param repaired the repairs finished, in the order started
+	 * @param trained the Units that finished training
+	 */
+	record Progress(List<String> built, List<Repair> repaired, Trained trained) {
+	}
+
+	/**
+	 * Moves construction, repairs and training one Turn on, in that order.
+	 */
+	Progress progressWork(int nextTurn, Ruleset ruleset) {
+		List<String> built = progressConstruction();
+		List<Repair> repaired = progressRepairs();
+		return new Progress(built, repaired, progressTraining(nextTurn, ruleset));
+	}
+
+	/**
 	 * Moves the Units ready by the start of a Turn out of training: Scouts set
 	 * out into the wilds, and every other Unit joins the Army.
 	 */
-	Trained progressTraining(int nextTurn, Ruleset ruleset) {
+	private Trained progressTraining(int nextTurn, Ruleset ruleset) {
 		Map<String, Integer> joined = new LinkedHashMap<>();
 		Map<String, Integer> setOut = new LinkedHashMap<>();
 		for (var it = training.iterator(); it.hasNext();) {
@@ -1249,7 +1289,7 @@ class Nation {
 	 *
 	 * @return the Buildings completed, in the order started
 	 */
-	List<String> progressConstruction() {
+	private List<String> progressConstruction() {
 		List<String> completed = new ArrayList<>();
 		for (var it = construction.listIterator(); it.hasNext();) {
 			Construction current = it.next();
@@ -1271,7 +1311,7 @@ class Nation {
 	 *
 	 * @return the repairs finished, in the order started
 	 */
-	List<Repair> progressRepairs() {
+	private List<Repair> progressRepairs() {
 		List<Repair> finished = new ArrayList<>();
 		for (var it = repairs.listIterator(); it.hasNext();) {
 			Repair current = it.next();

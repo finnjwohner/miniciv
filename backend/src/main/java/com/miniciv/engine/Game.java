@@ -351,14 +351,15 @@ public class Game {
 						? Line.of("You did not choose in time what to do about " + faced.dilemma().name() + ". ", line)
 						: line);
 			}
-			tallied(nation.progressConstruction())
+			Nation.Progress progress = nation.progressWork(turn + 1, ruleset);
+			tallied(progress.built())
 				.forEach((building, count) -> report.add(COMPLETED, yourBuildings(building, count, "built")));
-			List<Repair> repairs = nation.progressRepairs();
+			List<Repair> repairs = progress.repaired();
 			tallied(repairs.stream().filter(repair -> !repair.rebuild()).map(Repair::building).toList())
 				.forEach((building, count) -> report.add(COMPLETED, yourBuildings(building, count, "repaired")));
 			tallied(repairs.stream().filter(Repair::rebuild).map(Repair::building).toList())
 				.forEach((building, count) -> report.add(COMPLETED, yourBuildings(building, count, "rebuilt")));
-			Nation.Trained trained = nation.progressTraining(turn + 1, ruleset);
+			Nation.Trained trained = progress.trained();
 			trained.joined()
 				.forEach((unit, count) -> report.add(COMPLETED,
 						counted(unit, count) + " finished training and joined your Army."));
@@ -397,17 +398,13 @@ public class Game {
 		}
 		for (Nation nation : remaining()) {
 			TurnReport.Draft report = reports.get(nation.name());
-			int buildingPopulation = nation.populationFromBuildings(ruleset);
-			int buildingGold = nation.goldFromBuildings(ruleset);
-			int buildingResearch = nation.researchFromBuildings(ruleset);
-			int populationGold = nation.goldFromPopulation();
-			nation.gain(populationGold + buildingGold, POPULATION_PER_TURN + buildingPopulation,
-					RESEARCH_PER_TURN + buildingResearch);
-			report.add(RESOURCES, Line.of("Your Population earned ", gain(GOLD, populationGold),
+			IncomeAndUpkeep earnings = earnAndPayUpkeep(nation);
+			report.add(RESOURCES, Line.of("Your Population earned ", gain(GOLD, earnings.populationGold()),
 					", and your Nation gained ", gain(POPULATION, POPULATION_PER_TURN), " and ",
 					gain(RESEARCH, RESEARCH_PER_TURN), "."));
-			buildingsAddedLine(buildingPopulation, buildingGold, buildingResearch).ifPresent(line -> report.add(RESOURCES, line));
-			for (Nation.Desertion desertion : nation.desertUntilUpkeepIsAffordable(ruleset)) {
+			buildingsAddedLine(earnings.buildingPopulation(), earnings.buildingGold(), earnings.buildingResearch())
+				.ifPresent(line -> report.add(RESOURCES, line));
+			for (Nation.Desertion desertion : earnings.desertions()) {
 				if (desertion.scouts()) {
 					report.add(RESOURCES, "You could not pay your Units' upkeep, so " + scoutsCounted(desertion.units())
 							+ " roaming the wilds deserted.");
@@ -423,9 +420,8 @@ public class Game {
 				report.add(RESOURCES, "You could not pay your Units' upkeep, so " + listed(desertion.units()) + " deserted from "
 						+ from + ".");
 			}
-			int upkeep = nation.payUpkeep(ruleset);
-			if (upkeep > 0) {
-				report.add(RESOURCES, Line.of("Your Units' upkeep cost ", loss(GOLD, upkeep), "."));
+			if (earnings.upkeep() > 0) {
+				report.add(RESOURCES, Line.of("Your Units' upkeep cost ", loss(GOLD, earnings.upkeep()), "."));
 			}
 		}
 		rollEvents(reports);
@@ -442,6 +438,51 @@ public class Game {
 		}
 		inPlay.forEach(nation -> nation.turnReport(reports.get(nation.name()).of(turn, nation)));
 		turn++;
+	}
+
+	/**
+	 * What a Nation earned and paid as a Turn resolved.
+	 *
+	 * @param populationGold the Gold its Population earned
+	 * @param buildingGold the Gold its Buildings added
+	 * @param buildingPopulation the Population its Buildings added
+	 * @param buildingResearch the Research its Buildings added
+	 * @param desertions the Units that deserted because their upkeep could not
+	 *        be paid
+	 * @param upkeep the Gold its remaining Units' upkeep cost
+	 */
+	private record IncomeAndUpkeep(int populationGold, int buildingGold, int buildingPopulation, int buildingResearch,
+			List<Nation.Desertion> desertions, int upkeep) {
+	}
+
+	/**
+	 * Gives a Nation its income for the Turn, lets the Units it cannot pay for
+	 * desert, then pays the rest's upkeep.
+	 */
+	private IncomeAndUpkeep earnAndPayUpkeep(Nation nation) {
+		int buildingPopulation = nation.populationFromBuildings(ruleset);
+		int buildingGold = nation.goldFromBuildings(ruleset);
+		int buildingResearch = nation.researchFromBuildings(ruleset);
+		int populationGold = nation.goldFromPopulation();
+		nation.gain(populationGold + buildingGold, POPULATION_PER_TURN + buildingPopulation,
+				RESEARCH_PER_TURN + buildingResearch);
+		List<Nation.Desertion> desertions = nation.desertUntilUpkeepIsAffordable(ruleset);
+		return new IncomeAndUpkeep(populationGold, buildingGold, buildingPopulation, buildingResearch, desertions,
+				nation.payUpkeep(ruleset));
+	}
+
+	/**
+	 * The Gold a Nation will gain or lose as this Turn resolves, worked out by
+	 * resolving a copy of it the way {@link #endTurn} does, leaving out what
+	 * Dilemmas, Battles, Plunder, Tribute and Events would change. Warparties
+	 * and Spies coming home change no Gold but Plunder, and leave its Units'
+	 * upkeep the same, so they are left out too.
+	 */
+	private GoldForecast goldForecast(Nation nation) {
+		Nation next = nation.copy();
+		next.progressWork(turn + 1, ruleset);
+		IncomeAndUpkeep earnings = earnAndPayUpkeep(next);
+		return new GoldForecast(earnings.populationGold() + earnings.buildingGold(), earnings.upkeep());
 	}
 
 	/**
@@ -1636,7 +1677,7 @@ public class Game {
 		}
 		List<Tribute> involved = tributes.stream().filter(tribute -> tribute.involves(nation)).toList();
 		List<Encounter> met = encounters.stream().filter(encounter -> encounter.involves(nation)).toList();
-		return own.view(turn, map, arrivals, involved, met, ruleset, winner);
+		return own.view(turn, map, arrivals, involved, met, ruleset, goldForecast(own), winner);
 	}
 
 	/**

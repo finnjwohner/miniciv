@@ -17,9 +17,9 @@ export function listCounts(counts: Record<string, number>) {
     .join(', ')
 }
 
-/** A gain or loss, such as "+14" or "−2", with a true minus sign. */
+/** A gain or loss, such as "+14", "−2" or "+0", with a true minus sign. */
 export function formatChange(amount: number) {
-  return `${amount > 0 ? '+' : '−'}${Math.abs(amount)}`
+  return `${amount < 0 ? '−' : '+'}${Math.abs(amount)}`
 }
 
 /** A number with at most one decimal place, such as Strength 12.3. */

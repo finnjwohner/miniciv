@@ -138,3 +138,20 @@ describe('rows in progress', () => {
     expect(rowsLeft('Train')).toEqual(['Archer ×22 Turns left'])
   })
 })
+
+describe('ResourcesPanel', () => {
+  it('forecasts next Turn’s Gold under upkeep, with income and upkeep broken out', () => {
+    renderGame({ nation: nationView({ upkeep: 18, goldForecast: { income: 60, upkeep: 18 } }) })
+
+    const resources = screen.getByRole('region', { name: 'Rome' })
+    const forecast = within(resources).getByText('Next Turn: +42 Gold (income 60 − upkeep 18)')
+    expect(precedes(within(resources).getByText(/^Upkeep, at home and abroad/), forecast)).toBe(true)
+    expect(forecast).not.toHaveClass('report__loss')
+  })
+
+  it('shows a forecast loss of Gold in the loss colour', () => {
+    renderGame({ nation: nationView({ upkeep: 25, goldForecast: { income: 10, upkeep: 25 } }) })
+
+    expect(screen.getByText('Next Turn: −15 Gold (income 10 − upkeep 25)')).toHaveClass('report__loss')
+  })
+})
