@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.assertj.core.api.Assertions.tuple;
 
 class RulesetFilesTest {
 
@@ -392,14 +393,28 @@ class RulesetFilesTest {
 	}
 
 	@Test
-	void theShippedRulesetHasTheFiveReportMissionsOfTwoTurnsEach() {
+	void theShippedRulesetHasTheFiveReportMissionsOfTwoTurnsEachThenTheHostileMissions() {
 		Ruleset ruleset = RulesetFiles.load("ruleset");
 
-		assertThat(ruleset.missions()).containsExactly(new Mission("Report Gold", 2, Mission.FactKind.GOLD),
+		assertThat(ruleset.missions()).startsWith(new Mission("Report Gold", 2, Mission.FactKind.GOLD),
 				new Mission("Report Population", 2, Mission.FactKind.POPULATION),
 				new Mission("Report Research", 2, Mission.FactKind.RESEARCH),
 				new Mission("Report Army", 2, Mission.FactKind.ARMY),
 				new Mission("Report Buildings", 2, Mission.FactKind.BUILDINGS));
+		assertThat(ruleset.missions()).filteredOn(Mission::hostile)
+			.extracting(Mission::name, Mission::turns, Mission::chance, Mission::harm)
+			.containsExactly(tuple("Sabotage Defenses", 4, 0.6, new Mission.Harm(8, 0, 0, 0)),
+					tuple("Sabotage Buildings", 4, 0.6, new Mission.Harm(0, 1, 0, 0)),
+					tuple("Poison Army", 4, 0.5, new Mission.Harm(0, 0, 0.2, 0)),
+					tuple("Incite Unrest", 3, 0.6, new Mission.Harm(0, 0, 0, 4)));
+	}
+
+	@Test
+	void aMalformedHostileMissionFailsToLoad() {
+		assertThatExceptionOfType(InvalidRuleset.class)
+			.isThrownBy(() -> RulesetFiles.load("rulesets/malformed-mission"))
+			.withMessageContaining("Mission Sabotage Defenses must have a chance above 0 and at most 1.")
+			.withMessageContaining("Mission Sabotage Defenses has no text to announce it.");
 	}
 
 	@Test

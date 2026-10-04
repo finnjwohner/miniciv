@@ -165,9 +165,16 @@ function inPlace(spy: Spy) {
   return !spy.homeward && spy.turnsLeft === 0
 }
 
+/** Such as "Report Gold (2 Turns)" or, for a hostile Mission, "Poison Army (4 Turns, 50% chance)". */
+function missionLabel(mission: Mission) {
+  const turns = plural(mission.turns, 'Turn')
+  if (mission.harm === null) return `${mission.name} (${turns})`
+  return `${mission.name} (${turns}, ${Math.round(mission.chance * 100)}% chance)`
+}
+
 /**
- * Picks the Mission a Spy in place is set to, starting it from scratch; an Idle Spy shows a prompt to
- * choose one.
+ * Picks the Mission a Spy in place is set to, starting it from scratch, Intel Missions apart from hostile
+ * ones; an Idle Spy shows a prompt to choose one.
  */
 function MissionSelect({
   spy,
@@ -189,11 +196,20 @@ function MissionSelect({
           Choose a Mission
         </option>
       )}
-      {missions.map((m) => (
-        <option key={m.name} value={m.name}>
-          {m.name} ({plural(m.turns, 'Turn')})
-        </option>
-      ))}
+      {[
+        { label: 'Intel', group: missions.filter((m) => m.harm === null) },
+        { label: 'Hostile', group: missions.filter((m) => m.harm !== null) },
+      ]
+        .filter(({ group }) => group.length > 0)
+        .map(({ label, group }) => (
+          <optgroup key={label} label={label}>
+            {group.map((m) => (
+              <option key={m.name} value={m.name}>
+                {missionLabel(m)}
+              </option>
+            ))}
+          </optgroup>
+        ))}
     </select>
   )
 }

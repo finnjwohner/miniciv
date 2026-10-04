@@ -328,7 +328,11 @@ public record Event(String name, Subject subject, double chance, Conditions when
 			return units.entrySet().stream().filter(change -> change.getValue() < 0).map(Map.Entry::getKey).toList();
 		}
 
-		private static int varied(int authored, RandomGenerator random) {
+		/**
+		 * An amount as luck varies it (see {@link #variedBy}), drawing once
+		 * from the given random source unless it is 0.
+		 */
+		static int varied(int authored, RandomGenerator random) {
 			return authored == 0 ? 0 : variedBy(random.nextDouble(), authored);
 		}
 
