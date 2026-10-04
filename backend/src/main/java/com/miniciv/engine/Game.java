@@ -1449,7 +1449,8 @@ public class Game {
 	 * it is told in its Turn Report; what the sender may be told is added to
 	 * those witnessed.
 	 *
-	 * @param caughtBy what caught it, such as "Your Scouts"
+	 * @param caughtBy what caught it, such as "Your Scouts", or how, such as
+	 * "Your people unmasked and"
 	 */
 	private void caught(Spy spy, Nation sender, Nation catching, String caughtBy, Map<String, TurnReport.Draft> reports,
 			List<Witnessed> witnessed) {
