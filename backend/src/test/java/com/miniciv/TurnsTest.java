@@ -248,7 +248,8 @@ class TurnsTest {
 			.filter(order -> order.get("readyOnTurn").equals(turn + 1))
 			.mapToInt(order -> (int) order.get("count"))
 			.sum();
-		view.put("goldForecast", Map.of("income", population, "upkeep", trainedNextTurn));
+		view.put("goldForecast", Map.of("income", population, "upkeep", trainedNextTurn, "lastingGold", 0));
+		view.put("lastingEvent", null);
 		view.put("arrivals", List.of());
 		view.put("tributes", List.of());
 		view.put("encounters", List.of());

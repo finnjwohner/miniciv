@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react'
-import type { BuildingDamage, BuildingType, GoldForecast, KnownTechnology, NationView, UnitType } from '../api'
+import type { BuildingDamage, BuildingType, GoldForecast, KnownTechnology, LastingEvent, NationView, UnitType } from '../api'
 import { Icon, type IconName } from '../ui/Icon'
 import { Panel } from '../ui/Panel'
 import { TypeName, TypeNames } from '../ui/TypeIcon'
@@ -28,9 +28,9 @@ function Stat({ icon, label, value, change = 0 }: { icon: IconName; label: strin
 }
 
 /**
- * The Nation's Gold, Population, Research and Defense, the Gold its Units cost each Turn, and the Gold it will
- * gain or lose as this Turn resolves. As each new Turn arrives, Gold, Population and Research count from before
- * the Turn resolved to their new values.
+ * The Nation's Gold, Population, Research and Defense, its active Lasting Event, the Gold its Units cost each
+ * Turn, and the Gold it will gain or lose as this Turn resolves. As each new Turn arrives, Gold, Population and
+ * Research count from before the Turn resolved to their new values.
  */
 export function ResourcesPanel({ nation }: { nation: NationView }) {
   const [firstTurn] = useState(nation.turn)
@@ -43,18 +43,41 @@ export function ResourcesPanel({ nation }: { nation: NationView }) {
         <Stat icon="lightbulb" label="Research" value={nation.research} change={netChange?.research} />
         <Stat icon="shield" label="Defense" value={nation.defense} />
       </div>
+      {nation.lastingEvent && <LastingEventLine lasting={nation.lastingEvent} />}
       <p className="muted">Upkeep, at home and abroad: {nation.upkeep} Gold per Turn</p>
-      <GoldForecastLine forecast={nation.goldForecast} />
+      <GoldForecastLine forecast={nation.goldForecast} lasting={nation.lastingEvent} />
     </Panel>
   )
 }
 
-/** The Gold the Nation will gain or lose as this Turn resolves, with its income and upkeep, in red if a loss. */
-function GoldForecastLine({ forecast }: { forecast: GoldForecast }) {
-  const change = forecast.income - forecast.upkeep
+/** The active Lasting Event, such as "Drought · no Population growth · 2 Turns left". */
+function LastingEventLine({ lasting }: { lasting: LastingEvent }) {
+  const changes = []
+  if (lasting.noGrowth) changes.push('no Population growth')
+  if (lasting.gold !== 0) changes.push(`${formatChange(lasting.gold)} Gold per Turn`)
+  if (lasting.population !== 0) changes.push(`${formatChange(lasting.population)} Population per Turn`)
+  if (lasting.research !== 0) changes.push(`${formatChange(lasting.research)} Research per Turn`)
+  return (
+    <p className="lasting">
+      {lasting.name} · {changes.join(', ')} · {plural(lasting.turnsLeft, 'Turn')} left
+    </p>
+  )
+}
+
+/**
+ * The Gold the Nation will gain or lose as this Turn resolves, with its income, upkeep and any Lasting Event's
+ * change, in red if a loss.
+ */
+function GoldForecastLine({ forecast, lasting }: { forecast: GoldForecast; lasting: LastingEvent | null }) {
+  const change = forecast.income - forecast.upkeep + forecast.lastingGold
+  const lastingPart =
+    lasting && forecast.lastingGold !== 0
+      ? ` ${forecast.lastingGold < 0 ? '−' : '+'} ${lasting.name} ${Math.abs(forecast.lastingGold)}`
+      : ''
   return (
     <p className={change < 0 ? 'report__loss' : 'muted'}>
-      Next Turn: {formatChange(change)} Gold (income {forecast.income} − upkeep {forecast.upkeep})
+      Next Turn: {formatChange(change)} Gold (income {forecast.income} − upkeep {forecast.upkeep}
+      {lastingPart})
     </p>
   )
 }

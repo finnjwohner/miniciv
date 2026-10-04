@@ -268,6 +268,29 @@ class RulesetTest {
 		new Ruleset(List.of(), List.of(), List.of(), List.of(lostTrail));
 	}
 
+	@Test
+	void aLastingEventLastsAtLeastOneTurnChangesSomethingAndNeverHappensToAWarparty() {
+		Event drought = event("Drought", Event.Subject.NATION, 0.1, null,
+				LastingEventsTest.lasting(new Event.Lasting(0, 0, 0, 0, true)));
+		Event lull = event("Lull", Event.Subject.SCOUTS, 0.1, null,
+				LastingEventsTest.lasting(new Event.Lasting(2, 0, 0, 0, false)));
+		Event fog = event("Fog", Event.Subject.WARPARTY, 0.1, null,
+				LastingEventsTest.lasting(new Event.Lasting(2, -1, 0, 0, false)));
+		Event locusts = dilemma("Locusts", Event.Subject.NATION, null, choice("Pray", true),
+				new Event.Choice("Burn", LastingEventsTest.lasting(new Event.Lasting(-1, 0, 0, 0, true)), false, "You burned"),
+				new Event.Choice("Flee", false, List.of(new Event.Outcome(1,
+						LastingEventsTest.lasting(new Event.Lasting(2, 0, 0, 0, false)), "You fled"))));
+
+		assertThatExceptionOfType(InvalidRuleset.class)
+			.isThrownBy(() -> new Ruleset(List.of(), List.of(), List.of(), List.of(drought, lull, fog, locusts)))
+			.withMessageContaining("Event Drought must begin a Lasting Event of at least 1 Turn")
+			.withMessageContaining("Event Lull begins a Lasting Event that changes nothing")
+			.withMessageContaining("Event Fog happens to a Warparty, so it cannot begin a Lasting Event")
+			.withMessageContaining("Event Locusts's choice Burn must begin a Lasting Event of at least 1 Turn")
+			.withMessageContaining(
+					"Event Locusts's choice Flee has an outcome that begins a Lasting Event that changes nothing");
+	}
+
 	static Event.Outcome outcome(double chance) {
 		return new Event.Outcome(chance, null, "It turned out so");
 	}

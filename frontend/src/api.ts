@@ -105,11 +105,26 @@ export type Repair = {
 export type Construction = { building: string; turnsLeft: number }
 /**
  * What a Nation's Gold will change by as this Turn resolves: its Population's and Buildings' income less its
- * Units' upkeep, after any it cannot pay for desert. Events, Dilemmas, Battles, Plunder and Tribute aside.
+ * Units' upkeep, after any it cannot pay for desert, plus its active Lasting Event's change. Events, Dilemmas,
+ * Battles, Plunder and Tribute aside.
  */
 export type GoldForecast = {
   income: number
   upkeep: number
+  /** How much the active Lasting Event will change Gold by; 0 if there is none. */
+  lastingGold: number
+}
+/** An Event whose change applies again as each of its Turns left resolves, such as a Drought. */
+export type LastingEvent = {
+  name: string
+  /** How many more Turns it applies on, this one included. */
+  turnsLeft: number
+  /** How much Gold, Population and Research change by each Turn. */
+  gold: number
+  population: number
+  research: number
+  /** Whether Population does not grow. */
+  noGrowth: boolean
 }
 /** A kind of Unit, trained by paying Gold and Population upfront and then Gold upkeep every Turn. */
 export type UnitType = {
@@ -316,8 +331,10 @@ export type NationView = {
   spyTravelTurns: number
   /** The Gold the Nation's Units cost each Turn, at home and abroad. */
   upkeep: number
-  /** The Gold the Nation will gain or lose as this Turn resolves, if nothing but its income and upkeep changes it. */
+  /** The Gold the Nation will gain or lose as this Turn resolves, if nothing but its income, upkeep and Lasting Event changes it. */
   goldForecast: GoldForecast
+  /** The Lasting Event active for the Nation, or null if none is. */
+  lastingEvent: LastingEvent | null
   /** Other Nations' Warparties that arrived at this one and wait for the Battle as this Turn ends. */
   arrivals: ArrivedWarparty[]
   /** The Tribute this Nation offered or was offered this Turn, in the order offered. */

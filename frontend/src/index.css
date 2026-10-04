@@ -338,6 +338,11 @@ input[type='range'] {
   color: var(--warn);
 }
 
+/* The active Lasting Event, under the resources. */
+.lasting {
+  color: var(--warn);
+}
+
 /* Home */
 
 .divider {
