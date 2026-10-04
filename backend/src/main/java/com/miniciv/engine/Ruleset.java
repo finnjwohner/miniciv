@@ -140,7 +140,7 @@ public record Ruleset(List<UnitType> units, List<BuildingType> buildings, List<T
 		}
 		duplicates(technologies.stream().flatMap(technology -> technology.unlocks().stream()))
 			.forEach(name -> problems.add(name + " is unlocked by more than one Technology."));
-		events.forEach(event -> problems.addAll(event.problems()));
+		events.forEach(event -> problems.addAll(event.problems(units)));
 		return problems;
 	}
 

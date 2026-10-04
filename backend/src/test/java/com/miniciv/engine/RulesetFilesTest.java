@@ -210,4 +210,19 @@ class RulesetFilesTest {
 			.withMessageContaining("rulesets/nowhere/units.json");
 	}
 
+	@Test
+	void anEventGainingOrLosingAnUnknownUnitTypeFailsToLoad() {
+		assertThatExceptionOfType(InvalidRuleset.class)
+			.isThrownBy(() -> RulesetFiles.load("rulesets/unknown-effect-unit"))
+			.withMessageContaining("Event Volunteers gains or loses Lancer, which is not a Unit type");
+	}
+
+	@Test
+	void anEventWithAMalformedNewEffectFailsToLoadNamingTheFile() {
+		assertThatExceptionOfType(InvalidRuleset.class)
+			.isThrownBy(() -> RulesetFiles.load("rulesets/malformed-effect"))
+			.withMessageContaining("rulesets/malformed-effect/events.json")
+			.withMessageContaining("everyone");
+	}
+
 }

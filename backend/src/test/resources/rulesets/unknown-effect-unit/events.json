@@ -1,0 +1,4 @@
+[
+  { "name": "Volunteers", "subject": "Nation", "chance": 0.05, "effects": { "units": { "Lancer": 2 } },
+    "text": "Volunteers answered your call" }
+]

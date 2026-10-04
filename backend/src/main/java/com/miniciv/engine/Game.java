@@ -340,17 +340,9 @@ public class Game {
 		}
 		tributes.clear();
 		settleEncounters(reports);
+		List<Witnessed> witnessed = new ArrayList<>();
 		for (Nation nation : inPlay) {
 			TurnReport.Draft report = reports.get(nation.name());
-			// The choice that applies draws luck for its outcome, then for that
-			// outcome's effects, Nation by Nation and Dilemma by Dilemma.
-			for (Nation.FacedDilemma faced : nation.settleDilemmas()) {
-				Event.Outcome outcome = faced.applying().outcome(random);
-				Line line = announced(outcome.text(), befall(outcome.effects(), nation));
-				report.add(EVENTS, faced.chosen() == null
-						? Line.of("You did not choose in time what to do about " + faced.dilemma().name() + ". ", line)
-						: line);
-			}
 			Nation.Progress progress = nation.progressWork(turn + 1, ruleset);
 			tallied(progress.built())
 				.forEach((building, count) -> report.add(COMPLETED, yourBuildings(building, count, "built")));
@@ -365,6 +357,17 @@ public class Game {
 						counted(unit, count) + " finished training and joined your Army."));
 			trained.setOut()
 				.forEach((unit, count) -> report.add(COMPLETED, counted(unit, count) + " set out into the wilds."));
+			// The choice that applies draws luck for its outcome, then for that
+			// outcome's effects, Nation by Nation and Dilemma by Dilemma. It
+			// applies once work has progressed, so work it stalls or speeds up
+			// finishes no earlier than as the next Turn resolves.
+			for (Nation.FacedDilemma faced : nation.settleDilemmas()) {
+				Event.Outcome outcome = faced.applying().outcome(random);
+				Line line = announced(outcome.text(), befall(outcome.effects(), nation, reports, witnessed));
+				report.add(EVENTS, faced.chosen() == null
+						? Line.of("You did not choose in time what to do about " + faced.dilemma().name() + ". ", line)
+						: line);
+			}
 		}
 		for (Nation nation : inPlay) {
 			for (Warparty returned : nation.travelHome()) {
@@ -424,9 +427,10 @@ public class Game {
 				report.add(RESOURCES, Line.of("Your Units' upkeep cost ", loss(GOLD, earnings.upkeep()), "."));
 			}
 		}
-		rollEvents(reports);
+		rollEvents(reports, witnessed);
 		scout(reports);
-		catchSpies(reports);
+		catchSpies(reports, witnessed);
+		tellWitnesses(reports, witnessed);
 		spy(reports);
 		meet(reports);
 		List<Nation> left = remaining();
@@ -834,31 +838,32 @@ public class Game {
 	 * that the Event's conditions hold for, drawing once from the seeded random
 	 * source for each. One that happens takes effect at once, as luck varies
 	 * it (see {@link Event.Effects#varied}), and is announced in the Turn
-	 * Report of the Nation it happened to, or that sent the Warparty.
+	 * Report of the Nation it happened to, or that sent the Warparty. An Event
+	 * whose effects need what the Nation or Warparty does not have (see
+	 * {@link #canBefall}) is not rolled for it.
 	 */
-	private void rollEvents(Map<String, TurnReport.Draft> reports) {
+	private void rollEvents(Map<String, TurnReport.Draft> reports, List<Witnessed> witnessed) {
 		for (Event event : ruleset.events()) {
 			for (Nation nation : remaining()) {
 				TurnReport.Draft report = reports.get(nation.name());
 				switch (event.subject()) {
 					case NATION -> {
 						if (event.when().holdForNation(turn, nation, nation.defense(ruleset), largestApproaching(nation))
-								&& happens(event)) {
+								&& canBefall(event.effects(), nation) && happens(event)) {
 							if (event.dilemma()) {
 								nation.faceDilemma(event);
 								report.add(DECISIONS_AND_ALERTS, event.text() + "; choose what to do before this Turn ends.");
 							}
 							else {
-								report.add(EVENTS, announced(event.text(), befall(event.effects(), nation)));
+								report.add(EVENTS, announced(event.text(), befall(event.effects(), nation, reports, witnessed)));
 							}
 						}
 					}
 					case WARPARTY -> {
 						for (Warparty warparty : nation.warparties()) {
 							if (!warparty.awaitingBattle() && event.when().holdForWarparty(turn, warparty)
-									&& happens(event)) {
-								report.add(EVENTS, announced(event.text(), List
-									.of(Line.of(delayed(warparty, nation.delay(warparty, event.effects().travelTurns()))))));
+									&& canBefall(event.effects(), warparty) && happens(event)) {
+								report.add(EVENTS, announced(event.text(), befall(event.effects(), nation, warparty)));
 							}
 						}
 					}
@@ -1110,12 +1115,9 @@ public class Game {
 	 * order sent, those still travelling anywhere. Each try takes the other
 	 * Nations in order and each one's Spies in the order sent, drawing once
 	 * from the seeded random source for each Spy not yet caught; a Spy caught
-	 * draws once more for what becomes of it. See {@link #caught}. Once every
-	 * Nation has tried, each capture is reported to its sender if one of the
-	 * sender's Spies is still in place at the Nation that caught it.
+	 * draws once more for what becomes of it. See {@link #caught}.
 	 */
-	private void catchSpies(Map<String, TurnReport.Draft> reports) {
-		List<Witnessed> witnessed = new ArrayList<>();
+	private void catchSpies(Map<String, TurnReport.Draft> reports, List<Witnessed> witnessed) {
 		for (Nation catching : remaining()) {
 			int spies = catching.spiesAtHome(ruleset);
 			if (spies > 0) {
@@ -1153,6 +1155,14 @@ public class Game {
 				}
 			}
 		}
+	}
+
+	/**
+	 * Once all catching is done, reports each capture this Turn to its
+	 * sender if one of the sender's Spies is still in place at the Nation that
+	 * caught it.
+	 */
+	private static void tellWitnesses(Map<String, TurnReport.Draft> reports, List<Witnessed> witnessed) {
 		for (Witnessed capture : witnessed) {
 			if (capture.sender().spiesInPlace().stream().anyMatch(spy -> spy.target().equals(capture.at()))) {
 				reports.get(capture.sender().name()).add(SPIES_AND_SCOUTS, capture.line());
@@ -1263,12 +1273,64 @@ public class Game {
 	}
 
 	/**
+	 * Whether a Nation has what an Event's effects need: some of each Unit
+	 * type they lose in its Army, work in progress if they stall or speed it
+	 * up, and a Spy to catch if they catch one.
+	 */
+	private boolean canBefall(Event.Effects effects, Nation nation) {
+		return effects.unitsLeaving().stream().allMatch(unit -> nation.army().containsKey(unit))
+				&& (effects.workTurns() == 0 || nation.workInProgress() > 0)
+				&& (effects.spyCaught() == null || !catchable(effects.spyCaught(), nation).isEmpty());
+	}
+
+	/**
+	 * Whether a Warparty holds some of each Unit type an Event's effects lose.
+	 */
+	private static boolean canBefall(Event.Effects effects, Warparty warparty) {
+		return effects.unitsLeaving().stream().allMatch(unit -> warparty.units().containsKey(unit));
+	}
+
+	/**
+	 * A Spy an Event may catch, the Nation that sent it, and the one that would
+	 * catch it.
+	 */
+	private record Catchable(Spy spy, Nation sender, Nation catching) {
+	}
+
+	/**
+	 * The Spies an Event that happened to a Nation may catch: its own abroad,
+	 * other than those heading home, in the order sent, each caught by the
+	 * Nation it was sent to; or the other Nations' in place in its land, taking
+	 * the Nations in order and each one's Spies in the order sent.
+	 */
+	private List<Catchable> catchable(Event.SpyCaught whose, Nation nation) {
+		return switch (whose) {
+			case OWN -> nation.spies()
+				.stream()
+				.filter(spy -> !spy.homeward())
+				.map(spy -> new Catchable(spy, nation, nation(spy.target())))
+				.toList();
+			case ENEMY -> others(nation).stream()
+				.flatMap(other -> other.spiesInPlace()
+					.stream()
+					.filter(spy -> spy.target().equals(nation.name()))
+					.map(spy -> new Catchable(spy, other, nation)))
+				.toList();
+		};
+	}
+
+	/**
 	 * Applies an Event's or a Dilemma outcome's effects to a Nation, as luck
-	 * varies them.
+	 * varies them. Work it stalls or speeds up and a Spy it catches are each
+	 * picked by one draw from the seeded random source, after the draws that
+	 * vary its effects; a Spy caught then draws for what becomes of it, as
+	 * {@link #caught} does. The Nation is told only the Event's text of its own
+	 * Spy being caught.
 	 *
 	 * @return what changed, such as "your Nation gained 4 Population"
 	 */
-	private List<Line> befall(Event.Effects authored, Nation nation) {
+	private List<Line> befall(Event.Effects authored, Nation nation, Map<String, TurnReport.Draft> reports,
+			List<Witnessed> witnessed) {
 		Event.Effects effects = authored.varied(random);
 		List<Line> changes = new ArrayList<>();
 		Nation.Change change = nation.change(effects.gold(), effects.population(), effects.research());
@@ -1304,7 +1366,92 @@ public class Game {
 						+ defenseWorn.after() + ", " + buildingsHarmed(defenseWorn)));
 			}
 		}
+		if (!effects.units().isEmpty()) {
+			changes.addAll(unitsChanged(nation.changeArmy(effects.units()), "your Army"));
+		}
+		if (effects.workTurns() != 0 && nation.workInProgress() > 0) {
+			int pick = (int) (random.nextDouble() * nation.workInProgress());
+			changes.add(Line.of(workChanged(nation.changeWork(pick, effects.workTurns(), turn + 1))));
+		}
+		if (effects.spyCaught() != null) {
+			List<Catchable> catchable = catchable(effects.spyCaught(), nation);
+			if (!catchable.isEmpty()) {
+				Catchable picked = catchable.get((int) (random.nextDouble() * catchable.size()));
+				caught(picked.spy(), picked.sender(), picked.catching(), "Your people", reports, witnessed);
+			}
+		}
 		return changes;
+	}
+
+	/**
+	 * Applies a Warparty Event's effects to it, as luck varies them.
+	 *
+	 * @param warparty the Warparty, as {@link Nation#warparties()} gave it
+	 * @return what changed, such as "1 Warrior joined your Warparty heading to
+	 *         Carthage"
+	 */
+	private List<Line> befall(Event.Effects authored, Nation nation, Warparty warparty) {
+		Event.Effects effects = authored.varied(random);
+		List<Line> changes = new ArrayList<>();
+		Optional<Warparty> current = Optional.of(warparty);
+		if (!effects.units().isEmpty()) {
+			changes.addAll(unitsChanged(nation.changeWarparty(warparty, effects.units(), ruleset),
+					"your Warparty " + whereabouts(warparty, nation.name())));
+			current = nation.warparty(warparty.id());
+			if (current.isEmpty()) {
+				changes.add(Line.of(warparty.plunder().isNone() ? "your Warparty disbanded"
+						: "your Warparty disbanded, and its Plunder was lost"));
+			}
+		}
+		if (effects.travelTurns() != 0 && current.isPresent()) {
+			changes.add(Line.of(delayed(current.get(), nation.delay(current.get(), effects.travelTurns()))));
+		}
+		return changes;
+	}
+
+	/**
+	 * Such as "2 Warriors joined your Army" and "1 Archer left your Army".
+	 *
+	 * @param where such as "your Army"
+	 */
+	private static List<Line> unitsChanged(Nation.UnitsChanged changed, String where) {
+		List<Line> lines = new ArrayList<>();
+		if (!changed.joined().isEmpty()) {
+			lines.add(Line.of(countedEach(changed.joined()) + " joined " + where));
+		}
+		if (!changed.left().isEmpty()) {
+			lines.add(Line.of(countedEach(changed.left()) + " left " + where));
+		}
+		return lines;
+	}
+
+	/**
+	 * Such as "2 Warriors and 1 Archer".
+	 */
+	private static String countedEach(Map<String, Integer> units) {
+		return joined(units.entrySet().stream().map(unit -> counted(unit.getKey(), unit.getValue())).toList());
+	}
+
+	/**
+	 * Such as "your Walls will now be built in 3 Turns" or "your Archer ×1
+	 * will now finish training in 1 Turn".
+	 */
+	private String workChanged(Work work) {
+		return switch (work) {
+			case Construction construction -> "your " + construction.building() + " will now be built in "
+					+ turns(construction.turnsLeft());
+			case Repair repair -> "your " + repair.building() + " will now be "
+					+ (repair.rebuild() ? "rebuilt" : "repaired") + " in " + turns(repair.turnsLeft());
+			case Training training -> "your " + training.unit() + " ×" + training.count()
+					+ " will now finish training in " + turns(training.readyOnTurn() - turn - 1);
+		};
+	}
+
+	/**
+	 * Such as "1 Turn" or "3 Turns".
+	 */
+	private static String turns(int turns) {
+		return turns + (turns == 1 ? " Turn" : " Turns");
 	}
 
 	/**
@@ -1312,7 +1459,7 @@ public class Game {
 	 * in 3 Turns".
 	 */
 	private static String delayed(Warparty before, Warparty after) {
-		String turns = after.turnsLeft() + (after.turnsLeft() == 1 ? " Turn" : " Turns");
+		String turns = turns(after.turnsLeft());
 		return "your Warparty of " + listed(before.units())
 				+ (before.homeward() ? " heading home from " + before.target() + " will now get home in " + turns
 						: " heading to " + before.target() + " will now arrive in " + turns);

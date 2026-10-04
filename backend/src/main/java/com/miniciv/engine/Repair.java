@@ -9,5 +9,5 @@ package com.miniciv.engine;
  *        damaged one repaired
  * @param defense the Defense it restores
  */
-public record Repair(String building, boolean rebuild, int defense, int turnsLeft) {
+public record Repair(String building, boolean rebuild, int defense, int turnsLeft) implements Work {
 }

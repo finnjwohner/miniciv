@@ -5,5 +5,5 @@ package com.miniciv.engine;
  *
  * @param readyOnTurn the Turn at whose start they join the Army
  */
-public record Training(String unit, int count, int readyOnTurn) {
+public record Training(String unit, int count, int readyOnTurn) implements Work {
 }
