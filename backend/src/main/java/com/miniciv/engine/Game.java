@@ -106,6 +106,22 @@ public class Game {
 	private static final int HOSTILE_CATCH_MULTIPLIER = 2;
 
 	/**
+	 * The chance a hostile Mission that succeeds Unmasks its Spy as it ends.
+	 */
+	private static final double UNMASK_CHANCE_ON_SUCCESS = 0.25;
+
+	/**
+	 * The chance a hostile Mission that fails Unmasks its Spy as it ends.
+	 */
+	private static final double UNMASK_CHANCE_ON_FAILURE = 0.5;
+
+	/**
+	 * The chance an Unmasked Spy is caught on the spot rather than fleeing
+	 * home.
+	 */
+	private static final double CAUGHT_WHEN_UNMASKED_CHANCE = 0.5;
+
+	/**
 	 * The chance each Scout gives its Nation, each Turn, of catching
 	 * each other Nation's Spy still travelling.
 	 */
@@ -438,8 +454,8 @@ public class Game {
 		rollEvents(reports, witnessed);
 		scout(reports);
 		catchSpies(reports, witnessed);
+		workOnMissions(reports, witnessed);
 		tellWitnesses(reports, witnessed);
-		workOnMissions(reports);
 		meet(reports);
 		List<Nation> left = remaining();
 		if (left.size() == 1) {
@@ -1193,24 +1209,43 @@ public class Game {
 	 * An Intel Mission that ends reports its Fact, as it stands once the Turn
 	 * has resolved, in the Turn Report and on the Map, tagged with this Turn,
 	 * drawing no luck. A hostile Mission that ends draws once from the seeded
-	 * random source for whether it succeeds, and its sender is told which; one
-	 * that succeeds harms its target (see {@link #sabotage}), whose Turn
-	 * Report says what it harmed without naming the sender.
+	 * random source for whether it succeeds; one that succeeds harms its
+	 * target (see {@link #sabotage}), whose Turn Report says what it harmed
+	 * without naming the sender. It then draws once more for whether it
+	 * Unmasks its Spy, {@value #UNMASK_CHANCE_ON_SUCCESS} likely if it
+	 * succeeded and {@value #UNMASK_CHANCE_ON_FAILURE} if it failed, and an
+	 * Unmasked Spy draws once more for whether it is caught on the spot (see
+	 * {@link #caught}), its sender told nothing but what is witnessed, or
+	 * flees home, both sides told and its target told who sent it, without
+	 * Locating the sender. Otherwise its sender is told whether it succeeded.
 	 */
-	private void workOnMissions(Map<String, TurnReport.Draft> reports) {
+	private void workOnMissions(Map<String, TurnReport.Draft> reports, List<Witnessed> witnessed) {
 		for (Nation spying : remaining()) {
 			for (Spy spy : spying.workOnMissions()) {
 				TurnReport.Draft report = reports.get(spying.name());
 				Mission mission = ruleset.mission(spy.mission()).orElseThrow();
 				if (mission.hostile()) {
+					Nation target = nation(spy.target());
 					boolean succeeded = random.nextDouble() < mission.chance();
-					report.add(SPIES_AND_SCOUTS, "Your Spy in " + spy.target() + (succeeded ? " succeeded" : " failed")
-							+ " at " + mission.name() + ".");
 					if (succeeded) {
-						List<Line> harmed = sabotage(mission, nation(spy.target()), reports);
+						List<Line> harmed = sabotage(mission, target, reports);
 						if (!harmed.isEmpty()) {
 							reports.get(spy.target()).add(SPIES_AND_SCOUTS, announced(mission.text(), harmed));
 						}
+					}
+					boolean unmasked = random.nextDouble() < (succeeded ? UNMASK_CHANCE_ON_SUCCESS : UNMASK_CHANCE_ON_FAILURE);
+					if (unmasked && random.nextDouble() < CAUGHT_WHEN_UNMASKED_CHANCE) {
+						caught(spy, spying, target, "Your people unmasked and", reports, witnessed);
+						continue;
+					}
+					report.add(SPIES_AND_SCOUTS, "Your Spy in " + spy.target() + (succeeded ? " succeeded" : " failed")
+							+ " at " + mission.name() + ".");
+					if (unmasked) {
+						spying.fleeHome(spy);
+						report.add(SPIES_AND_SCOUTS, "Your Spy in " + spy.target() + " was Unmasked and is fleeing home.");
+						reports.get(spy.target()).add(SPIES_AND_SCOUTS,
+								"A Spy was Unmasked in your Nation and fled home; " + spying.ruled() + " sent it.");
+						continue;
 					}
 				}
 				else {

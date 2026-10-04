@@ -197,7 +197,7 @@ export function recallTurns(brackets: TravelBracket[], warparty: Warparty): numb
 /**
  * A Spy sent abroad, told apart by `id`; `turnsLeft` is how many more Turns must resolve before it gets
  * where it is heading, 0 once it is in place at its target, where it stays. `homeward` once its target is
- * out of the Game and it is heading back. `mission` is the name of the Mission it is on, with
+ * out of the Game, or it was Unmasked, and it is heading back. `mission` is the name of the Mission it is on, with
  * `missionTurnsLeft` Turns to go, or null while it is Idle.
  */
 export type Spy = {

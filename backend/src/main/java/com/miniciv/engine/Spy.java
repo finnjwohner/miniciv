@@ -2,13 +2,15 @@ package com.miniciv.engine;
 
 /**
  * A Spy a Nation has sent abroad: travelling to its target, staying there,
- * Idle or on a Mission, or heading home once its target is out of the Game.
+ * Idle or on a Mission, or heading home once its target is out of the Game or
+ * it was Unmasked.
  *
  * @param id the number telling it apart from the Nation's other Spies,
  * counting up in the order sent
  * @param unit the Spy's Unit type
  * @param target the Nation the Spy was sent to
  * @param homeward whether it is heading home, its target being out of the Game
+ * or it having been Unmasked
  * @param turnsLeft how many more Turns must resolve before it arrives where it
  * is heading; 0 once it is in place at its target
  * @param turnsTravelled how many Turns it travelled toward its target

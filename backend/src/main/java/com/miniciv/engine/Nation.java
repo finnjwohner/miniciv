@@ -411,11 +411,20 @@ class Nation {
 	/**
 	 * Loses one of the Nation's Spies abroad, caught by another Nation.
 	 *
-	 * @param spy the Spy, as {@link #spiesInPlace()} or
-	 * {@link #spiesTravelling()} gave it
+	 * @param spy the Spy, as it is now or was earlier this Turn
 	 */
 	void loseSpy(Spy spy) {
-		spies.remove(spy);
+		spies.removeIf(current -> current.id() == spy.id());
+		version++;
+	}
+
+	/**
+	 * Turns one of the Nation's Spies in place back home, Unmasked.
+	 *
+	 * @param spy the Spy, as it is now or was earlier this Turn
+	 */
+	void fleeHome(Spy spy) {
+		spies.replaceAll(current -> current.id() == spy.id() ? current.turnedBack() : current);
 		version++;
 	}
 
