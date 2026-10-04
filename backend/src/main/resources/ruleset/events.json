@@ -27,6 +27,8 @@
     "effects": { "population": -12 }, "text": "Famine gripped your Nation" },
   { "name": "Great fire", "subject": "Nation", "chance": 0.02, "when": { "turnAtLeast": 12, "goldAtLeast": 120 },
     "effects": { "gold": -40, "damageDefense": 4 }, "text": "A great fire swept through your capital" },
+  { "name": "Blight", "subject": "Nation", "chance": 0.03, "when": { "turnAtLeast": 4 },
+    "effects": { "lasting": { "turns": 3, "noGrowth": true } }, "text": "A blight withered your crops" },
   { "name": "Dust storm", "subject": "Warparty", "chance": 0.1,
     "effects": { "travelTurns": 1 }, "text": "A dust storm swept the plains" },
   { "name": "Swollen river", "subject": "Warparty", "chance": 0.04, "when": { "turnAtLeast": 3 },

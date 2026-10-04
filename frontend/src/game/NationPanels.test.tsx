@@ -239,7 +239,7 @@ describe('rows in progress', () => {
 
 describe('ResourcesPanel', () => {
   it('forecasts next Turn’s Gold under upkeep, with income and upkeep broken out', () => {
-    renderGame({ nation: nationView({ upkeep: 18, goldForecast: { income: 60, upkeep: 18 } }) })
+    renderGame({ nation: nationView({ upkeep: 18, goldForecast: { income: 60, upkeep: 18, lastingGold: 0 } }) })
 
     const resources = screen.getByRole('region', { name: 'Rome' })
     const forecast = within(resources).getByText('Next Turn: +42 Gold (income 60 − upkeep 18)')
@@ -248,9 +248,47 @@ describe('ResourcesPanel', () => {
   })
 
   it('shows a forecast loss of Gold in the loss colour', () => {
-    renderGame({ nation: nationView({ upkeep: 25, goldForecast: { income: 10, upkeep: 25 } }) })
+    renderGame({ nation: nationView({ upkeep: 25, goldForecast: { income: 10, upkeep: 25, lastingGold: 0 } }) })
 
     expect(screen.getByText('Next Turn: −15 Gold (income 10 − upkeep 25)')).toHaveClass('report__loss')
+  })
+
+  it('shows the active Lasting Event near the resources with its Turns left', () => {
+    renderGame({
+      nation: nationView({
+        lastingEvent: { name: 'Drought', turnsLeft: 2, gold: 0, population: 0, research: 0, noGrowth: true },
+      }),
+    })
+
+    const resources = screen.getByRole('region', { name: 'Rome' })
+    expect(within(resources).getByText('Drought · no Population growth · 2 Turns left')).toBeInTheDocument()
+  })
+
+  it('describes a Lasting Event’s per-Turn changes, and its last Turn', () => {
+    renderGame({
+      nation: nationView({
+        lastingEvent: { name: 'Tax revolt', turnsLeft: 1, gold: -5, population: 0, research: 2, noGrowth: false },
+      }),
+    })
+
+    expect(screen.getByText('Tax revolt · −5 Gold per Turn, +2 Research per Turn · 1 Turn left')).toBeInTheDocument()
+  })
+
+  it('shows no Lasting Event when none is active', () => {
+    renderGame()
+
+    expect(screen.queryByText(/Turns? left$/, { selector: '.lasting' })).not.toBeInTheDocument()
+  })
+
+  it('breaks the active Lasting Event’s Gold change out of the forecast', () => {
+    renderGame({
+      nation: nationView({
+        goldForecast: { income: 12, upkeep: 0, lastingGold: -5 },
+        lastingEvent: { name: 'Tax revolt', turnsLeft: 2, gold: -5, population: 0, research: 0, noGrowth: false },
+      }),
+    })
+
+    expect(screen.getByText('Next Turn: +7 Gold (income 12 − upkeep 0 − Tax revolt 5)')).toBeInTheDocument()
   })
 })
 

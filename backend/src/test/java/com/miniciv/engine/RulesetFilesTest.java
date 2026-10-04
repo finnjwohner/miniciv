@@ -43,6 +43,15 @@ class RulesetFilesTest {
 	}
 
 	@Test
+	void theShippedRulesetHasALastingBlight() {
+		Ruleset ruleset = RulesetFiles.load("ruleset");
+
+		assertThat(ruleset.events()).filteredOn(event -> event.name().equals("Blight"))
+			.extracting(event -> event.effects().lasting())
+			.containsExactly(new Event.Lasting(3, 0, 0, 0, true));
+	}
+
+	@Test
 	void everyShippedDilemmaChoiceCanTurnOutMoreThanOneWay() {
 		Ruleset ruleset = RulesetFiles.load("ruleset");
 

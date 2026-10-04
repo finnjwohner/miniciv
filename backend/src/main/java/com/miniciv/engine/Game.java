@@ -363,7 +363,8 @@ public class Game {
 			// finishes no earlier than as the next Turn resolves.
 			for (Nation.FacedDilemma faced : nation.settleDilemmas()) {
 				Event.Outcome outcome = faced.applying().outcome(random);
-				Line line = announced(outcome.text(), befall(outcome.effects(), nation, reports, witnessed));
+				Line line = announced(outcome.text(),
+						befall(faced.dilemma().name(), outcome.effects(), nation, reports, witnessed));
 				report.add(EVENTS, faced.chosen() == null
 						? Line.of("You did not choose in time what to do about " + faced.dilemma().name() + ". ", line)
 						: line);
@@ -402,9 +403,13 @@ public class Game {
 		for (Nation nation : remaining()) {
 			TurnReport.Draft report = reports.get(nation.name());
 			IncomeAndUpkeep earnings = earnAndPayUpkeep(nation);
+			List<Line> grown = new ArrayList<>();
+			if (earnings.populationGrowth() > 0) {
+				grown.add(Line.of(gain(POPULATION, earnings.populationGrowth())));
+			}
+			grown.add(Line.of(gain(RESEARCH, RESEARCH_PER_TURN)));
 			report.add(RESOURCES, Line.of("Your Population earned ", gain(GOLD, earnings.populationGold()),
-					", and your Nation gained ", gain(POPULATION, POPULATION_PER_TURN), " and ",
-					gain(RESEARCH, RESEARCH_PER_TURN), "."));
+					", and your Nation gained ", Line.joined(grown), "."));
 			buildingsAddedLine(earnings.buildingPopulation(), earnings.buildingGold(), earnings.buildingResearch())
 				.ifPresent(line -> report.add(RESOURCES, line));
 			for (Nation.Desertion desertion : earnings.desertions()) {
@@ -425,6 +430,20 @@ public class Game {
 			}
 			if (earnings.upkeep() > 0) {
 				report.add(RESOURCES, Line.of("Your Units' upkeep cost ", loss(GOLD, earnings.upkeep()), "."));
+			}
+			if (earnings.lasting() != null) {
+				LastingEvent lasting = earnings.lasting();
+				List<Line> changes = new ArrayList<>();
+				if (lasting.noGrowth()) {
+					changes.add(Line.of("no Population growth"));
+				}
+				resourcesChanged(earnings.lastingChange()).ifPresent(changes::add);
+				if (!changes.isEmpty()) {
+					report.add(RESOURCES, Line.of(lasting.name() + ": ", Line.joined(changes), "."));
+				}
+				if (lasting.turnsLeft() == 1) {
+					report.add(EVENTS, lasting.name() + " has ended.");
+				}
 			}
 		}
 		rollEvents(reports, witnessed);
@@ -448,45 +467,57 @@ public class Game {
 	 * What a Nation earned and paid as a Turn resolved.
 	 *
 	 * @param populationGold the Gold its Population earned
+	 * @param populationGrowth the flat amount its Population grew by
 	 * @param buildingGold the Gold its Buildings added
 	 * @param buildingPopulation the Population its Buildings added
 	 * @param buildingResearch the Research its Buildings added
+	 * @param lasting its Lasting Event as it applied, or null if none did
+	 * @param lastingChange how much its Lasting Event changed its resources by
 	 * @param desertions the Units that deserted because their upkeep could not
 	 *        be paid
 	 * @param upkeep the Gold its remaining Units' upkeep cost
 	 */
-	private record IncomeAndUpkeep(int populationGold, int buildingGold, int buildingPopulation, int buildingResearch,
-			List<Nation.Desertion> desertions, int upkeep) {
+	private record IncomeAndUpkeep(int populationGold, int populationGrowth, int buildingGold, int buildingPopulation,
+			int buildingResearch, LastingEvent lasting, Nation.Change lastingChange, List<Nation.Desertion> desertions,
+			int upkeep) {
 	}
 
 	/**
-	 * Gives a Nation its income for the Turn, lets the Units it cannot pay for
-	 * desert, then pays the rest's upkeep.
+	 * Gives a Nation its income for the Turn, applies its Lasting Event, lets
+	 * the Units it cannot pay for desert, then pays the rest's upkeep.
 	 */
 	private IncomeAndUpkeep earnAndPayUpkeep(Nation nation) {
-		int buildingPopulation = nation.populationFromBuildings(ruleset);
+		Optional<LastingEvent> lasting = nation.passLastingTurn(turn);
+		boolean grows = lasting.map(applying -> !applying.noGrowth()).orElse(true);
+		int populationGrowth = grows ? POPULATION_PER_TURN : 0;
+		int buildingPopulation = grows ? nation.populationFromBuildings(ruleset) : 0;
 		int buildingGold = nation.goldFromBuildings(ruleset);
 		int buildingResearch = nation.researchFromBuildings(ruleset);
 		int populationGold = nation.goldFromPopulation();
-		nation.gain(populationGold + buildingGold, POPULATION_PER_TURN + buildingPopulation,
+		nation.gain(populationGold + buildingGold, populationGrowth + buildingPopulation,
 				RESEARCH_PER_TURN + buildingResearch);
+		Nation.Change lastingChange = lasting
+			.map(applying -> nation.change(applying.gold(), applying.population(), applying.research()))
+			.orElse(new Nation.Change(0, 0, 0));
 		List<Nation.Desertion> desertions = nation.desertUntilUpkeepIsAffordable(ruleset);
-		return new IncomeAndUpkeep(populationGold, buildingGold, buildingPopulation, buildingResearch, desertions,
-				nation.payUpkeep(ruleset));
+		return new IncomeAndUpkeep(populationGold, populationGrowth, buildingGold, buildingPopulation, buildingResearch,
+				lasting.orElse(null), lastingChange, desertions, nation.payUpkeep(ruleset));
 	}
 
 	/**
 	 * The Gold a Nation will gain or lose as this Turn resolves, worked out by
 	 * resolving a copy of it the way {@link #endTurn} does, leaving out what
-	 * Dilemmas, Battles, Plunder, Tribute and Events would change. Warparties
-	 * and Spies coming home change no Gold but Plunder, and leave its Units'
-	 * upkeep the same, so they are left out too.
+	 * Dilemmas, Battles, Plunder, Tribute and Events would change, though not
+	 * what its active Lasting Event will. Warparties and Spies coming home
+	 * change no Gold but Plunder, and leave its Units' upkeep the same, so
+	 * they are left out too.
 	 */
 	private GoldForecast goldForecast(Nation nation) {
 		Nation next = nation.copy();
 		next.progressWork(turn + 1, ruleset);
 		IncomeAndUpkeep earnings = earnAndPayUpkeep(next);
-		return new GoldForecast(earnings.populationGold() + earnings.buildingGold(), earnings.upkeep());
+		return new GoldForecast(earnings.populationGold() + earnings.buildingGold(), earnings.upkeep(),
+				earnings.lastingChange().gold());
 	}
 
 	/**
@@ -857,7 +888,8 @@ public class Game {
 								report.add(DECISIONS_AND_ALERTS, event.text() + "; choose what to do before this Turn ends.");
 							}
 							else {
-								report.add(EVENTS, announced(event.text(), befall(event.effects(), nation, reports, witnessed)));
+								report.add(EVENTS,
+										announced(event.text(), befall(event.name(), event.effects(), nation, reports, witnessed)));
 							}
 						}
 					}
@@ -1277,12 +1309,14 @@ public class Game {
 	/**
 	 * Whether a Nation has what an Event's effects need: some of each Unit
 	 * type they lose in its Army, work in progress if they stall or speed it
-	 * up, and a Spy to catch if they catch one.
+	 * up, a Spy to catch if they catch one, and room for a Lasting Event if
+	 * they begin one.
 	 */
 	private boolean canBefall(Event.Effects effects, Nation nation) {
 		return effects.unitsLeaving().stream().allMatch(unit -> nation.army().containsKey(unit))
 				&& (effects.workTurns() == 0 || nation.workInProgress() > 0)
-				&& (effects.spyCaught() == null || !catchable(effects.spyCaught(), nation).isEmpty());
+				&& (effects.spyCaught() == null || !catchable(effects.spyCaught(), nation).isEmpty())
+				&& (effects.lasting() == null || nation.canBeginLasting(turn));
 	}
 
 	/**
@@ -1327,40 +1361,18 @@ public class Game {
 	 * picked by one draw from the seeded random source, after the draws that
 	 * vary its effects; a Spy caught then draws for what becomes of it, as
 	 * {@link #caught} does. The Nation is told only the Event's text of its own
-	 * Spy being caught.
+	 * Spy being caught. A Lasting Event they begin is skipped if one cannot
+	 * begin for the Nation now, the rest still applying.
 	 *
+	 * @param name the Event's name, which a Lasting Event it begins takes
 	 * @return what changed, such as "your Nation gained 4 Population"
 	 */
-	private List<Line> befall(Event.Effects authored, Nation nation, Map<String, TurnReport.Draft> reports,
-			List<Witnessed> witnessed) {
+	private List<Line> befall(String name, Event.Effects authored, Nation nation,
+			Map<String, TurnReport.Draft> reports, List<Witnessed> witnessed) {
 		Event.Effects effects = authored.varied(random);
 		List<Line> changes = new ArrayList<>();
-		Nation.Change change = nation.change(effects.gold(), effects.population(), effects.research());
-		Map<Resource, Integer> changed = new EnumMap<>(Resource.class);
-		changed.put(GOLD, change.gold());
-		changed.put(POPULATION, change.population());
-		changed.put(RESEARCH, change.research());
-		List<Line> gained = new ArrayList<>();
-		List<Line> lost = new ArrayList<>();
-		changed.forEach((resource, amount) -> {
-			if (amount > 0) {
-				gained.add(Line.of(gain(resource, amount)));
-			}
-			else if (amount < 0) {
-				lost.add(Line.of(loss(resource, -amount)));
-			}
-		});
-		List<Line> resources = new ArrayList<>();
-		if (!gained.isEmpty()) {
-			resources.add(Line.of("gained ", Line.joined(gained)));
-		}
-		if (!lost.isEmpty()) {
-			resources.add(Line.of("lost ", Line.joined(lost)));
-		}
-		if (!resources.isEmpty()) {
-			changes.add(Line.of("your Nation ", resources.getFirst(),
-					resources.size() > 1 ? Line.of(" and ", resources.getLast()) : Line.of()));
-		}
+		resourcesChanged(nation.change(effects.gold(), effects.population(), effects.research()))
+			.ifPresent(changes::add);
 		if (effects.damageDefense() > 0) {
 			Nation.DefenseWorn defenseWorn = nation.wearDefense(effects.damageDefense(), ruleset);
 			if (defenseWorn.worn() > 0) {
@@ -1389,7 +1401,69 @@ public class Game {
 				caught(picked.spy(), picked.sender(), picked.catching(), "Your people", reports, witnessed);
 			}
 		}
+		if (effects.lasting() != null && nation.canBeginLasting(turn)) {
+			LastingEvent lasting = new LastingEvent(name, effects.lasting());
+			nation.beginLasting(lasting, turn);
+			changes.add(Line.of("for " + turns(lasting.turnsLeft()) + ", your Nation will have ", lastingChanges(lasting)));
+		}
 		return changes;
+	}
+
+	/**
+	 * Such as "your Nation gained 4 Population and lost 5 Gold", if anything
+	 * changed.
+	 */
+	private static Optional<Line> resourcesChanged(Nation.Change change) {
+		Map<Resource, Integer> changed = new EnumMap<>(Resource.class);
+		changed.put(GOLD, change.gold());
+		changed.put(POPULATION, change.population());
+		changed.put(RESEARCH, change.research());
+		List<Line> gained = new ArrayList<>();
+		List<Line> lost = new ArrayList<>();
+		changed.forEach((resource, amount) -> {
+			if (amount > 0) {
+				gained.add(Line.of(gain(resource, amount)));
+			}
+			else if (amount < 0) {
+				lost.add(Line.of(loss(resource, -amount)));
+			}
+		});
+		List<Line> resources = new ArrayList<>();
+		if (!gained.isEmpty()) {
+			resources.add(Line.of("gained ", Line.joined(gained)));
+		}
+		if (!lost.isEmpty()) {
+			resources.add(Line.of("lost ", Line.joined(lost)));
+		}
+		if (resources.isEmpty()) {
+			return Optional.empty();
+		}
+		return Optional.of(Line.of("your Nation ", resources.getFirst(),
+				resources.size() > 1 ? Line.of(" and ", resources.getLast()) : Line.of()));
+	}
+
+	/**
+	 * What a Lasting Event changes each Turn, such as "no Population growth and
+	 * 5 Gold less each Turn".
+	 */
+	private static Line lastingChanges(LastingEvent lasting) {
+		List<Line> changes = new ArrayList<>();
+		if (lasting.noGrowth()) {
+			changes.add(Line.of("no Population growth"));
+		}
+		Map<Resource, Integer> each = new EnumMap<>(Resource.class);
+		each.put(GOLD, lasting.gold());
+		each.put(POPULATION, lasting.population());
+		each.put(RESEARCH, lasting.research());
+		each.forEach((resource, amount) -> {
+			if (amount > 0) {
+				changes.add(Line.of(gain(resource, amount), " more each Turn"));
+			}
+			else if (amount < 0) {
+				changes.add(Line.of(loss(resource, -amount), " less each Turn"));
+			}
+		});
+		return Line.joined(changes);
 	}
 
 	/**

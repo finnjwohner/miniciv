@@ -248,9 +248,12 @@ public record Event(String name, Subject subject, double chance, Conditions when
 	 * @param scoutsLost how many of the Nation's Scouts are lost, no more than
 	 *        it has; luck never varies it, so "a Scout was lost" loses exactly
 	 *        one
+	 * @param lasting the Lasting Event it begins for the Nation, named after
+	 *        the Event, or null if none; it does not begin while the Nation has
+	 *        one active or for a few Turns after one ends
 	 */
 	public record Effects(int gold, int population, int research, int damageDefense, int travelTurns,
-			Map<String, Integer> units, int workTurns, SpyCaught spyCaught, int scoutsLost) {
+			Map<String, Integer> units, int workTurns, SpyCaught spyCaught, int scoutsLost, Lasting lasting) {
 
 		static final Effects NONE = new Effects(0, 0, 0, 0, 0);
 
@@ -274,11 +277,20 @@ public record Event(String name, Subject subject, double chance, Conditions when
 		}
 
 		/**
+		 * Effects that begin no Lasting Event.
+		 */
+		public Effects(int gold, int population, int research, int damageDefense, int travelTurns,
+				Map<String, Integer> units, int workTurns, SpyCaught spyCaught, int scoutsLost) {
+			this(gold, population, research, damageDefense, travelTurns, units, workTurns, spyCaught, scoutsLost, null);
+		}
+
+		/**
 		 * These effects as luck varies them, drawing once from the given random
 		 * source for each Gold, Population, Research and Defense-damage effect
 		 * that is not 0, in that order, then for each Unit type in the order
-		 * listed, then for work Turns if not 0; travel Turns and Scouts lost
-		 * never vary.
+		 * listed, then for work Turns if not 0, then for each of a Lasting
+		 * Event's per-Turn Gold, Population and Research changes that is not 0;
+		 * travel Turns, Scouts lost and a Lasting Event's Turns never vary.
 		 */
 		Effects varied(RandomGenerator random) {
 			int variedGold = varied(gold, random);
@@ -287,8 +299,12 @@ public record Event(String name, Subject subject, double chance, Conditions when
 			int variedDamage = varied(damageDefense, random);
 			Map<String, Integer> variedUnits = new LinkedHashMap<>();
 			units.forEach((unit, count) -> variedUnits.put(unit, varied(count, random)));
+			int variedWork = varied(workTurns, random);
+			Lasting variedLasting = lasting == null ? null
+					: new Lasting(lasting.turns(), varied(lasting.gold(), random), varied(lasting.population(), random),
+							varied(lasting.research(), random), lasting.noGrowth());
 			return new Effects(variedGold, variedPopulation, variedResearch, variedDamage, travelTurns, variedUnits,
-					varied(workTurns, random), spyCaught, scoutsLost);
+					variedWork, spyCaught, scoutsLost, variedLasting);
 		}
 
 		/**
@@ -316,6 +332,41 @@ public record Event(String name, Subject subject, double chance, Conditions when
 			int spread = Math.max(1, Math.abs(authored) / 10);
 			int change = (int) (luck * (2 * spread + 1)) - spread;
 			return Integer.signum(authored) * Math.max(1, Math.abs(authored) + change);
+		}
+
+	}
+
+	/**
+	 * A Lasting Event an Event or a Dilemma outcome begins: a change that
+	 * applies again as each of the next Turns resolves, along with the
+	 * Nation's income.
+	 *
+	 * @param turns how many Turns it lasts, at least 1
+	 * @param gold how much the Nation's Gold changes by each Turn; it never
+	 *        falls below 0
+	 * @param population how much the Nation's Population changes by each
+	 *        Turn; it never falls below 0
+	 * @param research how much the Nation's Research changes by each Turn; it
+	 *        never falls below 0
+	 * @param noGrowth whether the Nation's Population stops growing, neither
+	 *        its flat amount nor what its Buildings add
+	 */
+	public record Lasting(int turns, int gold, int population, int research, boolean noGrowth) {
+
+		/**
+		 * What is wrong with it, if anything.
+		 *
+		 * @param what what begins it, such as "Event Drought"
+		 */
+		List<String> problems(String what) {
+			List<String> problems = new ArrayList<>();
+			if (turns < 1) {
+				problems.add(what + " must begin a Lasting Event of at least 1 Turn.");
+			}
+			if (gold == 0 && population == 0 && research == 0 && !noGrowth) {
+				problems.add(what + " begins a Lasting Event that changes nothing.");
+			}
+			return problems;
 		}
 
 	}
@@ -351,6 +402,7 @@ public record Event(String name, Subject subject, double chance, Conditions when
 		if (effects.scoutsLost() < 0) {
 			problems.add(subjectName + " cannot lose less than 0 Scouts.");
 		}
+		problems.addAll(lastingProblems(subjectName, effects));
 		if (subject == Subject.WARPARTY) {
 			String unsuited = subjectName + " happens to a Warparty, so it cannot ";
 			unsuited(problems, unsuited + "need populationAtLeast.", when.populationAtLeast() != null);
@@ -365,6 +417,7 @@ public record Event(String name, Subject subject, double chance, Conditions when
 			unsuited(problems, unsuited + "change workTurns.", effects.workTurns() != 0);
 			unsuited(problems, unsuited + "change spyCaught.", effects.spyCaught() != null);
 			unsuited(problems, unsuited + "change scoutsLost.", effects.scoutsLost() != 0);
+			unsuited(problems, unsuited + "begin a Lasting Event.", effects.lasting() != null);
 		}
 		if (subject == Subject.NATION || subject == Subject.SCOUTS) {
 			String unsuited = subjectName + (subject == Subject.NATION ? " happens to a Nation" : " happens to Scouts")
@@ -447,6 +500,7 @@ public record Event(String name, Subject subject, double chance, Conditions when
 				}
 				problems.addAll(unitProblems(choiceName, choice.effects(), unitTypes));
 				problems.addAll(scoutProblems(subjectName, choiceName, choice.effects()));
+				problems.addAll(lastingProblems(choiceName, choice.effects()));
 			}
 			else {
 				problems.addAll(outcomeProblems(choiceName, choice, unitTypes));
@@ -484,6 +538,7 @@ public record Event(String name, Subject subject, double chance, Conditions when
 			}
 			problems.addAll(unitProblems(choiceName + " has an outcome that", outcome.effects(), unitTypes));
 			problems.addAll(scoutProblems(subjectName, choiceName + " has an outcome that", outcome.effects()));
+			problems.addAll(lastingProblems(choiceName + " has an outcome that", outcome.effects()));
 		}
 		// Chances such as 0.1 cannot be added exactly.
 		if (Math.abs(total - 1) > 1e-9) {
@@ -508,6 +563,13 @@ public record Event(String name, Subject subject, double chance, Conditions when
 			return List.of(what + " cannot lose Scouts, as " + subjectName + " happens to a Nation.");
 		}
 		return List.of();
+	}
+
+	/**
+	 * What is wrong with the Lasting Event some effects begin, if anything.
+	 */
+	private static List<String> lastingProblems(String what, Effects effects) {
+		return effects.lasting() == null ? List.of() : effects.lasting().problems(what);
 	}
 
 	private static void notBelowZero(List<String> problems, String subject, String condition, Integer least) {

@@ -18,6 +18,12 @@ import java.util.stream.Collectors;
  */
 class Nation {
 
+	/**
+	 * How many Turns after a Lasting Event ends no other can begin; the
+	 * Player is never told.
+	 */
+	static final int LASTING_COOLDOWN_TURNS = 3;
+
 	private final NationIdentity identity;
 
 	private int gold;
@@ -112,6 +118,22 @@ class Nation {
 	 */
 	private boolean removed;
 
+	/**
+	 * The Lasting Event active for the Nation, or null if none is.
+	 */
+	private LastingEvent lastingEvent;
+
+	/**
+	 * The Turn the active Lasting Event began on, as which it does not yet
+	 * apply.
+	 */
+	private int lastingBegunOn;
+
+	/**
+	 * The Turn the Nation's last Lasting Event ended on, or 0 if none has.
+	 */
+	private int lastingEndedOn;
+
 	private int version = 1;
 
 	Nation(NationIdentity identity, int gold, int population, int research) {
@@ -137,6 +159,9 @@ class Nation {
 		copy.scouts.putAll(scouts);
 		copy.warparties.addAll(warparties);
 		copy.spies.addAll(spies);
+		copy.lastingEvent = lastingEvent;
+		copy.lastingBegunOn = lastingBegunOn;
+		copy.lastingEndedOn = lastingEndedOn;
 		return copy;
 	}
 
@@ -173,7 +198,7 @@ class Nation {
 				sellValues(ruleset),
 				availableUnits,
 				Collections.unmodifiableMap(new LinkedHashMap<>(army)), scouts(), training, warparties, spies, TravelBracket.ALL, Spy.TRAVEL_TURNS, upkeep(ruleset),
-				goldForecast,
+				goldForecast, lastingEvent,
 				arrivals, tributes, encounters, techTree(ruleset), turnReport, awaitingChoice(winner),
 				conqueredBy, winner);
 	}
@@ -593,6 +618,45 @@ class Nation {
 				Math.max(research, -this.research));
 		gain(change.gold(), change.population(), change.research());
 		return change;
+	}
+
+	/**
+	 * Whether a Lasting Event may begin for the Nation as the given Turn
+	 * resolves: none is active, and none ended as that Turn or the last
+	 * {@value #LASTING_COOLDOWN_TURNS} resolved.
+	 */
+	boolean canBeginLasting(int turn) {
+		return lastingEvent == null && (lastingEndedOn == 0 || turn - lastingEndedOn > LASTING_COOLDOWN_TURNS);
+	}
+
+	/**
+	 * Begins a Lasting Event for the Nation as the given Turn resolves; it
+	 * first applies as the next Turn does.
+	 */
+	void beginLasting(LastingEvent lasting, int turn) {
+		lastingEvent = lasting;
+		lastingBegunOn = turn;
+		version++;
+	}
+
+	/**
+	 * Uses up one of the active Lasting Event's Turns as the given Turn
+	 * resolves, ending it once it has none left. One that began as this Turn
+	 * resolves does not apply yet.
+	 *
+	 * @return the Lasting Event as it applies this Turn, if one does
+	 */
+	Optional<LastingEvent> passLastingTurn(int turn) {
+		if (lastingEvent == null || lastingBegunOn == turn) {
+			return Optional.empty();
+		}
+		LastingEvent applying = lastingEvent;
+		lastingEvent = applying.turnsLeft() > 1 ? applying.withTurnPassed() : null;
+		if (lastingEvent == null) {
+			lastingEndedOn = turn;
+		}
+		version++;
+		return Optional.of(applying);
 	}
 
 	/**
