@@ -77,10 +77,22 @@ public class Rooms {
 		return rooms.values().stream().flatMap(room -> room.playerIdFor(token).stream()).findFirst();
 	}
 
+	/**
+	 * Adds a Player to a Room, refused as for an unknown code if the Room is
+	 * removed before the Player is added.
+	 */
 	public Room.Joined join(String code, String nationName) {
-		Room room = find(code).orElseThrow(
-				() -> new JoinRefused(JoinRefused.Reason.NO_SUCH_ROOM, "There is no Room with code " + code + "."));
-		return change(room, r -> r.join(nationName));
+		Room room = find(code).orElseThrow(() -> noSuchRoom(code));
+		return change(room, r -> {
+			if (rooms.get(code) != r) {
+				throw noSuchRoom(code);
+			}
+			return r.join(nationName);
+		});
+	}
+
+	private static JoinRefused noSuchRoom(String code) {
+		return new JoinRefused(JoinRefused.Reason.NO_SUCH_ROOM, "There is no Room with code " + code + ".");
 	}
 
 	public ActionResult ready(String code, String token, boolean ready) {
@@ -156,6 +168,22 @@ public class Rooms {
 					r.removeLongDisconnected();
 					return null;
 				});
+			}
+		}
+	}
+
+	/**
+	 * Removes every Room none of whose Players has been connected for too
+	 * long, so its code no longer resolves.
+	 */
+	@Scheduled(fixedRate = 1000)
+	public void removeEmptyRooms() {
+		for (Room room : rooms.values()) {
+			// Holds the Room so that no Player joins it while it is removed.
+			synchronized (room) {
+				if (room.abandoned()) {
+					rooms.remove(room.code(), room);
+				}
 			}
 		}
 	}

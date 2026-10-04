@@ -9,7 +9,7 @@ One match of miniciv for 2–4 Players, from start until one Nation is left stan
 _Avoid_: Match, session, round
 
 **Room**:
-The place Players gather before a Game starts, joined by a room code or invite link; the Game starts once 2–4 Players are all ready, and no one can join after that.
+The place Players gather before a Game starts, joined by a room code or invite link; the Game starts once 2–4 Players are all ready, and no one can join after that. A Room none of whose Players has been connected for 60 seconds is removed, and its room code no longer resolves.
 _Avoid_: Lobby, server
 
 **Player**:
