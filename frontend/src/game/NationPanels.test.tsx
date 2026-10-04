@@ -1,5 +1,5 @@
 import { fireEvent, screen, within } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import type { HiddenTechnology } from '../api'
 import { nationView, renderGame, tab, TURN, unit } from '../test/fixtures'
 import { buttonsIn, precedes, rowNamed } from '../test/order'
@@ -42,20 +42,31 @@ function readUnitDetails(name: string) {
 
 describe('TrainPanel', () => {
   it('runs the Train slider from 1 to the most the Nation can afford, clamping when that drops', () => {
-    const { rerenderGame } = renderGame({ nation: nationView({ gold: 50 }) })
+    const { rerenderGame } = renderGame({ nation: nationView({ gold: 75 }) })
     fireEvent.click(tab('Train'))
 
     const slider = screen.getByRole('slider', { name: 'How many Warrior to train' })
     expect(slider).toHaveAttribute('min', '1')
+    expect(slider).toHaveAttribute('max', '3')
+    fireEvent.change(slider, { target: { value: '3' } })
+    expect(slider).toHaveValue('3')
+
+    rerenderGame({ nation: nationView({ version: 2, gold: 50 }) })
+
     expect(slider).toHaveAttribute('max', '2')
-    fireEvent.change(slider, { target: { value: '2' } })
     expect(slider).toHaveValue('2')
-
-    rerenderGame({ nation: nationView({ version: 2, gold: 30 }) })
-
-    expect(slider).toHaveAttribute('max', '1')
-    expect(slider).toHaveValue('1')
     expect(screen.getByRole('button', { name: 'Train Warrior' })).toBeEnabled()
+  })
+
+  it('shows the count as text, with no slider, when exactly 1 Unit can be trained, and trains 1', () => {
+    const onTrainUnits = vi.fn()
+    renderGame({ nation: nationView({ gold: 30 }), onTrainUnits })
+    fireEvent.click(tab('Train'))
+
+    expect(screen.queryByRole('slider', { name: 'How many Warrior to train' })).not.toBeInTheDocument()
+    expect(screen.getByRole('status', { name: 'How many Warrior to train' })).toHaveTextContent('1')
+    fireEvent.click(screen.getByRole('button', { name: 'Train Warrior' }))
+    expect(onTrainUnits).toHaveBeenCalledWith('Warrior', 1)
   })
 
   it('limits the Train slider by Population too', () => {

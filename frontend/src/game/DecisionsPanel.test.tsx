@@ -20,6 +20,17 @@ describe('DecisionsPanel', () => {
     expect(population).toHaveAttribute('max', '9')
   })
 
+  it('keeps the Tribute sliders when only 1 Gold and 1 Population are held, so 0 stays selectable', () => {
+    renderGame({ nation: nationView({ gold: 1, population: 1, arrivals: [{ nation: 'Egypt', warparty: 1 }] }) })
+
+    for (const name of ['Gold to offer Egypt', 'Population to offer Egypt']) {
+      const slider = screen.getByRole('slider', { name })
+      expect(slider).toHaveAttribute('min', '0')
+      expect(slider).toHaveAttribute('max', '1')
+      expect(slider).toHaveValue('0')
+    }
+  })
+
   it('shows a button per Dilemma choice, tagging only the worst', () => {
     renderGame()
 
