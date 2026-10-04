@@ -15,7 +15,7 @@ public sealed interface Action {
 	}
 
 	/**
-	 * Pays now to repair a defensive Building type's damaged Building, which
+	 * Pays now to repair one of a Building type's Damaged Buildings, which
 	 * takes some Turns.
 	 */
 	record RepairBuilding(String building) implements Action {
@@ -30,8 +30,8 @@ public sealed interface Action {
 
 	/**
 	 * Gives up one of the Nation's standing Buildings of a type at once for
-	 * Gold: an undamaged one if it has any, for half its Gold, or else the
-	 * damaged one, for a quarter.
+	 * Gold: an undamaged one if it has any, for half its Gold, or else a
+	 * Damaged one, for a quarter.
 	 */
 	record SellBuilding(String building) implements Action {
 	}

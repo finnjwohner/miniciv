@@ -1134,7 +1134,8 @@ public class Game {
 						yield Line.of(armyFact(target));
 					}
 					case BUILDINGS -> {
-						facts = facts.withBuildings(target.buildings(), target.defense(ruleset), turn);
+						facts = facts.withBuildings(target.buildings(), target.damagedBuildings(), target.defense(ruleset),
+								turn);
 						yield Line.of(buildingsFact(target));
 					}
 				};
@@ -1154,11 +1155,14 @@ public class Game {
 	}
 
 	/**
-	 * Such as "Egypt has built Walls ×1, and its Defense is 10".
+	 * Such as "Egypt has built Walls ×1, and its Defense is 10" or "Egypt has
+	 * built Market ×2, with Market ×1 damaged, and its Defense is 0".
 	 */
 	private String buildingsFact(Nation nation) {
+		Map<String, Integer> damaged = nation.damagedBuildings();
 		return nation.name() + " has built "
-				+ (nation.buildings().isEmpty() ? "nothing" : listed(nation.buildings())) + ", and its Defense is "
+				+ (nation.buildings().isEmpty() ? "nothing" : listed(nation.buildings()))
+				+ (damaged.isEmpty() ? "" : ", with " + listed(damaged) + " damaged") + ", and its Defense is "
 				+ nation.defense(ruleset);
 	}
 
@@ -1262,7 +1266,7 @@ public class Game {
 				.withPopulation(sender.population(), turn)
 				.withResearch(sender.research(), turn)
 				.withArmy(sender.army(), turn)
-				.withBuildings(sender.buildings(), sender.defense(ruleset), turn));
+				.withBuildings(sender.buildings(), sender.damagedBuildings(), sender.defense(ruleset), turn));
 			report.add(SPIES_AND_SCOUTS, Line.of("From its confession, " + sender.name() + " has ",
 					neutral(GOLD, sender.gold()), ", ", neutral(POPULATION, sender.population()), " and ",
 					neutral(RESEARCH, sender.research()), "; " + armyFact(sender) + "; " + buildingsFact(sender) + "."));
@@ -1329,12 +1333,13 @@ public class Game {
 	/**
 	 * Whether a Nation has what an Event's effects need: some of each Unit
 	 * type they lose in its Army, work in progress if they stall or speed it
-	 * up, a Spy to catch if they catch one, and room for a Lasting Event if
-	 * they begin one.
+	 * up, an undamaged non-defensive Building if they Damage some, a Spy to
+	 * catch if they catch one, and room for a Lasting Event if they begin one.
 	 */
 	private boolean canBefall(Event.Effects effects, Nation nation) {
 		return effects.unitsLeaving().stream().allMatch(unit -> nation.army().containsKey(unit))
 				&& (effects.workTurns() == 0 || nation.workInProgress() > 0)
+				&& (effects.damageBuildings() == 0 || !nation.undamagedNonDefensive(ruleset).isEmpty())
 				&& (effects.spyCaught() == null || !catchable(effects.spyCaught(), nation).isEmpty())
 				&& (effects.lasting() == null || nation.canBeginLasting(turn));
 	}
@@ -1377,9 +1382,12 @@ public class Game {
 
 	/**
 	 * Applies an Event's or a Dilemma outcome's effects to a Nation, as luck
-	 * varies them. Work it stalls or speeds up and a Spy it catches are each
-	 * picked by one draw from the seeded random source, after the draws that
-	 * vary its effects; a Spy caught then draws for what becomes of it, as
+	 * varies them. Each non-defensive Building it Damages, then work it stalls
+	 * or speeds up, then a Spy it catches are each picked by one draw from the
+	 * seeded random source, after the draws that vary its effects, each
+	 * Building from those still undamaged (see
+	 * {@link Nation#undamagedNonDefensive}); a Spy caught then draws for what
+	 * becomes of it, as
 	 * {@link #caught} does. The Nation is told only the Event's text of its own
 	 * Spy being caught. A Lasting Event they begin is skipped if one cannot
 	 * begin for the Nation now, the rest still applying.
@@ -1399,6 +1407,20 @@ public class Game {
 				changes.add(Line.of("your Defense was worn down from " + defenseWorn.before() + " to "
 						+ defenseWorn.after() + ", " + buildingsHarmed(defenseWorn)));
 			}
+		}
+		Map<String, Integer> damaged = new LinkedHashMap<>();
+		for (int left = effects.damageBuildings(); left > 0; left--) {
+			List<String> undamaged = nation.undamagedNonDefensive(ruleset);
+			if (undamaged.isEmpty()) {
+				break;
+			}
+			String building = undamaged.get((int) (random.nextDouble() * undamaged.size()));
+			nation.damage(building);
+			damaged.merge(building, 1, Integer::sum);
+		}
+		if (!damaged.isEmpty()) {
+			int count = damaged.values().stream().mapToInt(Integer::intValue).sum();
+			changes.add(Line.of("your " + listed(damaged) + (count == 1 ? " was" : " were") + " damaged"));
 		}
 		if (!effects.units().isEmpty()) {
 			changes.addAll(unitsChanged(nation.changeArmy(effects.units()), "your Army"));

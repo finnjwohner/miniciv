@@ -251,9 +251,13 @@ public record Event(String name, Subject subject, double chance, Conditions when
 	 * @param lasting the Lasting Event it begins for the Nation, named after
 	 *        the Event, or null if none; it does not begin while the Nation has
 	 *        one active or for a few Turns after one ends
+	 * @param damageBuildings how many of the Nation's undamaged non-defensive
+	 *        Buildings are Damaged, picked by luck, no more than it has; luck
+	 *        never varies it
 	 */
 	public record Effects(int gold, int population, int research, int damageDefense, int travelTurns,
-			Map<String, Integer> units, int workTurns, SpyCaught spyCaught, int scoutsLost, Lasting lasting) {
+			Map<String, Integer> units, int workTurns, SpyCaught spyCaught, int scoutsLost, Lasting lasting,
+			int damageBuildings) {
 
 		static final Effects NONE = new Effects(0, 0, 0, 0, 0);
 
@@ -277,6 +281,15 @@ public record Event(String name, Subject subject, double chance, Conditions when
 		}
 
 		/**
+		 * Effects that Damage no non-defensive Buildings.
+		 */
+		public Effects(int gold, int population, int research, int damageDefense, int travelTurns,
+				Map<String, Integer> units, int workTurns, SpyCaught spyCaught, int scoutsLost, Lasting lasting) {
+			this(gold, population, research, damageDefense, travelTurns, units, workTurns, spyCaught, scoutsLost, lasting,
+					0);
+		}
+
+		/**
 		 * Effects that begin no Lasting Event.
 		 */
 		public Effects(int gold, int population, int research, int damageDefense, int travelTurns,
@@ -290,7 +303,8 @@ public record Event(String name, Subject subject, double chance, Conditions when
 		 * that is not 0, in that order, then for each Unit type in the order
 		 * listed, then for work Turns if not 0, then for each of a Lasting
 		 * Event's per-Turn Gold, Population and Research changes that is not 0;
-		 * travel Turns, Scouts lost and a Lasting Event's Turns never vary.
+		 * travel Turns, Scouts lost, Buildings Damaged and a Lasting Event's
+		 * Turns never vary.
 		 */
 		Effects varied(RandomGenerator random) {
 			int variedGold = varied(gold, random);
@@ -304,7 +318,7 @@ public record Event(String name, Subject subject, double chance, Conditions when
 					: new Lasting(lasting.turns(), varied(lasting.gold(), random), varied(lasting.population(), random),
 							varied(lasting.research(), random), lasting.noGrowth());
 			return new Effects(variedGold, variedPopulation, variedResearch, variedDamage, travelTurns, variedUnits,
-					variedWork, spyCaught, scoutsLost, variedLasting);
+					variedWork, spyCaught, scoutsLost, variedLasting, damageBuildings);
 		}
 
 		/**
@@ -398,6 +412,9 @@ public record Event(String name, Subject subject, double chance, Conditions when
 		if (effects.damageDefense() < 0) {
 			problems.add(subjectName + " cannot damage Defense by less than 0.");
 		}
+		if (effects.damageBuildings() < 0) {
+			problems.add(subjectName + " cannot damage less than 0 Buildings.");
+		}
 		problems.addAll(unitProblems(subjectName, effects, unitTypes));
 		if (effects.scoutsLost() < 0) {
 			problems.add(subjectName + " cannot lose less than 0 Scouts.");
@@ -414,6 +431,7 @@ public record Event(String name, Subject subject, double chance, Conditions when
 			unsuited(problems, unsuited + "change population.", effects.population() != 0);
 			unsuited(problems, unsuited + "change research.", effects.research() != 0);
 			unsuited(problems, unsuited + "change damageDefense.", effects.damageDefense() != 0);
+			unsuited(problems, unsuited + "change damageBuildings.", effects.damageBuildings() != 0);
 			unsuited(problems, unsuited + "change workTurns.", effects.workTurns() != 0);
 			unsuited(problems, unsuited + "change spyCaught.", effects.spyCaught() != null);
 			unsuited(problems, unsuited + "change scoutsLost.", effects.scoutsLost() != 0);
@@ -498,6 +516,9 @@ public record Event(String name, Subject subject, double chance, Conditions when
 				if (choice.effects().damageDefense() < 0) {
 					problems.add(choiceName + " cannot damage Defense by less than 0.");
 				}
+				if (choice.effects().damageBuildings() < 0) {
+					problems.add(choiceName + " cannot damage less than 0 Buildings.");
+				}
 				problems.addAll(unitProblems(choiceName, choice.effects(), unitTypes));
 				problems.addAll(scoutProblems(subjectName, choiceName, choice.effects()));
 				problems.addAll(lastingProblems(choiceName, choice.effects()));
@@ -535,6 +556,9 @@ public record Event(String name, Subject subject, double chance, Conditions when
 			}
 			if (outcome.effects().damageDefense() < 0) {
 				problems.add(choiceName + " has an outcome that damages Defense by less than 0.");
+			}
+			if (outcome.effects().damageBuildings() < 0) {
+				problems.add(choiceName + " has an outcome that damages less than 0 Buildings.");
 			}
 			problems.addAll(unitProblems(choiceName + " has an outcome that", outcome.effects(), unitTypes));
 			problems.addAll(scoutProblems(subjectName, choiceName + " has an outcome that", outcome.effects()));

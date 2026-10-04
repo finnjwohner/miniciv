@@ -80,21 +80,25 @@ export type BuildingType = {
   defense: number
 }
 /**
- * The Defense a Nation's defensive Buildings of one type have lost and are not yet being repaired or
- * rebuilt for: `destroyed` of them are destroyed, and one more has lost `damaged` Defense (0 if none has).
- * Repairing that one costs `repairGold` and takes `repairTurns`; rebuilding a destroyed one costs
- * `rebuildGold` and takes `rebuildTurns`.
+ * The harm a Nation's Buildings of one type have taken and that is not yet being repaired or rebuilt:
+ * `damaged` of them are Damaged, and Repairing one costs `repairGold` and takes `repairTurns`.
+ * A defensive type has at most one Damaged, which has lost `defenseLost` Defense, and `destroyed` of
+ * them are Destroyed, Rebuilding one costing `rebuildGold` and taking `rebuildTurns`. Any other type
+ * is never Destroyed, so those are null, and its Damaged Buildings add nothing until Repaired.
  */
 export type BuildingDamage = {
   building: string
-  destroyed: number
   damaged: number
   repairGold: number
   repairTurns: number
-  rebuildGold: number
-  rebuildTurns: number
-}
-/** A defensive Building being repaired, or rebuilt if `rebuild`, restoring `defense` once done. */
+} & (
+  | { defenseLost: number; destroyed: number; rebuildGold: number; rebuildTurns: number }
+  | { defenseLost: null; destroyed: null; rebuildGold: null; rebuildTurns: null }
+)
+/**
+ * A Building being repaired, or rebuilt if `rebuild`; a defensive one restores `defense` once done,
+ * which is 0 for any other.
+ */
 export type Repair = {
   building: string
   rebuild: boolean
@@ -273,6 +277,8 @@ export type Facts = {
   army: Fact<Record<string, number>> | null
   buildings: Fact<Record<string, number>> | null
   defense: Fact<number> | null
+  /** How many of each non-defensive Building were Damaged, learned along with its Buildings. */
+  damaged: Fact<Record<string, number>> | null
 }
 /**
  * A Nation on the Map, as another Nation knows it: its name, Ruler, colour and emblem, public from the

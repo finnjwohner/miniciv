@@ -113,7 +113,7 @@ class CatchingSpiesTest {
 		assertThat(onMapOf("Carthage", "Rome").facts())
 			.isEqualTo(new Facts(new Fact<>(rome.gold(), turn), new Fact<>(rome.population(), turn),
 					new Fact<>(rome.research(), turn), new Fact<>(Map.of("Spy", 1, "Warrior", 1), turn),
-					new Fact<>(Map.of("Walls", 1), turn), new Fact<>(10, turn)));
+					new Fact<>(Map.of("Walls", 1), turn), new Fact<>(10, turn), new Fact<>(Map.of(), turn)));
 		assertThat(rome.spies()).isEmpty();
 	}
 

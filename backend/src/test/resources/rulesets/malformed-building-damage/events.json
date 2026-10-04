@@ -1,0 +1,4 @@
+[
+  { "name": "Fire", "subject": "Nation", "chance": 0.02, "effects": { "damageBuildings": "several" },
+    "text": "A fire swept through your streets" }
+]

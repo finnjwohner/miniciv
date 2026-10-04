@@ -260,6 +260,18 @@ export function SpiesPanel({
   )
 }
 
+/** How many of each non-defensive Building the Nation has Damaged, counting those being Repaired. */
+function damagedBuildings(nation: NationView) {
+  const damaged: Record<string, number> = {}
+  for (const d of nation.damage) {
+    if (d.defenseLost === null) damaged[d.building] = d.damaged
+  }
+  for (const r of nation.repairs) {
+    if (r.defense === 0) damaged[r.building] = (damaged[r.building] ?? 0) + 1
+  }
+  return damaged
+}
+
 /** Such as "120 · Turn 4", or "unknown" if nothing has been learned. */
 function describeFact<T>(fact: Fact<T> | null, describe: (value: T) => string) {
   return fact ? `${describe(fact.value)} · Turn ${fact.turn}` : 'unknown'
@@ -292,6 +304,7 @@ function KnownFacts({ facts }: { facts: MapNation['facts'] }) {
         ['Defense', describeFact(facts.defense, number)],
         ['Army', describeFact(facts.army, counts)],
         ['Buildings', describeFact(facts.buildings, counts)],
+        ['Damaged', describeFact(facts.damaged, counts)],
       ]}
     />
   )
@@ -333,6 +346,7 @@ export function MapPanel({ nation }: { nation: NationView }) {
                     ['Defense', String(nation.defense)],
                     ['Army', listCounts(nation.army) || 'none'],
                     ['Buildings', listCounts(nation.buildings) || 'none'],
+                    ['Damaged', listCounts(damagedBuildings(nation)) || 'none'],
                   ]}
                 />
               ) : (

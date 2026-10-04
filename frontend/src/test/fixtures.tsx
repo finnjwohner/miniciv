@@ -309,6 +309,7 @@ function noFacts(): Facts {
     army: null,
     buildings: null,
     defense: null,
+    damaged: null,
   }
 }
 

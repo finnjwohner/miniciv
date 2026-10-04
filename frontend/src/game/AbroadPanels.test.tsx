@@ -143,3 +143,61 @@ describe('SpiesPanel', () => {
     expect(within(spies).getByText(/running counter-intelligence/)).toBeInTheDocument()
   })
 })
+
+describe('MapPanel', () => {
+  /** The Facts shown on the Map for the Nation `name`, label to value. */
+  function factsOf(name: string) {
+    const card = within(screen.getByRole('region', { name: 'Map' }))
+      .getAllByRole('listitem')
+      .find((item) => within(item).queryByRole('heading', { name: new RegExp(name) }))!
+    const terms = within(card).getAllByRole('term')
+    return new Map(terms.map((t) => [t.textContent, t.nextElementSibling!.textContent]))
+  }
+
+  it('shows which of another Nation’s Buildings a Spy reported Damaged', () => {
+    const view = nationView()
+    renderGame({
+      nation: {
+        ...view,
+        map: view.map.map((other) =>
+          other.name === 'Egypt'
+            ? {
+                ...other,
+                facts: {
+                  ...other.facts,
+                  buildings: { value: { Farm: 2, Market: 1 }, turn: 3 },
+                  defense: { value: 0, turn: 3 },
+                  damaged: { value: { Farm: 1 }, turn: 3 },
+                },
+              }
+            : other,
+        ),
+      },
+    })
+
+    expect(factsOf('Egypt').get('Buildings')).toBe('Farm ×2, Market ×1 · Turn 3')
+    expect(factsOf('Egypt').get('Damaged')).toBe('Farm ×1 · Turn 3')
+  })
+
+  it('shows its own Damaged Buildings, counting those being Repaired', () => {
+    renderGame({
+      nation: nationView({
+        damage: [
+          {
+            building: 'Farm',
+            damaged: 1,
+            defenseLost: null,
+            repairGold: 15,
+            repairTurns: 1,
+            destroyed: null,
+            rebuildGold: null,
+            rebuildTurns: null,
+          },
+        ],
+        repairs: [{ building: 'Farm', rebuild: false, defense: 0, turnsLeft: 1 }],
+      }),
+    })
+
+    expect(factsOf('Rome').get('Damaged')).toBe('Farm ×2')
+  })
+})

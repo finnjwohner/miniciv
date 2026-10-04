@@ -385,7 +385,7 @@ class GameTest {
 
 		game.endTurn();
 
-		assertThat(game.viewOf("Carthage").damage()).containsExactly(new BuildingDamage("Fort", 1, 2, 7, 1, 10, 1));
+		assertThat(game.viewOf("Carthage").damage()).containsExactly(BuildingDamage.defensive("Fort", 1, 2, 7, 1, 10, 1));
 		assertThat(game.viewOf("Carthage").turnReport().lines()).contains("Your Buildings added 3 Gold and 2 Research.");
 	}
 
@@ -812,7 +812,7 @@ class GameTest {
 
 		NationView carthage = game.viewOf("Carthage");
 		assertThat(carthage.defense()).isEqualTo(4);
-		assertThat(carthage.damage()).containsExactly(new BuildingDamage("Walls", 0, 6, 9, 1, 15, 1));
+		assertThat(carthage.damage()).containsExactly(BuildingDamage.defensive("Walls", 0, 6, 9, 1, 15, 1));
 		assertThat(carthage.population()).isEqualTo(carthagePopulation + 2);
 		assertThat(carthage.turnReport().lines()).containsExactly(
 				"Caesar of Rome's Warparty of Warrior ×2 met no Army at your Nation.",
@@ -835,8 +835,8 @@ class GameTest {
 
 		NationView carthage = game.viewOf("Carthage");
 		assertThat(carthage.defense()).isEqualTo(2);
-		assertThat(carthage.damage()).containsExactly(new BuildingDamage("Walls", 1, 0, 0, 0, 15, 1),
-				new BuildingDamage("Moat", 0, 2, 5, 1, 10, 1));
+		assertThat(carthage.damage()).containsExactly(BuildingDamage.defensive("Walls", 1, 0, 0, 0, 15, 1),
+				BuildingDamage.defensive("Moat", 0, 2, 5, 1, 10, 1));
 		assertThat(carthage.turnReport().lines())
 			.contains("Caesar of Rome's Warparty wore your Defense down from 14 to 2, destroying Walls ×1 and damaging Moat.");
 	}
@@ -853,7 +853,7 @@ class GameTest {
 
 		NationView carthage = game.viewOf("Carthage");
 		assertThat(carthage.defense()).isZero();
-		assertThat(carthage.damage()).containsExactly(new BuildingDamage("Moat", 1, 0, 0, 0, 10, 1));
+		assertThat(carthage.damage()).containsExactly(BuildingDamage.defensive("Moat", 1, 0, 0, 0, 10, 1));
 		assertThat(carthage.population()).isEqualTo(carthagePopulation - 8 + 2);
 		assertThat(carthage.turnReport().lines()).containsSequence(
 				"Caesar of Rome's Warparty wore your Defense down from 4 to 0, destroying Moat ×1.",
@@ -928,7 +928,7 @@ class GameTest {
 
 		game.endTurn();
 
-		assertThat(game.viewOf("Carthage").damage()).containsExactly(new BuildingDamage("Fort", 1, 2, 7, 1, 10, 1));
+		assertThat(game.viewOf("Carthage").damage()).containsExactly(BuildingDamage.defensive("Fort", 1, 2, 7, 1, 10, 1));
 		assertThat(game.viewOf("Carthage").population()).isEqualTo(carthagePopulation + 2 + 1);
 		assertThat(game.viewOf("Carthage").turnReport().lines()).contains("Your Buildings added 1 Population.");
 	}
@@ -947,7 +947,7 @@ class GameTest {
 	@Test
 	void repairingADamagedBuildingPaysHalfItsGoldAndTurnsInProportionToTheDefenseItLost() {
 		wallsDamaged();
-		assertThat(game.viewOf("Carthage").damage()).containsExactly(new BuildingDamage("Walls", 0, 6, 9, 1, 15, 1));
+		assertThat(game.viewOf("Carthage").damage()).containsExactly(BuildingDamage.defensive("Walls", 0, 6, 9, 1, 15, 1));
 		int carthageGold = game.viewOf("Carthage").gold();
 
 		ActionResult result = game.act("Carthage", new Action.RepairBuilding("Walls"));
@@ -973,14 +973,14 @@ class GameTest {
 		armyOf("Rome", "Warrior", 4);
 		arrived("Rome", "Carthage", Map.of("Warrior", 4));
 		game.endTurn();
-		assertThat(game.viewOf("Carthage").damage()).containsExactly(new BuildingDamage("Moat", 2, 0, 0, 0, 10, 1));
+		assertThat(game.viewOf("Carthage").damage()).containsExactly(BuildingDamage.defensive("Moat", 2, 0, 0, 0, 10, 1));
 		game.endTurn();
 		game.endTurn();
 		game.endTurn();
 		int carthageGold = game.viewOf("Carthage").gold();
 
 		assertThat(game.act("Carthage", new Action.RebuildBuilding("Moat"))).isEqualTo(ActionResult.ACCEPTED);
-		assertThat(game.viewOf("Carthage").damage()).containsExactly(new BuildingDamage("Moat", 1, 0, 0, 0, 10, 1));
+		assertThat(game.viewOf("Carthage").damage()).containsExactly(BuildingDamage.defensive("Moat", 1, 0, 0, 0, 10, 1));
 		assertThat(game.act("Carthage", new Action.RebuildBuilding("Moat"))).isEqualTo(ActionResult.ACCEPTED);
 
 		NationView carthage = game.viewOf("Carthage");
@@ -1007,7 +1007,7 @@ class GameTest {
 		armyOf("Rome", "Warrior", 2);
 		arrived("Rome", "Carthage", Map.of("Warrior", 2));
 		game.endTurn();
-		assertThat(game.viewOf("Carthage").damage()).containsExactly(new BuildingDamage("Keep", 1, 2, 7, 2, 13, 3));
+		assertThat(game.viewOf("Carthage").damage()).containsExactly(BuildingDamage.defensive("Keep", 1, 2, 7, 2, 13, 3));
 		int carthageGold = game.viewOf("Carthage").gold();
 
 		assertThat(game.act("Carthage", new Action.RebuildBuilding("Keep"))).isEqualTo(ActionResult.ACCEPTED);
@@ -1033,7 +1033,7 @@ class GameTest {
 
 		game.endTurn();
 		assertThat(game.viewOf("Carthage").defense()).isEqualTo(7);
-		assertThat(game.viewOf("Carthage").damage()).containsExactly(new BuildingDamage("Walls", 0, 3, 5, 1, 15, 1));
+		assertThat(game.viewOf("Carthage").damage()).containsExactly(BuildingDamage.defensive("Walls", 0, 3, 5, 1, 15, 1));
 	}
 
 	@Test
@@ -1120,7 +1120,7 @@ class GameTest {
 		NationView carthage = game.viewOf("Carthage");
 		assertThat(carthage.gold()).isEqualTo(carthageGold + 11);
 		assertThat(carthage.defense()).isEqualTo(5);
-		assertThat(carthage.damage()).containsExactly(new BuildingDamage("Fort", 0, 5, 6, 1, 11, 1));
+		assertThat(carthage.damage()).containsExactly(BuildingDamage.defensive("Fort", 0, 5, 6, 1, 11, 1));
 		assertThat(carthage.sellValues()).containsExactly(entry("Fort", 5));
 
 		assertThat(game.act("Carthage", new Action.SellBuilding("Fort"))).isEqualTo(ActionResult.ACCEPTED);
@@ -1135,7 +1135,7 @@ class GameTest {
 	@Test
 	void aDestroyedBuildingCannotBeSoldButAStandingOneOfTheSameTypeCan() {
 		fortsWornDownBy(6);
-		assertThat(game.viewOf("Carthage").damage()).containsExactly(new BuildingDamage("Fort", 1, 5, 6, 1, 11, 1));
+		assertThat(game.viewOf("Carthage").damage()).containsExactly(BuildingDamage.defensive("Fort", 1, 5, 6, 1, 11, 1));
 		int carthageGold = game.viewOf("Carthage").gold();
 
 		assertThat(game.act("Carthage", new Action.SellBuilding("Fort"))).isEqualTo(ActionResult.ACCEPTED);
@@ -1143,7 +1143,7 @@ class GameTest {
 		NationView carthage = game.viewOf("Carthage");
 		assertThat(carthage.gold()).isEqualTo(carthageGold + 5);
 		assertThat(carthage.buildings()).containsExactly(entry("Fort", 1));
-		assertThat(carthage.damage()).containsExactly(new BuildingDamage("Fort", 1, 0, 0, 0, 11, 1));
+		assertThat(carthage.damage()).containsExactly(BuildingDamage.defensive("Fort", 1, 0, 0, 0, 11, 1));
 		assertThat(carthage.defense()).isZero();
 		assertThat(carthage.sellValues()).isEmpty();
 		assertThat(game.act("Carthage", new Action.SellBuilding("Fort"))).isEqualTo(
@@ -1154,7 +1154,7 @@ class GameTest {
 	@Test
 	void sellingAnUndamagedBuildingLeavesADestroyedOneOfTheSameTypeDestroyed() {
 		fortsWornDownBy(4);
-		assertThat(game.viewOf("Carthage").damage()).containsExactly(new BuildingDamage("Fort", 1, 0, 0, 0, 11, 1));
+		assertThat(game.viewOf("Carthage").damage()).containsExactly(BuildingDamage.defensive("Fort", 1, 0, 0, 0, 11, 1));
 		int carthageGold = game.viewOf("Carthage").gold();
 
 		assertThat(game.act("Carthage", new Action.SellBuilding("Fort"))).isEqualTo(ActionResult.ACCEPTED);
@@ -1162,7 +1162,7 @@ class GameTest {
 		NationView carthage = game.viewOf("Carthage");
 		assertThat(carthage.gold()).isEqualTo(carthageGold + 11);
 		assertThat(carthage.buildings()).containsExactly(entry("Fort", 1));
-		assertThat(carthage.damage()).containsExactly(new BuildingDamage("Fort", 1, 0, 0, 0, 11, 1));
+		assertThat(carthage.damage()).containsExactly(BuildingDamage.defensive("Fort", 1, 0, 0, 0, 11, 1));
 		assertThat(carthage.defense()).isZero();
 	}
 
