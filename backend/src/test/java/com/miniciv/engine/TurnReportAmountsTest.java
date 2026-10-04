@@ -75,6 +75,7 @@ class TurnReportAmountsTest {
 
 	@Test
 	void plunderIsAGainForTheAttackerAndALossForTheDefender() {
+		game = Locating.everyone(RULESET, Identities.of("Rome", "Carthage"), EVEN_LUCK);
 		armyOf("Rome", "Warrior", 2);
 		game.act("Rome", new Action.SendWarparty("Carthage", Map.of("Warrior", 2)));
 		while (game.viewOf("Rome").warparties().getFirst().turnsLeft() > 0) {

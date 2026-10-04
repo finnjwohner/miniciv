@@ -29,7 +29,12 @@ import java.util.Map;
  * @param availableUnits the Unit types the Nation may train
  * @param army how many of each Unit type the Nation has at home, never
  *        counting its Scouts
- * @param scouts how many Scouts the Nation has roaming the wilds
+ * @param scouts how many Scouts the Nation has roaming the wilds, Idle or
+ *        on Tasks
+ * @param idleScouts how many of its Scouts are on no Task
+ * @param tasks the Tasks its Scouts are set to, in the order set
+ * @param located the Nations it has Located, and so may send Spies and
+ *        Warparties to, in the order Located
  * @param training the Units in training, in the order started
  * @param warparties the Nation's Warparties abroad, in the order sent
  * @param spies the Nation's Spies abroad, in the order sent
@@ -64,7 +69,7 @@ public record NationView(int version, int turn, String nation, int gold, int pop
 		List<MapNation> map, List<BuildingType> availableBuildings, Map<String, Integer> buildings,
 		List<Construction> construction, List<Repair> repairs, int defense, List<BuildingDamage> damage,
 		Map<String, Integer> sellValues, List<UnitType> availableUnits,
-		Map<String, Integer> army, int scouts,
+		Map<String, Integer> army, int scouts, int idleScouts, List<Task> tasks, List<String> located,
 		List<Training> training, List<Warparty> warparties, List<Spy> spies, List<TravelBracket> travelBrackets,
 		int spyTravelTurns, int upkeep, GoldForecast goldForecast, LastingEvent lastingEvent,
 		List<ArrivedWarparty> arrivals,
@@ -79,6 +84,8 @@ public record NationView(int version, int turn, String nation, int gold, int pop
 		repairs = List.copyOf(repairs);
 		damage = List.copyOf(damage);
 		availableUnits = List.copyOf(availableUnits);
+		tasks = List.copyOf(tasks);
+		located = List.copyOf(located);
 		training = List.copyOf(training);
 		warparties = List.copyOf(warparties);
 		spies = List.copyOf(spies);

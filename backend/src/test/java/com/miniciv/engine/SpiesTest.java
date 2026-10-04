@@ -31,10 +31,10 @@ class SpiesTest {
 	 */
 	static final RandomGenerator ALWAYS_GOLD = luck(0);
 
-	Game game = new Game(RULESET, Identities.of("Rome", "Carthage", "Egypt"), EVEN_LUCK);
+	Game game = Locating.by("Rome", RULESET, Identities.of("Rome", "Carthage", "Egypt"), EVEN_LUCK);
 
 	void play(RandomGenerator luck, String... nations) {
-		game = new Game(RULESET, Identities.of(nations), luck);
+		game = Locating.by("Rome", RULESET, Identities.of(nations), luck);
 	}
 
 	/**
@@ -142,14 +142,14 @@ class SpiesTest {
 
 	@Test
 	void aSpyAbroadDesertsWhenItsUpkeepCannotBePaid() {
-		UnitType costly = new UnitType("Spy", 0, 1, 1, 40, 0, List.of(), false, true);
-		game = new Game(new Ruleset(List.of(costly), List.of(FARM), List.of()), Identities.of("Rome", "Carthage"), EVEN_LUCK);
+		UnitType costly = new UnitType("Spy", 0, 1, 1, 60, 0, List.of(), false, true);
+		game = Locating.by("Rome", new Ruleset(List.of(costly), List.of(FARM), List.of()), Identities.of("Rome", "Carthage"), EVEN_LUCK);
 		game.act("Rome", new Action.TrainUnits("Spy", 1));
 		game.endTurn();
 		sendSpy("Rome", "Carthage");
 		// Next Turn's Gold is what Rome has plus what its Population earns.
 		NationView rome = game.viewOf("Rome");
-		assertThat(rome.gold() + rome.population()).isLessThan(40);
+		assertThat(rome.gold() + rome.population()).isLessThan(60);
 
 		game.endTurn();
 
@@ -176,9 +176,10 @@ class SpiesTest {
 
 		spyArrivesAtCarthage();
 
-		assertThat(report("Rome")).contains("Your Spy in Carthage reported that Carthage has 102 Gold.");
+		int gold = game.viewOf("Carthage").gold();
+		assertThat(report("Rome")).contains("Your Spy in Carthage reported that Carthage has " + gold + " Gold.");
 		assertThat(onMapOf("Rome", "Carthage").facts())
-			.isEqualTo(new Facts(new Fact<>(102, 4), null, null, null, null, null, null));
+			.isEqualTo(new Facts(new Fact<>(gold, 6), null, null, null, null, null, null));
 		assertThat(report("Carthage")).noneMatch(line -> line.contains("Spy"));
 	}
 
@@ -189,8 +190,8 @@ class SpiesTest {
 
 		spyArrivesAtCarthage();
 
-		assertThat(report("Rome")).contains("Your Spy in Carthage reported that Carthage has 18 Population.");
-		assertThat(onMapOf("Rome", "Carthage").facts().population()).isEqualTo(new Fact<>(18, 4));
+		assertThat(report("Rome")).contains("Your Spy in Carthage reported that Carthage has 22 Population.");
+		assertThat(onMapOf("Rome", "Carthage").facts().population()).isEqualTo(new Fact<>(22, 6));
 	}
 
 	@Test
@@ -200,8 +201,8 @@ class SpiesTest {
 
 		spyArrivesAtCarthage();
 
-		assertThat(report("Rome")).contains("Your Spy in Carthage reported that Carthage has 12 Research.");
-		assertThat(onMapOf("Rome", "Carthage").facts().research()).isEqualTo(new Fact<>(12, 4));
+		assertThat(report("Rome")).contains("Your Spy in Carthage reported that Carthage has 18 Research.");
+		assertThat(onMapOf("Rome", "Carthage").facts().research()).isEqualTo(new Fact<>(18, 6));
 	}
 
 	@Test
@@ -220,7 +221,7 @@ class SpiesTest {
 		game.endTurn();
 
 		assertThat(report("Rome")).contains("Your Spy in Carthage reported that Carthage's Army is Warrior ×2.");
-		assertThat(onMapOf("Rome", "Carthage").facts().army()).isEqualTo(new Fact<>(Map.of("Warrior", 2), 6));
+		assertThat(onMapOf("Rome", "Carthage").facts().army()).isEqualTo(new Fact<>(Map.of("Warrior", 2), 8));
 	}
 
 	@Test
@@ -231,7 +232,7 @@ class SpiesTest {
 		spyArrivesAtCarthage();
 
 		assertThat(report("Rome")).contains("Your Spy in Carthage reported that Carthage has no Army.");
-		assertThat(onMapOf("Rome", "Carthage").facts().army()).isEqualTo(new Fact<>(Map.of(), 4));
+		assertThat(onMapOf("Rome", "Carthage").facts().army()).isEqualTo(new Fact<>(Map.of(), 6));
 	}
 
 	@Test
@@ -245,8 +246,8 @@ class SpiesTest {
 		assertThat(report("Rome"))
 			.contains("Your Spy in Carthage reported that Carthage has built Walls ×1, and its Defense is 10.");
 		Facts facts = onMapOf("Rome", "Carthage").facts();
-		assertThat(facts.buildings()).isEqualTo(new Fact<>(Map.of("Walls", 1), 4));
-		assertThat(facts.defense()).isEqualTo(new Fact<>(10, 4));
+		assertThat(facts.buildings()).isEqualTo(new Fact<>(Map.of("Walls", 1), 6));
+		assertThat(facts.defense()).isEqualTo(new Fact<>(10, 6));
 	}
 
 	@Test
@@ -281,10 +282,11 @@ class SpiesTest {
 
 		game.endTurn();
 
-		assertThat(report("Rome")).contains("Your Spy in Carthage reported that Carthage has 110 Gold.");
+		int gold = game.viewOf("Carthage").gold();
+		assertThat(report("Rome")).contains("Your Spy in Carthage reported that Carthage has " + gold + " Gold.");
 		Facts facts = onMapOf("Rome", "Carthage").facts();
-		assertThat(facts.gold()).isEqualTo(new Fact<>(110, 6));
-		assertThat(facts.population()).isEqualTo(new Fact<>(20, 5));
+		assertThat(facts.gold()).isEqualTo(new Fact<>(gold, 8));
+		assertThat(facts.population()).isEqualTo(new Fact<>(24, 7));
 	}
 
 	@Test
@@ -304,7 +306,7 @@ class SpiesTest {
 	@Test
 	void aSpyInANationThatIsConqueredHeadsHomeAndRejoinsTheArmy() {
 		UnitType giant = new UnitType("Giant", 10, 1, 1, 1, 100, List.of());
-		game = new Game(new Ruleset(List.of(giant, SPY), List.of(), List.of()), Identities.of("Rome", "Carthage", "Egypt"),
+		game = Locating.everyone(new Ruleset(List.of(giant, SPY), List.of(), List.of()), Identities.of("Rome", "Carthage", "Egypt"),
 				EVEN_LUCK);
 		armyOf("Rome", "Spy", 1);
 		armyOf("Egypt", "Giant", 1);

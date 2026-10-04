@@ -23,7 +23,7 @@ class EncountersTest {
 	 */
 	Rigged luck = new Rigged();
 
-	Game game = new Game(RULESET, Identities.of("Rome", "Carthage", "Egypt"), luck);
+	Game game = Locating.everyone(RULESET, Identities.of("Rome", "Carthage", "Egypt"), luck);
 
 	List<String> report(String nation) {
 		return game.viewOf(nation).turnReport().lines();
@@ -58,7 +58,9 @@ class EncountersTest {
 		armyOf("Carthage", "Warrior", 1);
 		send("Rome", "Carthage", Map.of("Warrior", 3));
 		send("Carthage", "Rome", Map.of("Warrior", 1));
-		luck.then(0);
+		// Every Nation's Pathfinders miss each Warparty they may discover, and
+		// then the two meet.
+		luck.then(0.99, 0.99, 0.99, 0.99, 0);
 		game.endTurn();
 	}
 
@@ -220,7 +222,9 @@ class EncountersTest {
 		armyOf("Carthage", "Warrior", 2);
 		send("Rome", "Carthage", Map.of("Warrior", 2));
 		send("Carthage", "Rome", Map.of("Warrior", 2));
-		luck.then(0);
+		// Every Nation's Pathfinders miss each Warparty they may discover, and
+		// then the two meet.
+		luck.then(0.99, 0.99, 0.99, 0.99, 0);
 		game.endTurn();
 
 		answer("Carthage", 1, true);

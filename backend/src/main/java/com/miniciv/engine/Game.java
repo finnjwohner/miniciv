@@ -88,6 +88,12 @@ public class Game {
 	private static final double DISCOVERY_CHANCE_PER_SCOUT = 0.2;
 
 	/**
+	 * The chance each Scout on a Locate Task gives it, each Turn, of Locating
+	 * its Nation.
+	 */
+	private static final double LOCATE_CHANCE_PER_SCOUT = 0.15;
+
+	/**
 	 * The chance each Spy in place gives its Nation, each Turn, of a report.
 	 */
 	private static final double SPY_REPORT_CHANCE = 0.4;
@@ -264,9 +270,10 @@ public class Game {
 	 * Takes a Nation out of the Game at once, its Player having been
 	 * disconnected for too long. Unlike Conquest, nobody seizes anything: its
 	 * Warparties and Spies abroad are gone and every Warparty heading to it,
-	 * and Spy at it or heading to it, turns back home. The other Nations are
-	 * told in their next Turn Report, and if only one is left it wins the Game.
-	 * Has no effect on a Nation no longer in the Game, or once the Game is won.
+	 * and Spy at it or heading to it, turns back home, and every Task about it
+	 * ends. The other Nations are told in their next Turn Report, and if only
+	 * one is left it wins the Game. Has no effect on a Nation no longer in the
+	 * Game, or once the Game is won.
 	 */
 	public void remove(String name) {
 		Nation nation = nation(name);
@@ -287,6 +294,9 @@ public class Game {
 			}
 			for (Spy back : other.turnSpiesBackFrom(name)) {
 				report.add(SPIES_AND_SCOUTS, spyTurnedBack(back, name + " was removed from the Game"));
+			}
+			for (Task ended : other.endTasksFor(name)) {
+				report.add(SPIES_AND_SCOUTS, taskEnded(ended, name + " was removed from the Game"));
 			}
 			other.changed();
 		}
@@ -345,6 +355,7 @@ public class Game {
 			}
 		}
 		tributes.clear();
+		searchForNations(reports);
 		settleEncounters(reports);
 		List<Witnessed> witnessed = new ArrayList<>();
 		for (Nation nation : inPlay) {
@@ -550,6 +561,8 @@ public class Game {
 	 *
 	 * @param arrivals the attacking Warparties, as they were before the Battle,
 	 *        in the order they fought in the Battle
+	 * @param located the attacking Nations the Nation Located by the Battle,
+	 *        not having Located them before, in the order they fought
 	 * @param shares the plunder each attacking Warparty took or, if the
 	 *        Nation was conquered, its share of what was seized
 	 * @param buildingsDamaged how many of each of the Nation's non-defensive
@@ -557,8 +570,8 @@ public class Game {
 	 * @param exposure how exposed the Nation's Population was
 	 * @param conquest how the Nation was conquered, or null if it was not
 	 */
-	private record BattleFought(Nation defender, List<Arrival> arrivals, Battle battle, List<Plunder> shares,
-			Nation.DefenseWorn defenseWorn, Map<String, Integer> buildingsDamaged, int populationLost, Exposure exposure,
+	private record BattleFought(Nation defender, List<Arrival> arrivals, Battle battle, List<String> located,
+			List<Plunder> shares, Nation.DefenseWorn defenseWorn, Map<String, Integer> buildingsDamaged, int populationLost, Exposure exposure,
 			Nation.Conquest conquest) {
 
 		/**
@@ -593,7 +606,7 @@ public class Game {
 	 * out too; otherwise the survivors take plunder scaled by their remaining
 	 * Strength, rounded down. What is plundered or seized is split between the
 	 * Warparties in proportion to their surviving Strength, so one wiped out
-	 * gets none of it.
+	 * gets none of it. The Nation Locates every attacking Nation.
 	 */
 	private BattleFought fight(Nation defender) {
 		List<Arrival> arrivals = new ArrayList<>();
@@ -605,6 +618,11 @@ public class Game {
 		}
 		Battle battle = Battle.fight(arrivals.stream().map(arrival -> arrival.warparty().units()).toList(),
 				defender.army(), ruleset, random);
+		List<String> located = arrivals.stream()
+			.map(arrival -> arrival.attacker().name())
+			.distinct()
+			.filter(defender::locate)
+			.toList();
 		defender.lose(battle.armyLost());
 		List<Double> strengths = IntStream.range(0, arrivals.size())
 			.mapToObj(arrival -> battle.warpartySurvivingStrength(arrival, ruleset))
@@ -652,8 +670,8 @@ public class Game {
 			attacker.foughtBattle(arrivals.get(i).warparty(), battle.warpartySurvivors(i),
 					conquered ? Plunder.NONE : shares.get(i), shares.get(i), ruleset);
 		}
-		return new BattleFought(defender, arrivals, battle, shares, defenseWorn, buildingsDamaged, populationLost, exposure,
-				conquered ? turnBackFrom(defender, taken) : null);
+		return new BattleFought(defender, arrivals, battle, located, shares, defenseWorn, buildingsDamaged, populationLost,
+				exposure, conquered ? turnBackFrom(defender, taken) : null);
 	}
 
 	/**
@@ -692,13 +710,14 @@ public class Game {
 	}
 
 	/**
-	 * Records a Nation as conquered, and turns every other Warparty heading to
-	 * it back home.
+	 * Records a Nation as conquered, turns every other Warparty heading to it,
+	 * and Spy at it or heading to it, back home, and ends every Task about it.
 	 */
 	private Nation.Conquest turnBackFrom(Nation conquered, Plunder seized) {
 		this.conquered.add(conquered.name());
 		Map<String, List<Warparty>> turnedBack = new LinkedHashMap<>();
 		Map<String, List<Spy>> spiesTurnedBack = new LinkedHashMap<>();
+		Map<String, List<Task>> tasksEnded = new LinkedHashMap<>();
 		for (Nation nation : remaining()) {
 			List<Warparty> turned = nation.turnBackFrom(conquered.name());
 			if (!turned.isEmpty()) {
@@ -708,8 +727,12 @@ public class Game {
 			if (!spies.isEmpty()) {
 				spiesTurnedBack.put(nation.name(), spies);
 			}
+			List<Task> ended = nation.endTasksFor(conquered.name());
+			if (!ended.isEmpty()) {
+				tasksEnded.put(nation.name(), ended);
+			}
 		}
-		return new Nation.Conquest(seized, turnedBack, spiesTurnedBack);
+		return new Nation.Conquest(seized, turnedBack, spiesTurnedBack, tasksEnded);
 	}
 
 	private void reportBattle(BattleFought fought, Map<String, TurnReport.Draft> reports) {
@@ -744,6 +767,9 @@ public class Game {
 		}
 		defenderReport.add(WARFARE, army == null ? joined(sides) + " met no Army at your Nation."
 				: "Your Army of " + army + " fought " + joined(sides) + ". " + joined(losses) + ".");
+		fought.located()
+			.forEach(attacker -> defenderReport.add(SPIES_AND_SCOUTS,
+					"The Battle revealed where " + attacker + " lies; you have Located it."));
 		for (int i = 0; i < arrivals.size(); i++) {
 			if (!fought.survived(i)) {
 				String attacker = arrivals.get(i).attacker().name();
@@ -823,6 +849,9 @@ public class Game {
 			conquest.spiesTurnedBack()
 				.forEach((nation, turned) -> turned
 					.forEach(back -> reports.get(nation).add(SPIES_AND_SCOUTS, spyTurnedBack(back, defender + " was conquered"))));
+				conquest.tasksEnded()
+					.forEach((nation, ended) -> ended
+					.forEach(task -> reports.get(nation).add(SPIES_AND_SCOUTS, taskEnded(task, defender + " was conquered"))));
 			return;
 		}
 		String share = survivors.size() > 1 ? " as its share" : "";
@@ -1008,6 +1037,40 @@ public class Game {
 				}
 			}
 		}
+	}
+
+	/**
+	 * Has each Nation still in the Game in order search, with each of its
+	 * Locate Tasks in the order set, for the Nation the Task is about, drawing
+	 * once from the seeded random source for each. Each Scout on the Task
+	 * gives an equal chance, of its own, of Locating the Nation. A Task that
+	 * succeeds ends, its Scouts going Idle (see {@link Nation#locate}), and is
+	 * announced in the Turn Report. The search comes first as a Turn resolves, before anything else
+	 * draws.
+	 */
+	private void searchForNations(Map<String, TurnReport.Draft> reports) {
+		for (Nation searching : remaining()) {
+			for (Task task : searching.tasks()) {
+				if (task.kind() != Task.Kind.LOCATE) {
+					continue;
+				}
+				double chance = 1 - Math.pow(1 - LOCATE_CHANCE_PER_SCOUT, task.scouts());
+				if (random.nextDouble() < chance) {
+					searching.locate(task.target());
+					reports.get(searching.name())
+						.add(SPIES_AND_SCOUTS, "Your Scouts Located " + task.target()
+								+ ", so you can now send Spies and Warparties there.");
+				}
+			}
+		}
+	}
+
+	/**
+	 * Such as "Your Scouts searching for Egypt are Idle again, as Egypt was
+	 * conquered", for a Task about a Nation that left the Game.
+	 */
+	private static String taskEnded(Task task, String reason) {
+		return "Your Scouts searching for " + task.target() + " are Idle again, as " + reason + ".";
 	}
 
 	/**
@@ -1298,8 +1361,9 @@ public class Game {
 	/**
 	 * A Spy caught by another Nation: it is lost to its sender, and then dies,
 	 * stays silent or confesses, which reveals its sender and what the sender
-	 * has as the Turn resolved. The Nation that caught it is told in its Turn
-	 * Report; what the sender may be told is added to those witnessed.
+	 * has as the Turn resolved, and Locates the sender. The Nation that caught
+	 * it is told in its Turn Report; what the sender may be told is added to
+	 * those witnessed.
 	 *
 	 * @param caughtBy what caught it, such as "Your Scouts"
 	 */
@@ -1320,6 +1384,9 @@ public class Game {
 			report.add(SPIES_AND_SCOUTS, Line.of("From its confession, " + sender.name() + " has ",
 					neutral(GOLD, sender.gold()), ", ", neutral(POPULATION, sender.population()), " and ",
 					neutral(RESEARCH, sender.research()), "; " + armyFact(sender) + "; " + buildingsFact(sender) + "."));
+			if (catching.locate(sender.name())) {
+				report.add(SPIES_AND_SCOUTS, "From its confession, you have Located " + sender.name() + ".");
+			}
 		}
 		else {
 			report.add(SPIES_AND_SCOUTS, caught + captured.toCatcher + ".");
@@ -1706,6 +1773,8 @@ public class Game {
 			}
 			case Action.SendSpy send -> unreachable(nation, send.target(), "A Spy")
 				.orElseGet(() -> actor.sendSpy(send.target(), ruleset));
+			case Action.SetTask set -> setTask(actor, set);
+			case Action.CancelTask cancel -> actor.cancelTask(cancel.task());
 			case Action.RecallWarparty recall -> recall(actor, recall.warparty());
 			case Action.OfferTribute offer -> offer(actor, offer);
 			case Action.AnswerTribute answer -> answer(actor, answer);
@@ -1720,7 +1789,8 @@ public class Game {
 
 	/**
 	 * Why a Warparty or Spy cannot be sent from a Nation to a target, if it
-	 * cannot: the target must be another Nation still in the Game.
+	 * cannot: the target must be another Nation still in the Game, which the
+	 * Nation has Located.
 	 *
 	 * @param sent what is being sent, such as "A Spy"
 	 */
@@ -1728,6 +1798,50 @@ public class Game {
 		if (target.equals(nation)) {
 			return Optional.of(ActionResult.rejected(sent + " must be sent to another Nation."));
 		}
+		Optional<ActionResult> outOfGame = outOfGame(target);
+		if (outOfGame.isPresent()) {
+			return outOfGame;
+		}
+		if (!nation(nation).hasLocated(target)) {
+			return Optional.of(ActionResult.rejected("You have not Located " + target + " yet; set your Scouts to Locate it."));
+		}
+		return Optional.empty();
+	}
+
+	/**
+	 * Sets some of a Nation's Idle Scouts to a Task. A Locate Task must be
+	 * about another Nation still in the Game that the Nation has neither
+	 * Located nor set another Task to Locate.
+	 */
+	private ActionResult setTask(Nation nation, Action.SetTask set) {
+		Optional<Task.Kind> kind = Arrays.stream(Task.Kind.values())
+			.filter(known -> known.name().equals(set.kind()))
+			.findFirst();
+		if (kind.isEmpty()) {
+			return ActionResult.rejected("There is no Task called " + set.kind() + ".");
+		}
+		String target = set.target();
+		if (target.equals(nation.name())) {
+			return ActionResult.rejected("Your Scouts cannot Locate your own Nation.");
+		}
+		Optional<ActionResult> outOfGame = outOfGame(target);
+		if (outOfGame.isPresent()) {
+			return outOfGame.get();
+		}
+		if (nation.hasLocated(target)) {
+			return ActionResult.rejected("You have already Located " + target + ".");
+		}
+		if (nation.isLocating(target)) {
+			return ActionResult.rejected("Your Scouts are already Locating " + target + ".");
+		}
+		return nation.setTask(kind.get(), target, set.scouts());
+	}
+
+	/**
+	 * Why a Nation cannot be the target of an Action, if it cannot: it must be
+	 * a Nation still in the Game.
+	 */
+	private Optional<ActionResult> outOfGame(String target) {
 		if (!nations.containsKey(target)) {
 			return Optional.of(ActionResult.rejected("There is no Nation called " + target + "."));
 		}

@@ -63,6 +63,7 @@ class TurnReportCompletionsTest {
 
 	@Test
 	void aBuildingBuiltAndOneOfTheSameTypeRepairedOnTheSameTurnGetALineEachThatReadsAsBefore() {
+		game = Locating.everyone(RULESET, Identities.of("Rome", "Carthage"), EVEN_LUCK);
 		accepted("Carthage", new Action.StartBuilding("Walls"));
 		accepted("Rome", new Action.TrainUnits("Warrior", 2));
 		game.endTurn();
@@ -83,6 +84,7 @@ class TurnReportCompletionsTest {
 
 	@Test
 	void destroyedBuildingsOfOneTypeRebuiltOnTheSameTurnShareOneLine() {
+		game = Locating.everyone(RULESET, Identities.of("Rome", "Carthage"), EVEN_LUCK);
 		accepted("Carthage", new Action.StartBuilding("Moat"));
 		game.endTurn();
 		accepted("Carthage", new Action.StartBuilding("Moat"));

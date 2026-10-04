@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { otherNations, recallTurns, travelTurns } from '../api'
-import type { Fact, MapNation, NationView, Spy, Warparty } from '../api'
+import { locatableNations, locatedNations, recallTurns, travelTurns } from '../api'
+import type { Fact, MapNation, NationView, Spy, Task, TaskKind, Warparty } from '../api'
 import { NationEmblem } from '../ui/NationName'
 import { Panel } from '../ui/Panel'
 import { TypeCounts, TypeName } from '../ui/TypeIcon'
@@ -48,7 +48,7 @@ export function ArmyPanel({
   onSend: (target: string, units: Record<string, number>) => void
   onRecall: (warparty: number) => void
 }) {
-  const targets = otherNations(nation)
+  const targets = locatedNations(nation)
   const [chosenTarget, setTarget] = useState(targets[0] ?? '')
   const target = currentTarget(targets, chosenTarget)
   const [chosen, setChosen] = useState<Record<string, number>>({})
@@ -83,7 +83,7 @@ export function ArmyPanel({
       {sendable.length === 0 ? (
         <p className="muted">Your Army has no Units to send.</p>
       ) : targets.length === 0 ? (
-        <p className="muted">There is no other Nation to send them to.</p>
+        <NoneLocated />
       ) : (
         <div className="stack stack--tight">
           <ul className="list">
@@ -177,21 +177,103 @@ function describeSpy(spy: Spy, map: MapNation[]) {
   )
 }
 
+/** Says no Nation is Located yet, so there is nowhere to send Spies or Warparties. */
+function NoneLocated() {
+  return (
+    <p className="muted">
+      You have not Located any Nation yet. Set your Scouts to Locate one under Spies &amp; Scouts.
+    </p>
+  )
+}
+
+/** Such as "Locating Carthage". */
+function describeTask(task: Task) {
+  switch (task.kind) {
+    case 'LOCATE':
+      return `Locating ${task.target}`
+  }
+}
+
 /**
- * A form to send a Spy from the Army to another Nation, what the Spies at home are doing, then the
+ * The Nation's Idle Scouts, its Tasks each with a button to cancel it, and a form to set Idle Scouts to a
+ * new Task: Locate offers only the Nations still in the Game neither Located nor being Located.
+ */
+function ScoutTasks({
+  nation,
+  onSetTask,
+  onCancelTask,
+}: {
+  nation: NationView
+  onSetTask: (kind: TaskKind, target: string, scouts: number) => void
+  onCancelTask: (task: number) => void
+}) {
+  const targets = locatableNations(nation)
+  const [chosenTarget, setTarget] = useState(targets[0] ?? '')
+  const target = currentTarget(targets, chosenTarget)
+  const [chosenCount, setCount] = useState(1)
+  const count = Math.max(1, Math.min(chosenCount, nation.idleScouts))
+  if (nation.scouts === 0) return <p className="muted">No Scouts yet. Train some to roam the wilds.</p>
+  return (
+    <>
+      <ul className="list">
+        <li className="row">
+          <span className="row__name">Idle Scouts ×{nation.idleScouts}</span>
+        </li>
+        {nation.tasks.map((task) => (
+          <li key={task.id} className="row">
+            <span className="row__name">{describeTask(task)}</span>
+            <span className="row__meta">{plural(task.scouts, 'Scout')}</span>
+            <button onClick={() => onCancelTask(task.id)} aria-label={`Cancel ${describeTask(task)}`}>
+              Cancel
+            </button>
+          </li>
+        ))}
+      </ul>
+      {nation.idleScouts > 0 && targets.length > 0 && (
+        <div className="stack stack--tight">
+          <div className="field__row field__row--end">
+            <TargetSelect targets={targets} value={target} label="Locate" onChange={setTarget} />
+            <CountSlider
+              value={count}
+              min={1}
+              max={nation.idleScouts}
+              label="How many Scouts to set to the Task"
+              onChange={setCount}
+            />
+            <button onClick={() => onSetTask('LOCATE', target, count)} disabled={!target}>
+              Set Task
+            </button>
+          </div>
+          <p className="muted">Each Scout gives a 15% chance each Turn of Locating the Nation.</p>
+        </div>
+      )}
+      <p className="muted">
+        Your Scouts give your Nation a chance each Turn to discover Warparties abroad and catch other Nations'
+        Spies still travelling, better the more Scouts you have.
+      </p>
+    </>
+  )
+}
+
+/**
+ * A form to send a Spy from the Army to a Located Nation, what the Spies at home are doing, then the
  * Nation's Spies abroad, those with the same target and state merged into one row, then its Scouts
- * roaming the wilds and what they do.
+ * roaming the wilds and their Tasks.
  */
 export function SpiesPanel({
   nation,
   rejection,
   onSend,
+  onSetTask,
+  onCancelTask,
 }: {
   nation: NationView
   rejection: string | null
   onSend: (target: string) => void
+  onSetTask: (kind: TaskKind, target: string, scouts: number) => void
+  onCancelTask: (task: number) => void
 }) {
-  const targets = otherNations(nation)
+  const targets = locatedNations(nation)
   const [chosenTarget, setTarget] = useState(targets[0] ?? '')
   const target = currentTarget(targets, chosenTarget)
   const spyTypes = new Set(nation.availableUnits.filter((u) => u.spy).map((u) => u.name))
@@ -208,7 +290,7 @@ export function SpiesPanel({
       {atHome === 0 ? (
         <p className="muted">Train a Spy to send one abroad. Spies kept at home run counter-intelligence.</p>
       ) : targets.length === 0 ? (
-        <p className="muted">There is no other Nation to send a Spy to.</p>
+        <NoneLocated />
       ) : (
         <div className="stack stack--tight">
           <div className="field__row field__row--end">
@@ -241,21 +323,7 @@ export function SpiesPanel({
         </ul>
       )}
       <h3>Scouts</h3>
-      {nation.scouts === 0 ? (
-        <p className="muted">No Scouts yet. Train some to roam the wilds.</p>
-      ) : (
-        <>
-          <ul className="list">
-            <li className="row">
-              <span className="row__name">Scouts roaming the wilds ×{nation.scouts}</span>
-            </li>
-          </ul>
-          <p className="muted">
-            They give your Nation a chance each Turn to discover Warparties abroad and catch other Nations' Spies still
-            travelling, better the more Scouts you have.
-          </p>
-        </>
-      )}
+      <ScoutTasks nation={nation} onSetTask={onSetTask} onCancelTask={onCancelTask} />
     </Panel>
   )
 }
@@ -336,6 +404,7 @@ export function MapPanel({ nation }: { nation: NationView }) {
                 {you && <span className="tag tag--accent">you</span>}
                 {other.standing === 'CONQUERED' && <span className="tag tag--bad">knocked out</span>}
                 {other.standing === 'REMOVED' && <span className="tag tag--muted">removed</span>}
+                {nation.located.includes(other.name) && <span className="tag">located</span>}
               </h3>
               {you ? (
                 <FactList

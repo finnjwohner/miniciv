@@ -2,6 +2,8 @@ package com.miniciv;
 
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
+import java.util.random.RandomGenerator;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -35,7 +37,14 @@ class TributeTest {
 		@Bean
 		@Primary
 		Ruleset testRuleset() {
-			return new Ruleset(List.of(new UnitType("Warrior", 10, 1, 1, 1, 3, List.of())), List.of(), List.of());
+			return new Ruleset(List.of(new UnitType("Warrior", 10, 1, 1, 1, 3, List.of()), TurnsTest.PATHFINDER), List.of(),
+					List.of());
+		}
+
+		@Bean
+		@Primary
+		Supplier<RandomGenerator> testLuck() {
+			return TurnsTest::locatingLuck;
 		}
 
 	}
@@ -93,8 +102,9 @@ class TributeTest {
 	}
 
 	/**
-	 * Starts a Game between Rome and Carthage and has a Warparty of Warrior ×2
-	 * from Rome arrive at Carthage.
+	 * Starts a Game between Rome and Carthage, has Rome Locate Carthage with a
+	 * Pathfinder (see {@link TurnsTest#romeLocatesCarthage}) and has a
+	 * Warparty of Warrior ×2 from Rome arrive at Carthage.
 	 */
 	void romeArrivesAtCarthage() throws Exception {
 		code = (String) RestClient.create("http://localhost:" + port)
@@ -112,6 +122,11 @@ class TributeTest {
 			player.privately().next();
 		}
 		send(rome, "/units", Map.of("token", rome.token(), "unit", "Warrior", "count", 2));
+		rome.privately().next();
+		send(rome, "/units", Map.of("token", rome.token(), "unit", "Pathfinder", "count", 1));
+		rome.privately().next();
+		endTurn();
+		send(rome, "/tasks", Map.of("token", rome.token(), "kind", "LOCATE", "target", "Carthage", "scouts", 1));
 		rome.privately().next();
 		endTurn();
 		send(rome, "/warparties", Map.of("token", rome.token(), "target", "Carthage", "units", Map.of("Warrior", 2)));

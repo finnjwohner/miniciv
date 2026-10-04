@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react'
-import type { NationView } from '../api'
+import type { NationView, TaskKind } from '../api'
 import { Icon, type IconName } from '../ui/Icon'
 import { NationName } from '../ui/NationName'
 import type { ReceivedRoom } from '../useRoom'
@@ -53,6 +53,8 @@ function GameScreen({
   onSendWarparty,
   onRecallWarparty,
   onSendSpy,
+  onSetTask,
+  onCancelTask,
   onAnswerDilemma,
   onUnlockTechnology,
   onOfferTribute,
@@ -72,6 +74,8 @@ function GameScreen({
   onSendWarparty: (target: string, units: Record<string, number>) => void
   onRecallWarparty: (warparty: number) => void
   onSendSpy: (target: string) => void
+  onSetTask: (kind: TaskKind, target: string, scouts: number) => void
+  onCancelTask: (task: number) => void
   onAnswerDilemma: (dilemma: string, choice: string) => void
   onUnlockTechnology: (technology: string) => void
   onOfferTribute: (nation: string, warparty: number, gold: number, population: number) => void
@@ -214,7 +218,15 @@ function GameScreen({
                   onRecall={from('army', onRecallWarparty)}
                 />
               ),
-              spies: <SpiesPanel nation={nation} rejection={rejectionIn('spies')} onSend={from('spies', onSendSpy)} />,
+              spies: (
+                <SpiesPanel
+                  nation={nation}
+                  rejection={rejectionIn('spies')}
+                  onSend={from('spies', onSendSpy)}
+                  onSetTask={from('spies', onSetTask)}
+                  onCancelTask={from('spies', onCancelTask)}
+                />
+              ),
             }}
           />
         )}

@@ -22,7 +22,7 @@ class RecallTest {
 	 */
 	static final Ruleset SOLDIERS = new Ruleset(List.of(soldier(1)), List.of(), List.of(), List.of());
 
-	Game game = new Game(RULESET, Identities.of("Rome", "Carthage"), EVEN_LUCK);
+	Game game = Locating.everyone(RULESET, Identities.of("Rome", "Carthage"), EVEN_LUCK);
 
 	List<String> report(String nation) {
 		return game.viewOf(nation).turnReport().lines();
@@ -54,7 +54,7 @@ class RecallTest {
 			.containsExactly(new Warparty(1, "Carthage", Map.of("Warrior", 2), 6, true, 2, 2));
 		game.endTurn();
 		assertThat(report("Rome")).contains("You Recalled your Warparty of Warrior ×2 heading to Carthage.");
-		assertThat(report("Carthage")).containsExactly(incomeReport(16));
+		assertThat(report("Carthage")).containsExactly(incomeReport(20));
 		assertThat(game.viewOf("Rome").warparties()).singleElement().extracting(Warparty::turnsLeft).isEqualTo(1);
 
 		game.endTurn();
@@ -114,17 +114,19 @@ class RecallTest {
 		game.endTurn();
 
 		assertThat(report("Rome")).containsExactly("You Recalled your Warparty of Warrior ×2 heading to Carthage.",
-				incomeReport(12), "Your Units' upkeep cost 2 Gold.");
+				incomeReport(16), "Your Units' upkeep cost 2 Gold.");
 		assertThat(report("Carthage")).containsExactly("Caesar of Rome's Warparty turned back home before the Battle.",
-				incomeReport(18));
+				incomeReport(22));
 		assertThat(game.viewOf("Rome").warparties())
 			.containsExactly(new Warparty(1, "Carthage", Map.of("Warrior", 2), 6, true, 2, 3));
 	}
 
 	@Test
 	void theTripHomeCountsTheTurnsAWarpartyWasDelayed() {
-		game = new Game(new Ruleset(RULESET.units(), RULESET.buildings(), List.of(),
-				List.of(EventsTest.starter("Dust storm"))), Identities.of("Rome", "Carthage"), luck(0, -1));
+		game = Locating.in(new Ruleset(RULESET.units(), RULESET.buildings(), List.of(),
+				List.of(EventsTest.starter("Dust storm"))), Identities.of("Rome", "Carthage"), luck(0, -1))
+			.locate("Rome", "Carthage")
+			.game();
 		armyOf("Rome", "Warrior", 2);
 		game.act("Rome", new Action.SendWarparty("Carthage", Map.of("Warrior", 2)));
 		game.endTurn();
@@ -207,13 +209,17 @@ class RecallTest {
 	 */
 	void romeLosesStrengthInAnEncounter(String... nations) {
 		Rigged luck = new Rigged();
-		game = new Game(SOLDIERS,
-				Identities.of(nations), luck);
+		game = Locating.in(SOLDIERS, Identities.of(nations), luck)
+			.locate("Rome", "Carthage")
+			.locate("Carthage", "Rome")
+			.game();
 		armyOf("Rome", "Soldier", 50);
 		armyOf("Carthage", "Soldier", 67);
 		game.act("Rome", new Action.SendWarparty("Carthage", Map.of("Soldier", 50)));
 		game.act("Carthage", new Action.SendWarparty("Rome", Map.of("Soldier", 67)));
-		luck.then(0);
+		// Neither Nation's Pathfinders discover the other's Warparty, and then
+		// the two meet.
+		luck.then(0.99, 0.99, 0);
 		game.endTurn();
 		game.act("Rome", new Action.AnswerEncounter(1, true));
 		game.endTurn();

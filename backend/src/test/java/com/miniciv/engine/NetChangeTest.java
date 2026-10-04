@@ -49,6 +49,7 @@ class NetChangeTest {
 
 	@Test
 	void plunderCarriedHomeCountsForTheNationItJoins() {
+		game = Locating.everyone(RULESET, Identities.of("Rome", "Carthage"), EVEN_LUCK);
 		armyOf("Rome", "Warrior", 2);
 		arrived("Rome", "Carthage", Map.of("Warrior", 2));
 		while (!game.viewOf("Rome").warparties().getFirst().homeward()
@@ -65,6 +66,7 @@ class NetChangeTest {
 
 	@Test
 	void plunderTakenAndPopulationLostInABattleCountAgainstTheDefender() {
+		game = Locating.everyone(RULESET, Identities.of("Rome", "Carthage"), EVEN_LUCK);
 		armyOf("Rome", "Warrior", 2);
 		arrived("Rome", "Carthage", Map.of("Warrior", 2));
 		int population = game.viewOf("Carthage").population();
@@ -90,6 +92,7 @@ class NetChangeTest {
 
 	@Test
 	void tributeAcceptedDuringTheTurnDoesNotCountForEitherSide() {
+		game = Locating.everyone(RULESET, Identities.of("Rome", "Carthage"), EVEN_LUCK);
 		armyOf("Rome", "Warrior", 2);
 		arrived("Rome", "Carthage", Map.of("Warrior", 2));
 		assertThat(game.act("Carthage", new Action.OfferTribute("Rome", 1, 20, 3))).isEqualTo(ActionResult.ACCEPTED);

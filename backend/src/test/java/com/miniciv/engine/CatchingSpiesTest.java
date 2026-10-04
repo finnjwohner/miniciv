@@ -28,10 +28,10 @@ class CatchingSpiesTest {
 
 	static final RandomGenerator CAUGHT_AND_CONFESSES = luck(draw(0), draw(0.9));
 
-	Game game = new Game(RULESET, Identities.of("Rome", "Carthage", "Egypt"), EVEN_LUCK);
+	Game game = Locating.by("Rome", RULESET, Identities.of("Rome", "Carthage", "Egypt"), EVEN_LUCK);
 
 	void play(RandomGenerator luck, String... nations) {
-		game = new Game(RULESET, Identities.of(nations), luck);
+		game = Locating.by("Rome", RULESET, Identities.of(nations), luck);
 	}
 
 	List<String> report(String nation) {
@@ -256,11 +256,18 @@ class CatchingSpiesTest {
 
 	@Test
 	void aTravellingWarpartyCatchesAnyOtherNationsTravellingSpy() {
-		play(CAUGHT_AND_CONFESSES, "Rome", "Carthage", "Egypt");
+		Rigged luck = new Rigged();
+		game = Locating.in(RULESET, Identities.of("Rome", "Carthage", "Egypt"), luck)
+			.locate("Rome", "Egypt")
+			.locate("Carthage", "Egypt")
+			.game();
 		armyOf("Carthage", "Warrior", 1);
 		armyOf("Rome", "Spy", 1);
 		game.act("Carthage", new Action.SendWarparty("Egypt", Map.of("Warrior", 1)));
 		sendSpy("Rome", "Egypt");
+		// Neither Rome's Pathfinders discover the Warparty nor Carthage's
+		// catch the Spy; the Warparty catches it, and it confesses.
+		luck.then(0.99, 0.99, 0, 0.9);
 
 		game.endTurn();
 

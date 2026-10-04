@@ -43,6 +43,15 @@ class DilemmasTest {
 	}
 
 	/**
+	 * {@link #play}, once every Nation has Located every other; see
+	 * {@link Locating}.
+	 */
+	void playLocated(RandomGenerator luck, Event... events) {
+		game = Locating.everyone(new Ruleset(RULESET.units(), RULESET.buildings(), List.of(), List.of(events)),
+				Identities.of("Rome", "Carthage"), luck);
+	}
+
+	/**
 	 * Luck that makes every Event happen for the given number of draws, then
 	 * draws an even 0.5, which no Event with a chance of a half or less happens
 	 * on and which leaves effects as authored.
@@ -311,7 +320,7 @@ class DilemmasTest {
 
 	@Test
 	void tributeIsStillOfferedOnATurnADilemmaIsFaced() {
-		game = new Game(new Ruleset(RULESET.units(), RULESET.buildings(), List.of(),
+		game = Locating.everyone(new Ruleset(RULESET.units(), RULESET.buildings(), List.of(),
 				List.of(certain("Flood"), certain("Drought"))), Identities.of("Rome", "Carthage"), GameTest.EVEN_LUCK);
 		game.act("Rome", new Action.TrainUnits("Warrior", 2));
 		game.endTurn();

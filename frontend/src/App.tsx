@@ -66,6 +66,8 @@ function JoinedRoom({ code, membership }: { code: string; membership: Membership
     sendWarparty,
     recallWarparty,
     sendSpy,
+    setTask,
+    cancelTask,
     answerDilemma,
     unlockTechnology,
     offerTribute,
@@ -95,6 +97,8 @@ function JoinedRoom({ code, membership }: { code: string; membership: Membership
           onSendWarparty={sendWarparty}
           onRecallWarparty={recallWarparty}
           onSendSpy={sendSpy}
+          onSetTask={setTask}
+          onCancelTask={cancelTask}
           onAnswerDilemma={answerDilemma}
           onUnlockTechnology={unlockTechnology}
           onOfferTribute={offerTribute}

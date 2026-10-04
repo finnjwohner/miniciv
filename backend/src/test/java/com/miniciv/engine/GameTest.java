@@ -212,7 +212,7 @@ class GameTest {
 				List.of(new MapNation(Identities.of("Rome"), MapNation.Standing.IN_GAME), new MapNation(Identities.of("Carthage"), MapNation.Standing.IN_GAME),
 						new MapNation(Identities.of("Egypt"), MapNation.Standing.IN_GAME)),
 				List.of(FARM, GRANARY, BANK, WALLS, MOAT), Map.of(), List.of(), List.of(), 0, List.of(), Map.of(),
-				List.of(WARRIOR, ARCHER, HORSEMAN, SCOUT), Map.of(), 0, List.of(), List.of(), List.of(), TravelBracket.ALL, 3, 0, new GoldForecast(12, 0), null, List.of(), List.of(), List.of(), List.of(),
+				List.of(WARRIOR, ARCHER, HORSEMAN, SCOUT), Map.of(), 0, 0, List.of(), List.of(), List.of(), List.of(), List.of(), TravelBracket.ALL, 3, 0, new GoldForecast(12, 0), null, List.of(), List.of(), List.of(), List.of(),
 				new TurnReport(1, new TurnReport.NetChange(10, 2, 3),
 						List.of(new TurnReport.Section(TurnReport.Kind.RESOURCES, List.of(BASE_INCOME_LINE)))),
 				List.of(), null, null));
@@ -376,7 +376,7 @@ class GameTest {
 	void aDestroyedBuildingAddsNoFlatGoldOrResearchButADamagedOneStillDoes() {
 		BuildingType fort = new BuildingType("Fort", 20, 1, 0, 3, 0, 2, 3);
 		UnitType spearman = new UnitType("Spearman", 10, 1, 1, 1, 2.5, List.of());
-		game = new Game(new Ruleset(List.of(spearman), List.of(fort), List.of()), Identities.of("Rome", "Carthage"),
+		game = Locating.everyone(new Ruleset(List.of(spearman), List.of(fort), List.of()), Identities.of("Rome", "Carthage"),
 				EVEN_LUCK);
 		game.act("Carthage", new Action.StartBuilding("Fort"));
 		game.act("Carthage", new Action.StartBuilding("Fort"));
@@ -541,6 +541,14 @@ class GameTest {
 	}
 
 	/**
+	 * Starts the Game over with every Nation having Located every other; see
+	 * {@link Locating}.
+	 */
+	void locateEachOther() {
+		game = Locating.everyone(RULESET, Identities.of("Rome", "Carthage", "Egypt"), EVEN_LUCK);
+	}
+
+	/**
 	 * Trains Units for a Nation and ends Turns until they have joined its Army.
 	 */
 	void armyOf(String nation, String unit, int count) {
@@ -552,6 +560,7 @@ class GameTest {
 
 	@Test
 	void sendingAWarpartyTakesItsUnitsOutOfTheArmyAndSetsThemTravelling() {
+		locateEachOther();
 		armyOf("Rome", "Warrior", 3);
 
 		ActionResult result = game.act("Rome", new Action.SendWarparty("Carthage", Map.of("Warrior", 2)));
@@ -576,6 +585,7 @@ class GameTest {
 
 	@Test
 	void aWarpartyCanOnlyBeMadeOfUnitsTheArmyHas() {
+		locateEachOther();
 		armyOf("Rome", "Warrior", 2);
 
 		assertThat(game.act("Rome", new Action.SendWarparty("Carthage", Map.of())))
@@ -594,16 +604,17 @@ class GameTest {
 
 	@Test
 	void aWarpartyCountsDownItsTravelAndOnArrivalBothSidesAreToldButTheDefenderLearnsNothingEarlier() {
+		locateEachOther();
 		armyOf("Rome", "Warrior", 2);
 		game.act("Rome", new Action.SendWarparty("Carthage", Map.of("Warrior", 2)));
 
 		game.endTurn();
 		assertThat(game.viewOf("Rome").warparties()).containsExactly(new Warparty(1, "Carthage", Map.of("Warrior", 2), 6, false, 2, 1));
-		assertThat(game.viewOf("Carthage").turnReport().lines()).containsExactly(incomeReport(12));
+		assertThat(game.viewOf("Carthage").turnReport().lines()).containsExactly(incomeReport(16));
 
 		game.endTurn();
 		assertThat(game.viewOf("Rome").warparties()).containsExactly(new Warparty(1, "Carthage", Map.of("Warrior", 2), 6, false, 1, 2));
-		assertThat(game.viewOf("Carthage").turnReport().lines()).containsExactly(incomeReport(14));
+		assertThat(game.viewOf("Carthage").turnReport().lines()).containsExactly(incomeReport(18));
 
 		game.endTurn();
 		NationView rome = game.viewOf("Rome");
@@ -612,8 +623,8 @@ class GameTest {
 				"Your Warparty of Warrior ×2 arrived at Carthage; the Battle will be fought as this Turn ends.");
 		assertThat(game.viewOf("Carthage").turnReport().lines()).containsExactly(
 				"Caesar of Rome's Warparty arrived at your Nation; the Battle will be fought as this Turn ends.",
-				incomeReport(16));
-		assertThat(game.viewOf("Egypt").turnReport().lines()).containsExactly(incomeReport(16));
+				incomeReport(20));
+		assertThat(game.viewOf("Egypt").turnReport().lines()).containsExactly(incomeReport(20));
 	}
 
 	/**
@@ -630,6 +641,7 @@ class GameTest {
 
 	@Test
 	void aWarpartyMeetingNoArmyLosesNothingAndCarriesHomePlunderScaledByItsStrength() {
+		locateEachOther();
 		armyOf("Rome", "Warrior", 2);
 		arrived("Rome", "Carthage", Map.of("Warrior", 2));
 		int carthageGold = game.viewOf("Carthage").gold();
@@ -655,6 +667,7 @@ class GameTest {
 
 	@Test
 	void plunderJoinsTheNationWhenItsWarpartyComesHome() {
+		locateEachOther();
 		armyOf("Rome", "Warrior", 2);
 		arrived("Rome", "Carthage", Map.of("Warrior", 2));
 		game.endTurn();
@@ -677,6 +690,7 @@ class GameTest {
 
 	@Test
 	void aMuchStrongerWarpartyWipesOutTheArmyWithoutLossAndBothSidesAreToldOfTheBattle() {
+		locateEachOther();
 		for (int turn = 1; turn <= 5; turn++) {
 			game.endTurn();
 		}
@@ -708,6 +722,7 @@ class GameTest {
 
 	@Test
 	void inACloseFightBothSidesLoseUnitsAndTheSurvivorsPlunderLess() {
+		locateEachOther();
 		game.endTurn();
 		armyOf("Rome", "Warrior", 2);
 		armyOf("Carthage", "Warrior", 2);
@@ -724,6 +739,7 @@ class GameTest {
 
 	@Test
 	void unitsFightingATypeTheyCounterAreStrongerSoEvenNumbersAreNoLongerAnEvenFight() {
+		locateEachOther();
 		armyOf("Rome", "Archer", 2);
 		armyOf("Carthage", "Warrior", 2);
 		arrived("Rome", "Carthage", Map.of("Archer", 2));
@@ -739,6 +755,7 @@ class GameTest {
 
 	@Test
 	void unitsTheDefenderFinishesTrainingInTheTurnAWarpartyArrivesDefendAgainstIt() {
+		locateEachOther();
 		armyOf("Rome", "Warrior", 2);
 		arrived("Rome", "Carthage", Map.of("Warrior", 2));
 		assertThat(game.viewOf("Carthage").army()).isEmpty();
@@ -755,7 +772,7 @@ class GameTest {
 
 	@Test
 	void luckMovesTheOutcomeOfABattleALittle() {
-		game = new Game(RULESET, Identities.of("Rome", "Carthage", "Egypt"), luck(-1, 0));
+		game = Locating.in(RULESET, Identities.of("Rome", "Carthage", "Egypt"), luck(-1, 0)).locate("Rome", "Carthage").game();
 		game.endTurn();
 		armyOf("Rome", "Warrior", 4);
 		game.endTurn();
@@ -772,7 +789,7 @@ class GameTest {
 	void aBattleFoughtFromTheSameSeedHasTheSameOutcome() {
 		List<List<String>> reports = new ArrayList<>();
 		for (int replay = 1; replay <= 2; replay++) {
-			game = new Game(RULESET, Identities.of("Rome", "Carthage", "Egypt"), new Random(7));
+			game = Locating.everyone(RULESET, Identities.of("Rome", "Carthage", "Egypt"), new Random(7));
 			game.endTurn();
 			armyOf("Rome", "Warrior", 4);
 			game.endTurn();
@@ -803,6 +820,7 @@ class GameTest {
 
 	@Test
 	void survivingStrengthWearsDefenseDownDamagingADefensiveBuildingAndSparingThePopulation() {
+		locateEachOther();
 		game.act("Carthage", new Action.StartBuilding("Walls"));
 		armyOf("Rome", "Warrior", 2);
 		arrived("Rome", "Carthage", Map.of("Warrior", 2));
@@ -825,6 +843,7 @@ class GameTest {
 
 	@Test
 	void defenseIsWornDownOneDefensiveBuildingAtATimeInTheOrderTheyWereCompleted() {
+		locateEachOther();
 		game.act("Carthage", new Action.StartBuilding("Walls"));
 		game.endTurn();
 		game.act("Carthage", new Action.StartBuilding("Moat"));
@@ -843,6 +862,7 @@ class GameTest {
 
 	@Test
 	void onlyStrengthLeftOnceDefenseIsDownReducesPopulation() {
+		locateEachOther();
 		game.act("Carthage", new Action.StartBuilding("Moat"));
 		game.endTurn();
 		armyOf("Rome", "Warrior", 4);
@@ -865,6 +885,7 @@ class GameTest {
 
 	@Test
 	void anArmyThatSurvivesTheBattleKeepsThePopulationLossDown() {
+		locateEachOther();
 		game.endTurn();
 		armyOf("Rome", "Warrior", 2);
 		armyOf("Carthage", "Warrior", 2);
@@ -881,6 +902,7 @@ class GameTest {
 
 	@Test
 	void anArmyWipedOutInTheBattleDoublesThePopulationLoss() {
+		locateEachOther();
 		game.endTurn();
 		game.endTurn();
 		game.endTurn();
@@ -902,7 +924,7 @@ class GameTest {
 	@Test
 	void populationIsNotReducedBelowZero() {
 		UnitType giant = new UnitType("Giant", 10, 1, 1, 1, 100, List.of());
-		game = new Game(new Ruleset(List.of(giant), List.of(), List.of()), Identities.of("Rome", "Carthage"), EVEN_LUCK);
+		game = Locating.everyone(new Ruleset(List.of(giant), List.of(), List.of()), Identities.of("Rome", "Carthage"), EVEN_LUCK);
 		armyOf("Rome", "Giant", 1);
 		arrived("Rome", "Carthage", Map.of("Giant", 1));
 		int carthagePopulation = game.viewOf("Carthage").population();
@@ -918,7 +940,7 @@ class GameTest {
 	void aDestroyedBuildingAddsNothingUntilRebuiltButADamagedOneStillDoes() {
 		BuildingType fort = new BuildingType("Fort", 20, 1, 1, 0, 0, 0, 3);
 		UnitType spearman = new UnitType("Spearman", 10, 1, 1, 1, 2.5, List.of());
-		game = new Game(new Ruleset(List.of(spearman), List.of(fort), List.of()), Identities.of("Rome", "Carthage"),
+		game = Locating.everyone(new Ruleset(List.of(spearman), List.of(fort), List.of()), Identities.of("Rome", "Carthage"),
 				EVEN_LUCK);
 		game.act("Carthage", new Action.StartBuilding("Fort"));
 		game.act("Carthage", new Action.StartBuilding("Fort"));
@@ -946,6 +968,7 @@ class GameTest {
 
 	@Test
 	void repairingADamagedBuildingPaysHalfItsGoldAndTurnsInProportionToTheDefenseItLost() {
+		locateEachOther();
 		wallsDamaged();
 		assertThat(game.viewOf("Carthage").damage()).containsExactly(BuildingDamage.defensive("Walls", 0, 6, 9, 1, 15, 1));
 		int carthageGold = game.viewOf("Carthage").gold();
@@ -967,6 +990,7 @@ class GameTest {
 
 	@Test
 	void rebuildingADestroyedBuildingCostsHalfWhatConstructingItDoesAndEachIsRebuiltSeparately() {
+		locateEachOther();
 		game.act("Carthage", new Action.StartBuilding("Moat"));
 		game.endTurn();
 		game.act("Carthage", new Action.StartBuilding("Moat"));
@@ -997,7 +1021,7 @@ class GameTest {
 	void rebuildingAndRepairingRoundHalfTheGoldAndTurnsUp() {
 		BuildingType keep = new BuildingType("Keep", 25, 5, 0, 0, 0, 0, 4);
 		UnitType warrior = new UnitType("Warrior", 10, 3, 1, 1, 3, List.of());
-		game = new Game(new Ruleset(List.of(warrior), List.of(keep), List.of()), Identities.of("Rome", "Carthage"),
+		game = Locating.everyone(new Ruleset(List.of(warrior), List.of(keep), List.of()), Identities.of("Rome", "Carthage"),
 				EVEN_LUCK);
 		game.act("Carthage", new Action.StartBuilding("Keep"));
 		game.act("Carthage", new Action.StartBuilding("Keep"));
@@ -1020,6 +1044,7 @@ class GameTest {
 
 	@Test
 	void aRepairRestoresOnlyTheDefenseItWasPaidForEvenIfMoreIsLostMeanwhile() {
+		locateEachOther();
 		game.act("Carthage", new Action.StartBuilding("Walls"));
 		armyOf("Rome", "Warrior", 3);
 		game.act("Rome", new Action.SendWarparty("Carthage", Map.of("Warrior", 2)));
@@ -1038,6 +1063,7 @@ class GameTest {
 
 	@Test
 	void onlyDamagedBuildingsCanBeRepairedAndDestroyedOnesRebuiltWhileTheNationCanAffordIt() {
+		locateEachOther();
 		wallsDamaged();
 		while (game.viewOf("Carthage").gold() >= 20) {
 			game.act("Carthage", new Action.StartBuilding("Moat"));
@@ -1063,6 +1089,7 @@ class GameTest {
 
 	@Test
 	void aBuildingAlreadyBeingRepairedCannotBeRepairedAgain() {
+		locateEachOther();
 		wallsDamaged();
 		game.act("Carthage", new Action.RepairBuilding("Walls"));
 
@@ -1099,7 +1126,7 @@ class GameTest {
 	void fortsWornDownBy(int spearmen) {
 		BuildingType fort = new BuildingType("Fort", 22, 1, 0, 0, 0, 0, 10);
 		UnitType spearman = new UnitType("Spearman", 5, 1, 1, 0, 2.5, List.of());
-		game = new Game(new Ruleset(List.of(spearman), List.of(fort, FARM), List.of()), Identities.of("Rome", "Carthage"),
+		game = Locating.everyone(new Ruleset(List.of(spearman), List.of(fort, FARM), List.of()), Identities.of("Rome", "Carthage"),
 				EVEN_LUCK);
 		game.act("Carthage", new Action.StartBuilding("Fort"));
 		game.act("Carthage", new Action.StartBuilding("Fort"));
@@ -1213,21 +1240,23 @@ class GameTest {
 
 	@Test
 	void unitsCanDesertFromAWarpartyAbroadWhichDisappearsOnceItHasNoUnitsLeft() {
+		locateEachOther();
 		game.act("Rome", new Action.TrainUnits("Horseman", 2));
 		game.endTurn();
 		game.endTurn();
 		game.act("Rome", new Action.SendWarparty("Carthage", Map.of("Horseman", 1)));
-		game.act("Rome", new Action.TrainUnits("Warrior", 1));
+		game.act("Rome", new Action.TrainUnits("Warrior", 2));
+		game.act("Rome", new Action.StartBuilding("Moat"));
 		NationView before = game.viewOf("Rome");
 		assertThat(before.gold()).isEqualTo(2);
-		assertThat(before.population()).isEqualTo(7);
+		assertThat(before.population()).isEqualTo(8);
 
 		game.endTurn();
 
 		NationView rome = game.viewOf("Rome");
-		assertThat(rome.army()).containsExactly(entry("Horseman", 1), entry("Warrior", 1));
+		assertThat(rome.army()).containsExactly(entry("Horseman", 1), entry("Warrior", 2));
 		assertThat(rome.warparties()).isEmpty();
-		assertThat(rome.gold()).isEqualTo(2 + 7 - 7);
+		assertThat(rome.gold()).isEqualTo(2 + 8 - 8);
 		assertThat(rome.turnReport().lines())
 			.contains("You could not pay your Units' upkeep, so Horseman ×1 deserted from your Warparty sent to Carthage.");
 	}
@@ -1240,7 +1269,7 @@ class GameTest {
 	 */
 	void gameWithGiants(String... nations) {
 		UnitType warrior = new UnitType("Warrior", 10, 3, 1, 1, 3, List.of());
-		game = new Game(new Ruleset(List.of(warrior, GIANT), List.of(), List.of()), Identities.of(nations), EVEN_LUCK);
+		game = Locating.everyone(new Ruleset(List.of(warrior, GIANT), List.of(), List.of()), Identities.of(nations), EVEN_LUCK);
 	}
 
 	@Test
@@ -1300,7 +1329,7 @@ class GameTest {
 	void aWarpartyWipedOutInTheBattleCannotConquerEvenANationLeftWithNoPopulationAndNoArmy() {
 		UnitType warrior = new UnitType("Warrior", 10, 3, 1, 1, 3, List.of());
 		UnitType recruit = new UnitType("Recruit", 0, 1, 20, 0, 1, List.of());
-		game = new Game(new Ruleset(List.of(warrior, recruit), List.of(), List.of()), Identities.of("Rome", "Carthage", "Egypt"),
+		game = Locating.everyone(new Ruleset(List.of(warrior, recruit), List.of(), List.of()), Identities.of("Rome", "Carthage", "Egypt"),
 				EVEN_LUCK);
 		game.act("Rome", new Action.TrainUnits("Warrior", 1));
 		game.act("Carthage", new Action.TrainUnits("Warrior", 1));
@@ -1349,7 +1378,7 @@ class GameTest {
 		assertThat(egypt.turnReport().lines()).containsExactly("Caesar of Rome conquered Carthage.",
 				"Your Warparty of Warrior ×1 heading to Carthage turned back home, as Carthage was conquered.",
 				"Your Warparty of Warrior ×1 heading to Carthage turned back home, as Carthage was conquered.",
-				incomeReport(20), "Your Units' upkeep cost 2 Gold.");
+				incomeReport(24), "Your Units' upkeep cost 2 Gold.");
 
 		game.endTurn();
 
@@ -1373,7 +1402,7 @@ class GameTest {
 		assertThat(carthage.version()).isEqualTo(conquered.version());
 		assertThat(carthage.gold()).isEqualTo(conquered.gold());
 		assertThat(carthage.turnReport()).isEqualTo(conquered.turnReport());
-		assertThat(game.viewOf("Egypt").turnReport().lines()).containsExactly(incomeReport(28));
+		assertThat(game.viewOf("Egypt").turnReport().lines()).containsExactly(incomeReport(32));
 		assertThat(game.nations()).containsExactly("Rome", "Carthage", "Egypt");
 		assertThat(game.conquered()).containsExactly("Carthage");
 		assertThat(game.act("Carthage", new Action.TrainUnits("Warrior", 1)))
@@ -1446,6 +1475,7 @@ class GameTest {
 
 	@Test
 	void warpartiesFromDifferentNationsArrivingTogetherFightAsOneAndEachLosesTheSameShareOfItsUnits() {
+		locateEachOther();
 		for (int turn = 1; turn <= 5; turn++) {
 			game.endTurn();
 		}
@@ -1481,6 +1511,7 @@ class GameTest {
 
 	@Test
 	void plunderFromAJointAttackIsSplitInProportionToEachWarpartysStrength() {
+		locateEachOther();
 		for (int turn = 1; turn <= 5; turn++) {
 			game.endTurn();
 		}
@@ -1514,6 +1545,7 @@ class GameTest {
 
 	@Test
 	void aWarpartyWipedOutInAJointAttackGetsNoShareOfThePlunder() {
+		locateEachOther();
 		for (int turn = 1; turn <= 5; turn++) {
 			game.endTurn();
 		}
@@ -1544,6 +1576,7 @@ class GameTest {
 
 	@Test
 	void warpartiesFromOneNationArrivingTogetherAlsoFightAsOne() {
+		locateEachOther();
 		for (int turn = 1; turn <= 5; turn++) {
 			game.endTurn();
 		}
@@ -1658,6 +1691,7 @@ class GameTest {
 
 	@Test
 	void nothingIsSeizedFromARemovedNationAndWarpartiesHeadingToItTurnBackHome() {
+		locateEachOther();
 		armyOf("Rome", "Warrior", 2);
 		game.act("Rome", new Action.SendWarparty("Carthage", Map.of("Warrior", 1)));
 		game.endTurn();

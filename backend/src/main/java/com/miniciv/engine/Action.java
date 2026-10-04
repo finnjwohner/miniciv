@@ -44,7 +44,7 @@ public sealed interface Action {
 	}
 
 	/**
-	 * Sends Units from the Army to another Nation as a Warparty.
+	 * Sends Units from the Army to another Nation it has Located, as a Warparty.
 	 *
 	 * @param units how many of each Unit type to send
 	 */
@@ -52,10 +52,28 @@ public sealed interface Action {
 	}
 
 	/**
-	 * Sends a Spy from the Army to another Nation, where it stays and now and
-	 * then reports its hidden state.
+	 * Sends a Spy from the Army to another Nation it has Located, where it
+	 * stays and now and then reports its hidden state.
 	 */
 	record SendSpy(String target) implements Action {
+	}
+
+	/**
+	 * Sets some of the Nation's Idle Scouts to a Task.
+	 *
+	 * @param kind the name of a {@link Task.Kind}, such as LOCATE
+	 * @param target the Nation the Task is about
+	 * @param scouts how many Idle Scouts to set to it
+	 */
+	record SetTask(String kind, String target, int scouts) implements Action {
+	}
+
+	/**
+	 * Ends one of the Nation's Tasks, its Scouts going Idle.
+	 *
+	 * @param task the Task's id
+	 */
+	record CancelTask(int task) implements Action {
 	}
 
 	/**

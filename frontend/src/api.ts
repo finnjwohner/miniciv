@@ -207,6 +207,10 @@ export type Spy = {
   turnsLeft: number
   turnsTravelled: number
 }
+/** A kind of Task Scouts can be set to: `LOCATE` searches for a Nation not yet Located until it is Located. */
+export type TaskKind = 'LOCATE'
+/** What some of the Nation's Scouts are set to do, told apart by `id`; `target` is the Nation it is about. */
+export type Task = { id: number; kind: TaskKind; target: string; scouts: number }
 /**
  * One choice a Dilemma offers; `worst` is the one that applies if the Player does not choose before the Turn ends.
  * What it leads to is partly luck, and neither its outcomes nor their odds are shown.
@@ -324,8 +328,14 @@ export type NationView = {
   availableUnits: UnitType[]
   /** How many of each Unit type the Nation has at home; never its Scouts. */
   army: Record<string, number>
-  /** How many Scouts the Nation has roaming the wilds. */
+  /** How many Scouts the Nation has roaming the wilds, Idle or on Tasks. */
   scouts: number
+  /** How many of its Scouts are on no Task. */
+  idleScouts: number
+  /** The Tasks its Scouts are set to, in the order set. */
+  tasks: Task[]
+  /** The Nations it has Located, and so may send Spies and Warparties to, in the order Located. */
+  located: string[]
   training: Training[]
   /** The Nation's Warparties abroad, in the order sent. */
   warparties: Warparty[]
@@ -361,6 +371,17 @@ export type NationView = {
 /** The other Nations still in the Game, in the order they joined. */
 export function otherNations(nation: NationView): string[] {
   return nation.map.filter((n) => n.standing === 'IN_GAME' && n.name !== nation.nation).map((n) => n.name)
+}
+
+/** The other Nations still in the Game that the Nation has Located, and so may send Spies and Warparties to. */
+export function locatedNations(nation: NationView): string[] {
+  return otherNations(nation).filter((n) => nation.located.includes(n))
+}
+
+/** The other Nations still in the Game that the Nation has neither Located nor set Scouts to Locate. */
+export function locatableNations(nation: NationView): string[] {
+  const locating = nation.tasks.filter((t) => t.kind === 'LOCATE').map((t) => t.target)
+  return otherNations(nation).filter((n) => !nation.located.includes(n) && !locating.includes(n))
 }
 
 /** What this browser keeps after joining a Room; the token is secret. */
