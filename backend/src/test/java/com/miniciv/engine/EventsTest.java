@@ -87,7 +87,7 @@ class EventsTest {
 			lines.addAll(report("Rome"));
 		}
 
-		assertThat(lines).contains("Your Farm has been built.", "Warrior ×1 finished training and joined your Army.",
+		assertThat(lines).contains("Your Farm has been built.", "1 Warrior finished training and joined your Army.",
 				"A good harvest filled your granaries: your Nation gained 3 Population.");
 		assertThat(lines).anyMatch(line -> line.startsWith("Your Population earned"))
 			.noneMatch(line -> line.contains("Caesar"));

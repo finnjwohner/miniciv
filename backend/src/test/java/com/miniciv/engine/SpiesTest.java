@@ -82,7 +82,7 @@ class SpiesTest {
 		game.endTurn();
 
 		assertThat(game.viewOf("Rome").army()).containsExactly(entry("Spy", 1));
-		assertThat(report("Rome")).contains("Spy ×1 finished training and joined your Army.");
+		assertThat(report("Rome")).contains("1 Spy finished training and joined your Army.");
 	}
 
 	@Test
