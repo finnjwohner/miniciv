@@ -92,7 +92,10 @@ function describeEffect(building: BuildingType) {
   return effects.join(', ')
 }
 
-/** A defensive Building type's Damaged and Destroyed Buildings, with buttons to Repair and Rebuild them. */
+/**
+ * A Building type's Damaged and, for a defensive one, Destroyed Buildings, with buttons to Repair and
+ * Rebuild them.
+ */
 function Damage({
   damage,
   nation,
@@ -110,8 +113,9 @@ function Damage({
         <li className="row row--nested">
           <span className="tag tag--warn">Damaged</span>
           <span className="row__meta">
-            1 Building, {damage.damaged} Defense lost · Repair {damage.repairGold} Gold,{' '}
-            {plural(damage.repairTurns, 'Turn')}
+            {plural(damage.damaged, 'Building')},{' '}
+            {damage.defenseLost === null ? 'adding nothing' : `${damage.defenseLost} Defense lost`} · Repair{' '}
+            {damage.repairGold} Gold, {plural(damage.repairTurns, 'Turn')}
           </span>
           <button
             aria-label={`Repair ${damage.building}`}
@@ -122,7 +126,7 @@ function Damage({
           </button>
         </li>
       )}
-      {damage.destroyed > 0 && (
+      {damage.defenseLost !== null && damage.destroyed > 0 && (
         <li className="row row--nested">
           <span className="tag tag--bad">Destroyed</span>
           <span className="row__meta">

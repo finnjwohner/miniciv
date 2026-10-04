@@ -377,4 +377,24 @@ class RulesetTest {
 			.withMessageContaining("Event Storm happens to a Warparty, so it cannot change spyCaught");
 	}
 
+	@Test
+	void anEventDamagesNoLessThanZeroBuildingsAndNeverAWarpartys() {
+		Event fire = event("Fire", Event.Subject.NATION, 0.1, null, DamagedBuildingsTest.damageBuildings(-1));
+		Event storm = event("Dust storm", Event.Subject.WARPARTY, 0.1, null, DamagedBuildingsTest.damageBuildings(1));
+		Event riot = dilemma("Riot", Event.Subject.NATION, null, choice("Wait", true),
+				new Event.Choice("Disperse", DamagedBuildingsTest.damageBuildings(-2), false, "You dispersed them"),
+				new Event.Choice("Parley", false,
+						List.of(new Event.Outcome(1, DamagedBuildingsTest.damageBuildings(-1), "You parleyed"))));
+		Event flood = dilemma("Flood", Event.Subject.NATION, null, choice("Flee", true),
+				new Event.Choice("Dig", DamagedBuildingsTest.damageBuildings(2), false, "You dug"));
+
+		assertThatExceptionOfType(InvalidRuleset.class)
+			.isThrownBy(() -> new Ruleset(List.of(), List.of(), List.of(), List.of(fire, storm, riot, flood)))
+			.withMessageContaining("Event Fire cannot damage less than 0 Buildings")
+			.withMessageContaining("Event Dust storm happens to a Warparty, so it cannot change damageBuildings")
+			.withMessageContaining("Event Riot's choice Disperse cannot damage less than 0 Buildings")
+			.withMessageContaining("Event Riot's choice Parley has an outcome that damages less than 0 Buildings")
+			.withMessageNotContaining("Flood");
+	}
+
 }

@@ -193,7 +193,7 @@ class TurnsTest {
 	 */
 	static Map<String, Object> onMap(String nation, int seat, String standing) {
 		Map<String, Object> facts = new HashMap<>();
-		for (String fact : List.of("gold", "population", "research", "army", "buildings", "defense")) {
+		for (String fact : List.of("gold", "population", "research", "army", "buildings", "defense", "damaged")) {
 			facts.put(fact, null);
 		}
 		return Map.of("name", nation, "ruler", "Ruler " + (seat + 1), "colour", IdentityTest.COLOURS.get(seat),

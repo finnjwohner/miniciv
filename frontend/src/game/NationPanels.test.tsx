@@ -340,3 +340,64 @@ describe('TechTreePanel', () => {
     expect(iconBeside('Library', tree)).toBeInTheDocument()
   })
 })
+
+describe('Damaged and Destroyed Buildings', () => {
+  /** The row in the Build panel that tells of `text`. */
+  function rowWith(text: string) {
+    return within(screen.getByRole('region', { name: 'Build' }))
+      .getAllByRole('listitem')
+      .find((row) => row.textContent!.includes(text))!
+  }
+
+  it('shows Damaged non-defensive Buildings with what Repairing one costs, and Repairs one', () => {
+    const onRepairBuilding = vi.fn()
+    renderGame({
+      nation: nationView({
+        damage: [
+          {
+            building: 'Farm',
+            damaged: 2,
+            defenseLost: null,
+            repairGold: 15,
+            repairTurns: 1,
+            destroyed: null,
+            rebuildGold: null,
+            rebuildTurns: null,
+          },
+        ],
+      }),
+      onRepairBuilding,
+    })
+
+    const row = rowWith('Damaged')
+    expect(row).toHaveTextContent('Damaged2 Buildings, adding nothing · Repair 15 Gold, 1 Turn')
+    expect(within(row).queryByRole('button', { name: 'Rebuild Farm' })).not.toBeInTheDocument()
+    fireEvent.click(within(row).getByRole('button', { name: 'Repair Farm' }))
+    expect(onRepairBuilding).toHaveBeenCalledWith('Farm')
+  })
+
+  it('shows a defensive Building’s lost Defense and its Destroyed ones, with Repair and Rebuild', () => {
+    renderGame({
+      nation: nationView({
+        gold: 10,
+        damage: [
+          {
+            building: 'Palisade',
+            damaged: 1,
+            defenseLost: 2,
+            repairGold: 7,
+            repairTurns: 1,
+            destroyed: 1,
+            rebuildGold: 20,
+            rebuildTurns: 1,
+          },
+        ],
+      }),
+    })
+
+    expect(rowWith('Damaged')).toHaveTextContent('Damaged1 Building, 2 Defense lost · Repair 7 Gold, 1 Turn')
+    expect(screen.getByRole('button', { name: 'Repair Palisade' })).toBeEnabled()
+    expect(rowWith('Destroyed')).toHaveTextContent('Destroyed1 Building · Rebuild 20 Gold, 1 Turn')
+    expect(screen.getByRole('button', { name: 'Rebuild Palisade' })).toBeDisabled()
+  })
+})

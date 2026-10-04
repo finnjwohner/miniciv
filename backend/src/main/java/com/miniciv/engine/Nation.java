@@ -52,7 +52,13 @@ class Nation {
 	private final Map<String, Integer> defenseLost = new LinkedHashMap<>();
 
 	/**
-	 * The defensive Buildings being repaired or rebuilt, in the order started.
+	 * How many of each non-defensive Building type are Damaged, counting those
+	 * being repaired; see {@link BuildingDamage}.
+	 */
+	private final Map<String, Integer> damaged = new LinkedHashMap<>();
+
+	/**
+	 * The Buildings being repaired or rebuilt, in the order started.
 	 */
 	private final List<Repair> repairs = new ArrayList<>();
 
@@ -158,6 +164,7 @@ class Nation {
 		copy.construction.addAll(construction);
 		copy.buildings.putAll(buildings);
 		copy.defenseLost.putAll(defenseLost);
+		copy.damaged.putAll(damaged);
 		copy.repairs.addAll(repairs);
 		copy.training.addAll(training);
 		copy.army.putAll(army);
@@ -801,16 +808,25 @@ class Nation {
 	}
 
 	/**
-	 * Pays upfront to repair a defensive Building type's damaged Building: half
-	 * the Gold and Turns constructing it costs, in proportion to the Defense it
-	 * lost, rounded up.
+	 * Pays upfront to repair one of a Building type's Damaged Buildings: for a
+	 * defensive one, half the Gold and Turns constructing it costs, in
+	 * proportion to the Defense it lost, rounded up; for any other, half of
+	 * them, rounded up.
 	 */
 	ActionResult repair(BuildingType building) {
-		int damaged = unrepaired(building) % Math.max(1, building.defense());
-		if (damaged == 0) {
+		int unrepaired = unrepaired(building);
+		if (!defensive(building)) {
+			if (unrepaired == 0) {
+				return ActionResult.rejected("You have no damaged " + building.name() + " to repair.");
+			}
+			return startRepair(building, false, 0, half(building.gold()), half(building.turns()), "Repairing ");
+		}
+		int defense = unrepaired % building.defense();
+		if (defense == 0) {
 			return ActionResult.rejected("You have no damaged " + building.name() + " to repair.");
 		}
-		return startRepair(building, false, damaged, "Repairing ");
+		return startRepair(building, false, defense, halfInProportion(building.gold(), defense, building),
+				halfInProportion(building.turns(), defense, building), "Repairing ");
 	}
 
 	/**
@@ -818,22 +834,27 @@ class Nation {
 	 * Buildings, for half the Gold and Turns constructing it costs, rounded up.
 	 */
 	ActionResult rebuild(BuildingType building) {
-		if (building.defense() == 0 || unrepaired(building) < building.defense()) {
+		if (!defensive(building) || unrepaired(building) < building.defense()) {
 			return ActionResult.rejected("You have no destroyed " + building.name() + " to rebuild.");
 		}
-		return startRepair(building, true, building.defense(), "Rebuilding ");
+		return startRepair(building, true, building.defense(), half(building.gold()), half(building.turns()),
+				"Rebuilding ");
 	}
 
-	private ActionResult startRepair(BuildingType building, boolean rebuild, int defense, String doing) {
-		int cost = halfInProportion(building.gold(), defense, building);
+	private ActionResult startRepair(BuildingType building, boolean rebuild, int defense, int cost, int turns,
+			String doing) {
 		if (cost > gold) {
 			return ActionResult
 				.rejected(doing + building.name() + " costs " + cost + " Gold, but you have only " + gold + ".");
 		}
 		gold -= cost;
-		repairs.add(new Repair(building.name(), rebuild, defense, halfInProportion(building.turns(), defense, building)));
+		repairs.add(new Repair(building.name(), rebuild, defense, turns));
 		version++;
 		return ActionResult.ACCEPTED;
+	}
+
+	private static boolean defensive(BuildingType building) {
+		return building.defense() > 0;
 	}
 
 	/**
@@ -852,20 +873,21 @@ class Nation {
 	}
 
 	/**
-	 * The Defense a Building type has lost and is not yet being repaired or
-	 * rebuilt for.
+	 * For a defensive Building type, the Defense it has lost and is not yet
+	 * being repaired or rebuilt for; for any other, how many of its Buildings
+	 * are Damaged and not yet being repaired.
 	 */
 	private int unrepaired(BuildingType building) {
-		int repairing = repairs.stream()
-			.filter(r -> r.building().equals(building.name()))
-			.mapToInt(Repair::defense)
-			.sum();
-		return defenseLost.getOrDefault(building.name(), 0) - repairing;
+		List<Repair> repairing = repairs.stream().filter(r -> r.building().equals(building.name())).toList();
+		if (!defensive(building)) {
+			return damaged.getOrDefault(building.name(), 0) - repairing.size();
+		}
+		return defenseLost.getOrDefault(building.name(), 0) - repairing.stream().mapToInt(Repair::defense).sum();
 	}
 
 	/**
 	 * Gives up one of a Building type's standing Buildings at once for Gold:
-	 * an undamaged one if there is any, for half its Gold, or else the damaged
+	 * an undamaged one if there is any, for half its Gold, or else a Damaged
 	 * one, for a quarter, rounded down. A defensive one takes the Defense it
 	 * raised, and any it lost, with it.
 	 */
@@ -875,8 +897,11 @@ class Nation {
 			return ActionResult.rejected(unsellable.get());
 		}
 		gold += sellValue(building);
-		if (undamaged(building) == 0) {
-			int lost = defenseLost.get(building.name()) - damaged(building);
+		if (undamaged(building) == 0 && !defensive(building)) {
+			damaged.computeIfPresent(building.name(), (b, count) -> count == 1 ? null : count - 1);
+		}
+		else if (undamaged(building) == 0) {
+			int lost = defenseLost.get(building.name()) - defenseLostByDamaged(building);
 			if (lost == 0) {
 				defenseLost.remove(building.name());
 			}
@@ -905,7 +930,7 @@ class Nation {
 			return Optional.of("Your " + name + " is being " + (repair.get().rebuild() ? "rebuilt" : "repaired")
 					+ ", and cannot be sold until that is done.");
 		}
-		if (undamaged(building) == 0 && damaged(building) == 0) {
+		if (undamaged(building) == 0 && defensive(building) && defenseLostByDamaged(building) == 0) {
 			return Optional.of("Every " + name + " you have is destroyed, and a destroyed Building cannot be sold.");
 		}
 		return Optional.empty();
@@ -935,23 +960,56 @@ class Nation {
 	}
 
 	/**
-	 * How many of a Building type's completed Buildings have lost no Defense.
+	 * How many of a Building type's completed Buildings are neither Damaged
+	 * nor destroyed.
 	 */
 	private int undamaged(BuildingType building) {
 		int count = buildings.getOrDefault(building.name(), 0);
-		if (building.defense() == 0) {
-			return count;
+		if (!defensive(building)) {
+			return count - damaged.getOrDefault(building.name(), 0);
 		}
 		int lost = defenseLost.getOrDefault(building.name(), 0);
 		return count - Math.ceilDiv(lost, building.defense());
 	}
 
 	/**
-	 * The Defense lost by a Building type's one damaged but standing Building,
-	 * or 0 if none is.
+	 * The Defense lost by a defensive Building type's one Damaged but standing
+	 * Building, or 0 if none is.
 	 */
-	private int damaged(BuildingType building) {
-		return building.defense() == 0 ? 0 : defenseLost.getOrDefault(building.name(), 0) % building.defense();
+	private int defenseLostByDamaged(BuildingType building) {
+		return defenseLost.getOrDefault(building.name(), 0) % building.defense();
+	}
+
+	/**
+	 * The Nation's undamaged non-defensive Buildings, one entry for each, by
+	 * type in the order first completed.
+	 */
+	List<String> undamagedNonDefensive(Ruleset ruleset) {
+		List<String> undamaged = new ArrayList<>();
+		for (String building : buildings.keySet()) {
+			BuildingType type = ruleset.building(building).orElseThrow();
+			if (!defensive(type)) {
+				undamaged.addAll(Collections.nCopies(undamaged(type), building));
+			}
+		}
+		return undamaged;
+	}
+
+	/**
+	 * Damages one of a non-defensive Building type's undamaged Buildings, which
+	 * the Nation must have.
+	 */
+	void damage(String building) {
+		damaged.merge(building, 1, Integer::sum);
+		version++;
+	}
+
+	/**
+	 * How many of each non-defensive Building type are Damaged, in the order
+	 * first Damaged.
+	 */
+	Map<String, Integer> damagedBuildings() {
+		return Collections.unmodifiableMap(new LinkedHashMap<>(damaged));
 	}
 
 	ActionResult trainUnits(UnitType unit, int count, int turn) {
@@ -1240,9 +1298,12 @@ class Nation {
 		for (String building : buildings.keySet()) {
 			BuildingType type = ruleset.building(building).orElseThrow();
 			int unrepaired = unrepaired(type);
-			if (unrepaired > 0) {
+			if (unrepaired > 0 && !defensive(type)) {
+				damage.add(BuildingDamage.nonDefensive(building, unrepaired, half(type.gold()), half(type.turns())));
+			}
+			else if (unrepaired > 0) {
 				int damaged = unrepaired % type.defense();
-				damage.add(new BuildingDamage(building, unrepaired / type.defense(), damaged,
+				damage.add(BuildingDamage.defensive(building, unrepaired / type.defense(), damaged,
 						halfInProportion(type.gold(), damaged, type), halfInProportion(type.turns(), damaged, type),
 						half(type.gold()), half(type.turns())));
 			}
@@ -1480,20 +1541,22 @@ class Nation {
 	}
 
 	/**
-	 * How many of each completed Building are standing: not destroyed.
+	 * How many of each completed Building add their effects: those neither
+	 * destroyed nor, for a non-defensive one, Damaged.
 	 */
-	private Map<String, Integer> standing(Ruleset ruleset) {
-		Map<String, Integer> standing = new LinkedHashMap<>(buildings);
-		defenseLost.forEach((building, lost) -> standing.computeIfPresent(building,
+	private Map<String, Integer> producing(Ruleset ruleset) {
+		Map<String, Integer> producing = new LinkedHashMap<>(buildings);
+		defenseLost.forEach((building, lost) -> producing.computeIfPresent(building,
 				(b, count) -> count - lost / ruleset.building(b).orElseThrow().defense()));
-		return standing;
+		damaged.forEach((building, count) -> producing.computeIfPresent(building, (b, owned) -> owned - count));
+		return producing;
 	}
 
 	/**
-	 * Population the Nation's standing Buildings add this Turn.
+	 * Population the Nation's producing Buildings add this Turn.
 	 */
 	int populationFromBuildings(Ruleset ruleset) {
-		return fromStanding(ruleset, BuildingType::populationPerTurn);
+		return fromProducing(ruleset, BuildingType::populationPerTurn);
 	}
 
 	/**
@@ -1505,12 +1568,12 @@ class Nation {
 	}
 
 	/**
-	 * Gold the Nation's standing Buildings add this Turn: their flat Gold plus
+	 * Gold the Nation's producing Buildings add this Turn: their flat Gold plus
 	 * their Gold for its current Population, rounded down.
 	 */
 	int goldFromBuildings(Ruleset ruleset) {
-		int flat = fromStanding(ruleset, BuildingType::goldPerTurn);
-		BigDecimal goldPerPopulation = standing(ruleset).entrySet()
+		int flat = fromProducing(ruleset, BuildingType::goldPerTurn);
+		BigDecimal goldPerPopulation = producing(ruleset).entrySet()
 			.stream()
 			.map(owned -> BigDecimal.valueOf(ruleset.building(owned.getKey()).orElseThrow().goldPerPopulation())
 				.multiply(BigDecimal.valueOf(owned.getValue())))
@@ -1521,17 +1584,17 @@ class Nation {
 	}
 
 	/**
-	 * Research the Nation's standing Buildings add this Turn.
+	 * Research the Nation's producing Buildings add this Turn.
 	 */
 	int researchFromBuildings(Ruleset ruleset) {
-		return fromStanding(ruleset, BuildingType::researchPerTurn);
+		return fromProducing(ruleset, BuildingType::researchPerTurn);
 	}
 
 	/**
-	 * Sums one per-Turn effect over the Nation's standing Buildings.
+	 * Sums one per-Turn effect over the Nation's producing Buildings.
 	 */
-	private int fromStanding(Ruleset ruleset, ToIntFunction<BuildingType> effect) {
-		return standing(ruleset).entrySet()
+	private int fromProducing(Ruleset ruleset, ToIntFunction<BuildingType> effect) {
+		return producing(ruleset).entrySet()
 			.stream()
 			.mapToInt(owned -> effect.applyAsInt(ruleset.building(owned.getKey()).orElseThrow()) * owned.getValue())
 			.sum();
@@ -1560,7 +1623,8 @@ class Nation {
 
 	/**
 	 * Moves every repair one Turn on. A finished one restores the Defense it
-	 * was paid for, or as much as its Building type has lost by then.
+	 * was paid for, or as much as its Building type has lost by then, or, for
+	 * a non-defensive Building, makes one of its Damaged ones undamaged.
 	 *
 	 * @return the repairs finished, in the order started
 	 */
@@ -1570,8 +1634,13 @@ class Nation {
 			Repair current = it.next();
 			if (current.turnsLeft() == 1) {
 				it.remove();
-				defenseLost.computeIfPresent(current.building(),
-						(building, lost) -> lost <= current.defense() ? null : lost - current.defense());
+				if (current.defense() == 0) {
+					damaged.computeIfPresent(current.building(), (building, count) -> count == 1 ? null : count - 1);
+				}
+				else {
+					defenseLost.computeIfPresent(current.building(),
+							(building, lost) -> lost <= current.defense() ? null : lost - current.defense());
+				}
 				finished.add(current);
 			}
 			else {

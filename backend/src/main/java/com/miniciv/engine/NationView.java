@@ -18,12 +18,11 @@ import java.util.Map;
  * @param availableBuildings the Buildings the Nation may start
  * @param buildings how many of each Building the Nation has completed
  * @param construction the Buildings under construction, in the order started
- * @param repairs the defensive Buildings being repaired or rebuilt, in the
- *        order started
+ * @param repairs the Buildings being repaired or rebuilt, in the order
+ *        started
  * @param defense the Nation's Defense, raised by its defensive Buildings
- * @param damage the defensive Buildings that have lost Defense, by type in the
- *        order first completed, not counting the Defense being repaired or
- *        rebuilt
+ * @param damage the Buildings Damaged or destroyed, by type in the order
+ *        first completed, not counting those being repaired or rebuilt
  * @param sellValues the Gold Selling one Building of each type would return
  *        now, for the types the Nation may Sell one of, in the order first
  *        completed

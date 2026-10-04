@@ -358,4 +358,23 @@ class RulesetFilesTest {
 			.withMessageContaining("everyone");
 	}
 
+	@Test
+	void anEventOrADilemmaChoiceOrOutcomeMayDamageNonDefensiveBuildings() {
+		Ruleset ruleset = RulesetFiles.load("rulesets/building-damage");
+
+		assertThat(ruleset.events().get(0).effects().damageBuildings()).isEqualTo(2);
+		Event riot = ruleset.events().get(1);
+		assertThat(riot.choices().get(0).outcomes()).extracting(outcome -> outcome.effects().damageBuildings())
+			.containsExactly(0, 1);
+		assertThat(riot.choices().get(1).effects().damageBuildings()).isEqualTo(3);
+	}
+
+	@Test
+	void anEventDamagingAMalformedNumberOfBuildingsFailsToLoadNamingTheFile() {
+		assertThatExceptionOfType(InvalidRuleset.class)
+			.isThrownBy(() -> RulesetFiles.load("rulesets/malformed-building-damage"))
+			.withMessageContaining("rulesets/malformed-building-damage/events.json")
+			.withMessageContaining("damageBuildings");
+	}
+
 }

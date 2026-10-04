@@ -178,7 +178,7 @@ class SpiesTest {
 
 		assertThat(report("Rome")).contains("Your Spy in Carthage reported that Carthage has 102 Gold.");
 		assertThat(onMapOf("Rome", "Carthage").facts())
-			.isEqualTo(new Facts(new Fact<>(102, 4), null, null, null, null, null));
+			.isEqualTo(new Facts(new Fact<>(102, 4), null, null, null, null, null, null));
 		assertThat(report("Carthage")).noneMatch(line -> line.contains("Spy"));
 	}
 

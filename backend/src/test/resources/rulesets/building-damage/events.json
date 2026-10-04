@@ -1,0 +1,13 @@
+[
+  { "name": "Fire", "subject": "Nation", "chance": 0.02, "effects": { "damageBuildings": 2 },
+    "text": "A fire swept through your streets" },
+  { "name": "Riot", "subject": "Nation", "chance": 0.02, "text": "A mob has gathered in the square",
+    "choices": [
+      { "name": "Disperse them",
+        "outcomes": [
+          { "chance": 0.5, "effects": { "population": -2 }, "text": "The mob scattered" },
+          { "chance": 0.5, "effects": { "damageBuildings": 1 }, "text": "The mob ran riot" }
+        ] },
+      { "name": "Wait", "worst": true, "effects": { "damageBuildings": 3 }, "text": "The mob burned what it could" }
+    ] }
+]
