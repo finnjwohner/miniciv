@@ -38,6 +38,8 @@ import java.util.Map;
  *        Nation, by its Strength, from the weakest Warparties up
  * @param spyTravelTurns how many Turns a Spy takes to reach another Nation
  * @param upkeep the Gold the Nation's Units cost each Turn, at home and abroad
+ * @param goldForecast the Gold the Nation will gain or lose as this Turn
+ *        resolves, if nothing but its income and upkeep changes it
  * @param arrivals the other Nations' Warparties that arrived at this one and
  *        wait for the Battle as this Turn ends, taking the Nations in order
  *        and each one's Warparties in the order sent
@@ -62,7 +64,7 @@ public record NationView(int version, int turn, String nation, int gold, int pop
 		Map<String, Integer> sellValues, List<UnitType> availableUnits,
 		Map<String, Integer> army, int scouts,
 		List<Training> training, List<Warparty> warparties, List<Spy> spies, List<TravelBracket> travelBrackets,
-		int spyTravelTurns, int upkeep, List<ArrivedWarparty> arrivals,
+		int spyTravelTurns, int upkeep, GoldForecast goldForecast, List<ArrivedWarparty> arrivals,
 		List<Tribute> tributes, List<Encounter> encounters, List<TechTreeEntry> techTree,
 		TurnReport turnReport,
 		List<Dilemma> dilemmas, String conqueredBy, String winner) {

@@ -149,6 +149,7 @@ export function nationView(overrides: Partial<NationView> = {}): NationView {
     ],
     spyTravelTurns: 2,
     upkeep: 3,
+    goldForecast: { income: 30, upkeep: 3 },
     arrivals: [],
     tributes: [],
     encounters: [],

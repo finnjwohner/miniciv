@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { BuildingDamage, BuildingType, NationView, TechTreeEntry, UnitType } from '../api'
+import type { BuildingDamage, BuildingType, GoldForecast, NationView, TechTreeEntry, UnitType } from '../api'
 import { Icon, type IconName } from '../ui/Icon'
 import { Panel } from '../ui/Panel'
 import { CountInput } from './controls'
@@ -27,8 +27,9 @@ function Stat({ icon, label, value, change = 0 }: { icon: IconName; label: strin
 }
 
 /**
- * The Nation's Gold, Population, Research and Defense, and the Gold its Units cost each Turn. As each new
- * Turn arrives, Gold, Population and Research count from before the Turn resolved to their new values.
+ * The Nation's Gold, Population, Research and Defense, the Gold its Units cost each Turn, and the Gold it will
+ * gain or lose as this Turn resolves. As each new Turn arrives, Gold, Population and Research count from before
+ * the Turn resolved to their new values.
  */
 export function ResourcesPanel({ nation }: { nation: NationView }) {
   const [firstTurn] = useState(nation.turn)
@@ -42,7 +43,18 @@ export function ResourcesPanel({ nation }: { nation: NationView }) {
         <Stat icon="shield" label="Defense" value={nation.defense} />
       </div>
       <p className="muted">Upkeep, at home and abroad: {nation.upkeep} Gold per Turn</p>
+      <GoldForecastLine forecast={nation.goldForecast} />
     </Panel>
+  )
+}
+
+/** The Gold the Nation will gain or lose as this Turn resolves, with its income and upkeep, in red if a loss. */
+function GoldForecastLine({ forecast }: { forecast: GoldForecast }) {
+  const change = forecast.income - forecast.upkeep
+  return (
+    <p className={change < 0 ? 'report__loss' : 'muted'}>
+      Next Turn: {formatChange(change)} Gold (income {forecast.income} − upkeep {forecast.upkeep})
+    </p>
   )
 }
 
