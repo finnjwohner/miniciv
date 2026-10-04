@@ -217,15 +217,26 @@ export function BuildPanel({
   )
 }
 
-/** What a Unit type does, its upkeep and its counters, in one line. */
-function describeUnit(unit: UnitType) {
-  const counters = unit.counters.length > 0 ? `, counters ${unit.counters.join(', ')}` : ''
+/**
+ * A Unit type's cost, Strength (or, for Scouts and Spies, its role), upkeep and counters, as labelled entries;
+ * wide entries take a line to themselves. Counters are left out when it counters nothing.
+ */
+function unitDetails(unit: UnitType): { label: string; value: string; wide?: boolean }[] {
   const role = unit.scout
-    ? "roams the wilds, where it may discover Warparties abroad and catch other Nations' travelling Spies"
+    ? "Roams the wilds, where it may discover Warparties abroad and catch other Nations' travelling Spies"
     : unit.spy
-      ? "sent on its own to report another Nation's hidden state"
-      : `Strength ${unit.strength}`
-  return `${role}, upkeep ${unit.upkeep} Gold per Turn${counters}`
+      ? "Sent on its own to report another Nation's hidden state"
+      : null
+  return [
+    {
+      label: 'Cost',
+      value: `${unit.gold} Gold · ${unit.population} Population · ${plural(unit.turns, 'Turn')}`,
+      wide: true,
+    },
+    role ? { label: 'Role', value: role, wide: true } : { label: 'Strength', value: String(unit.strength) },
+    { label: 'Upkeep', value: `${unit.upkeep} Gold per Turn` },
+    ...(unit.counters.length > 0 ? [{ label: 'Counters', value: unit.counters.join(', '), wide: true }] : []),
+  ]
 }
 
 /** How many of something costing `cost` each can be paid for out of `held`; any number if it costs nothing. */
@@ -255,9 +266,14 @@ function TrainUnit({
   return (
     <li className="row row--wrap">
       <span className="row__name">{unit.name}</span>
-      <span className="row__meta">
-        {unit.gold} Gold and {unit.population} Population, {plural(unit.turns, 'Turn')} — {describeUnit(unit)}
-      </span>
+      <dl className="row__meta facts facts--paired" aria-label={`${unit.name} details`}>
+        {unitDetails(unit).map(({ label, value, wide }) => (
+          <div key={label} className={wide ? 'facts__entry facts__entry--wide' : 'facts__entry'}>
+            <dt>{label}</dt>
+            <dd>{value}</dd>
+          </div>
+        ))}
+      </dl>
       <span className="button-row">
         <CountSlider value={count} min={1} max={trainable} label={`How many ${unit.name} to train`} onChange={setCount} />
         <button aria-label={`Train ${unit.name}`} onClick={() => onTrain(unit.name, count)} disabled={trainable < 1}>

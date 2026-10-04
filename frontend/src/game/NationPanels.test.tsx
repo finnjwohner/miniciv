@@ -1,6 +1,6 @@
 import { fireEvent, screen, within } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
-import { nationView, renderGame, tab, TURN } from '../test/fixtures'
+import { nationView, renderGame, tab, TURN, unit } from '../test/fixtures'
 import { buttonsIn, precedes } from '../test/order'
 
 describe('BuildPanel', () => {
@@ -26,6 +26,13 @@ describe('BuildPanel', () => {
     expect(precedes(lastBuild, within(build).getAllByRole('button', { name: /^Sell / })[0])).toBe(true)
   })
 })
+
+/** The labelled details of the Unit type `name` in the Train panel, label to value, in order. */
+function readUnitDetails(name: string) {
+  const details = screen.getByLabelText(`${name} details`)
+  const terms = within(details).getAllByRole('term')
+  return new Map(terms.map((t) => [t.textContent, t.nextElementSibling!.textContent]))
+}
 
 describe('TrainPanel', () => {
   it('runs the Train slider from 1 to the most the Nation can afford, clamping when that drops', () => {
@@ -66,9 +73,51 @@ describe('TrainPanel', () => {
     renderGame()
     fireEvent.click(tab('Train'))
 
-    const train = screen.getByRole('region', { name: 'Train' })
-    expect(within(train).getByText(/roams the wilds/)).toBeInTheDocument()
-    expect(within(train).queryByText(/stays home/)).not.toBeInTheDocument()
+    const scout = readUnitDetails('Scout')
+    expect(scout.get('Role')).toMatch(/roams the wilds/i)
+    expect(scout.has('Strength')).toBe(false)
+    expect(screen.getByRole('region', { name: 'Train' })).not.toHaveTextContent(/stays home/)
+  })
+
+  it('shows a Unit as a labelled grid of Cost, Strength, Upkeep and Counters', () => {
+    renderGame({
+      nation: nationView({
+        availableUnits: [
+          unit({
+            name: 'Archer',
+            gold: 20,
+            population: 2,
+            turns: 2,
+            upkeep: 1,
+            strength: 4,
+            counters: ['Horseman', 'Knight'],
+          }),
+        ],
+      }),
+    })
+    fireEvent.click(tab('Train'))
+
+    expect(readUnitDetails('Archer')).toEqual(
+      new Map([
+        ['Cost', '20 Gold · 2 Population · 2 Turns'],
+        ['Strength', '4'],
+        ['Upkeep', '1 Gold per Turn'],
+        ['Counters', 'Horseman, Knight'],
+      ]),
+    )
+  })
+
+  it('shows a Spy’s role in place of Strength, and no Counters when it counters nothing', () => {
+    renderGame({
+      nation: nationView({
+        availableUnits: [unit({ name: 'Spy', gold: 30, population: 1, turns: 1, upkeep: 2, strength: 0, spy: true })],
+      }),
+    })
+    fireEvent.click(tab('Train'))
+
+    const spy = readUnitDetails('Spy')
+    expect([...spy.keys()]).toEqual(['Cost', 'Role', 'Upkeep'])
+    expect(spy.get('Role')).toMatch(/hidden state/)
   })
 
   it('keeps the Train buttons where they are, before the state rows, as training starts', () => {
