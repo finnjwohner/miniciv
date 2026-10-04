@@ -28,7 +28,9 @@ import java.util.Map;
  *        now, for the types the Nation may Sell one of, in the order first
  *        completed
  * @param availableUnits the Unit types the Nation may train
- * @param army how many of each Unit type the Nation has at home
+ * @param army how many of each Unit type the Nation has at home, never
+ *        counting its Scouts
+ * @param scouts how many Scouts the Nation has roaming the wilds
  * @param training the Units in training, in the order started
  * @param warparties the Nation's Warparties abroad, in the order sent
  * @param spies the Nation's Spies abroad, in the order sent
@@ -58,7 +60,7 @@ public record NationView(int version, int turn, String nation, int gold, int pop
 		List<MapNation> map, List<BuildingType> availableBuildings, Map<String, Integer> buildings,
 		List<Construction> construction, List<Repair> repairs, int defense, List<BuildingDamage> damage,
 		Map<String, Integer> sellValues, List<UnitType> availableUnits,
-		Map<String, Integer> army,
+		Map<String, Integer> army, int scouts,
 		List<Training> training, List<Warparty> warparties, List<Spy> spies, List<TravelBracket> travelBrackets,
 		int spyTravelTurns, int upkeep, List<ArrivedWarparty> arrivals,
 		List<Tribute> tributes, List<Encounter> encounters, List<TechTreeEntry> techTree,

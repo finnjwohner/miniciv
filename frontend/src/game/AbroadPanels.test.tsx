@@ -16,25 +16,55 @@ describe('ArmyPanel', () => {
 })
 
 describe('SpiesPanel', () => {
+  it('shows Scouts roaming the wilds under Spies & Scouts, not under the Army', () => {
+    renderGame({ nation: nationView({ scouts: 3 }) })
+
+    fireEvent.click(tab('Spies & Scouts'))
+    const spies = screen.getByRole('region', { name: 'Spies & Scouts' })
+    expect(within(spies).getByText('Scouts roaming the wilds ×3')).toBeInTheDocument()
+    expect(within(spies).getByText(/discover Warparties abroad/)).toBeInTheDocument()
+
+    fireEvent.click(tab('Army'))
+    const army = screen.getByRole('region', { name: 'Army & Warparties' })
+    expect(within(army).queryByText(/Scout/)).not.toBeInTheDocument()
+    expect(within(army).getByText('Total Strength').nextSibling).toHaveTextContent('9')
+  })
+
   it('puts the send-Spy control before the Spies abroad', () => {
     renderGame({
       nation: nationView({
         army: { Spy: 1 },
-        availableUnits: [unit({ name: 'Spy', gold: 30, population: 1, turns: 2, upkeep: 1, strength: 0, spy: true })],
+        availableUnits: [
+          unit({
+            name: 'Spy',
+            gold: 30,
+            population: 1,
+            turns: 2,
+            upkeep: 1,
+            strength: 0,
+            spy: true,
+          }),
+        ],
         spies: [spy()],
       }),
     })
-    fireEvent.click(tab('Spies'))
+    fireEvent.click(tab('Spies & Scouts'))
 
-    const spies = screen.getByRole('region', { name: 'Spies' })
-    expect(precedes(within(spies).getByRole('button', { name: 'Send Spy' }), within(spies).getByText(/in place at/))).toBe(true)
+    const spies = screen.getByRole('region', { name: 'Spies & Scouts' })
+    expect(
+      precedes(within(spies).getByRole('button', { name: 'Send Spy' }), within(spies).getByText(/in place at/)),
+    ).toBe(true)
   })
 
   it('shows Spies in place at the same Nation as one row with a count', () => {
-    renderGame({ nation: nationView({ spies: [spy({ id: 1 }), spy({ id: 2 }), spy({ id: 3 })] }) })
-    fireEvent.click(tab('Spies'))
+    renderGame({
+      nation: nationView({
+        spies: [spy({ id: 1 }), spy({ id: 2 }), spy({ id: 3 })],
+      }),
+    })
+    fireEvent.click(tab('Spies & Scouts'))
 
-    const spies = screen.getByRole('region', { name: 'Spies' })
+    const spies = screen.getByRole('region', { name: 'Spies & Scouts' })
     const rows = within(spies).getAllByRole('listitem')
     expect(rows).toHaveLength(1)
     expect(rows[0]).toHaveTextContent('Spy ×3')
@@ -43,11 +73,13 @@ describe('SpiesPanel', () => {
 
   it('keeps Spies to the same Nation with different Turns left as separate rows', () => {
     renderGame({
-      nation: nationView({ spies: [spy({ id: 1, turnsLeft: 1 }), spy({ id: 2, turnsLeft: 2 }), spy({ id: 3, turnsLeft: 2 })] }),
+      nation: nationView({
+        spies: [spy({ id: 1, turnsLeft: 1 }), spy({ id: 2, turnsLeft: 2 }), spy({ id: 3, turnsLeft: 2 })],
+      }),
     })
-    fireEvent.click(tab('Spies'))
+    fireEvent.click(tab('Spies & Scouts'))
 
-    const rows = within(screen.getByRole('region', { name: 'Spies' })).getAllByRole('listitem')
+    const rows = within(screen.getByRole('region', { name: 'Spies & Scouts' })).getAllByRole('listitem')
     expect(rows).toHaveLength(2)
     expect(rows[0]).toHaveTextContent('Spy ×1')
     expect(rows[0]).toHaveTextContent('1 Turn left')
@@ -59,12 +91,22 @@ describe('SpiesPanel', () => {
     renderGame({
       nation: nationView({
         army: { Spy: 2 },
-        availableUnits: [unit({ name: 'Spy', gold: 30, population: 1, turns: 2, upkeep: 1, strength: 0, spy: true })],
+        availableUnits: [
+          unit({
+            name: 'Spy',
+            gold: 30,
+            population: 1,
+            turns: 2,
+            upkeep: 1,
+            strength: 0,
+            spy: true,
+          }),
+        ],
       }),
     })
-    fireEvent.click(tab('Spies'))
+    fireEvent.click(tab('Spies & Scouts'))
 
-    const spies = screen.getByRole('region', { name: 'Spies' })
+    const spies = screen.getByRole('region', { name: 'Spies & Scouts' })
     expect(within(spies).getByText('2 on counter-intelligence')).toBeInTheDocument()
     expect(within(spies).getByText(/running counter-intelligence/)).toBeInTheDocument()
   })

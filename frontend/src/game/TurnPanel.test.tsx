@@ -9,7 +9,9 @@ function turnReport() {
 
 /** The Turn Report's net-change line: the paragraph naming a resource, if there is one. */
 function netChangeLine() {
-  return turnReport().queryByText((_, element) => element?.tagName === 'P' && /Gold|Population|Research/.test(element.textContent ?? ''))
+  return turnReport().queryByText(
+    (_, element) => element?.tagName === 'P' && /Gold|Population|Research/.test(element.textContent ?? ''),
+  )
 }
 
 /** The Turn Report's section headings, in the order shown. */
@@ -27,10 +29,16 @@ describe('TurnReportPanel', () => {
           turn: 2,
           netChange: { gold: 0, population: 0, research: 0 },
           sections: [
-            { kind: 'DECISIONS_AND_ALERTS', lines: ['Sickness broke out in your Nation; choose what to do before this Turn ends.'] },
+            {
+              kind: 'DECISIONS_AND_ALERTS',
+              lines: ['Sickness broke out in your Nation; choose what to do before this Turn ends.'],
+            },
             { kind: 'WARFARE', lines: [] },
             { kind: 'COMPLETED', lines: ['Your Farm has been built.'] },
-            { kind: 'RESOURCES', lines: ['Your Units\' upkeep cost 3 Gold.', 'Your Buildings added 5 Gold.'] },
+            {
+              kind: 'RESOURCES',
+              lines: ["Your Units' upkeep cost 3 Gold.", 'Your Buildings added 5 Gold.'],
+            },
           ],
         },
       }),
@@ -38,10 +46,11 @@ describe('TurnReportPanel', () => {
 
     expect(sectionHeadings()).toEqual(['Decisions & alerts', 'Completed', 'Resources'])
     const resources = screen.getByRole('list', { name: 'Resources' })
-    expect(within(resources).getAllByRole('listitem').map((item) => item.textContent)).toEqual([
-      "Your Units' upkeep cost 3 Gold.",
-      'Your Buildings added 5 Gold.',
-    ])
+    expect(
+      within(resources)
+        .getAllByRole('listitem')
+        .map((item) => item.textContent),
+    ).toEqual(["Your Units' upkeep cost 3 Gold.", 'Your Buildings added 5 Gold.'])
     expect(within(screen.getByRole('list', { name: 'Completed' })).getByRole('listitem')).toHaveTextContent(
       'Your Farm has been built.',
     )
@@ -67,7 +76,9 @@ describe('net change', () => {
     })
 
     const line = netChangeLine()
-    expect(line).toHaveTextContent('+14 Gold · +3 Population · −2 Research', { normalizeWhitespace: false })
+    expect(line).toHaveTextContent('+14 Gold · +3 Population · −2 Research', {
+      normalizeWhitespace: false,
+    })
     expect(line?.compareDocumentPosition(turnReport().getByRole('heading', { name: 'Resources' }))).toBe(
       Node.DOCUMENT_POSITION_FOLLOWING,
     )
@@ -75,7 +86,13 @@ describe('net change', () => {
 
   it('leaves out every resource but the one that changed', () => {
     renderGame({
-      nation: nationView({ turnReport: { turn: 3, netChange: { gold: -20, population: 0, research: 0 }, sections: [] } }),
+      nation: nationView({
+        turnReport: {
+          turn: 3,
+          netChange: { gold: -20, population: 0, research: 0 },
+          sections: [],
+        },
+      }),
     })
 
     expect(netChangeLine()?.textContent).toBe('−20 Gold')
@@ -83,7 +100,13 @@ describe('net change', () => {
 
   it('shows gains in green and losses in red', () => {
     renderGame({
-      nation: nationView({ turnReport: { turn: 2, netChange: { gold: 14, population: 0, research: -2 }, sections: [] } }),
+      nation: nationView({
+        turnReport: {
+          turn: 2,
+          netChange: { gold: 14, population: 0, research: -2 },
+          sections: [],
+        },
+      }),
     })
 
     expect(turnReport().getByText('+14 Gold')).toHaveClass('report__gain')

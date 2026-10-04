@@ -66,7 +66,7 @@ public class Game {
 	private static final double CONQUEST_SHARE = 0.75;
 
 	/**
-	 * The chance each Scout at home gives its Nation, each Turn, of
+	 * The chance each Scout gives its Nation, each Turn, of
 	 * discovering each other Nation's Warparty abroad.
 	 */
 	private static final double DISCOVERY_CHANCE_PER_SCOUT = 0.2;
@@ -83,7 +83,7 @@ public class Game {
 	private static final double CATCH_CHANCE_PER_SPY_AT_HOME = 0.2;
 
 	/**
-	 * The chance each Scout at home gives its Nation, each Turn, of catching
+	 * The chance each Scout gives its Nation, each Turn, of catching
 	 * each other Nation's Spy still travelling.
 	 */
 	private static final double CATCH_CHANCE_PER_SCOUT = 0.1;
@@ -347,9 +347,12 @@ public class Game {
 			for (Repair finished : nation.progressRepairs()) {
 				report.add(COMPLETED, "Your " + finished.building() + " has been " + (finished.rebuild() ? "rebuilt." : "repaired."));
 			}
-			Map<String, Integer> trained = nation.progressTraining(turn + 1);
-			if (!trained.isEmpty()) {
-				report.add(COMPLETED, listed(trained) + " finished training and joined your Army.");
+			Nation.Trained trained = nation.progressTraining(turn + 1, ruleset);
+			if (!trained.joined().isEmpty()) {
+				report.add(COMPLETED, listed(trained.joined()) + " finished training and joined your Army.");
+			}
+			if (!trained.setOut().isEmpty()) {
+				report.add(COMPLETED, scoutsCounted(trained.setOut()) + " set out into the wilds.");
 			}
 		}
 		for (Nation nation : inPlay) {
@@ -393,6 +396,11 @@ public class Game {
 					+ POPULATION_PER_TURN + " Population and " + RESEARCH_PER_TURN + " Research.");
 			buildingsAddedLine(buildingPopulation, buildingGold, buildingResearch).ifPresent(line -> report.add(RESOURCES, line));
 			for (Nation.Desertion desertion : nation.desertUntilUpkeepIsAffordable(ruleset)) {
+				if (desertion.scouts()) {
+					report.add(RESOURCES, "You could not pay your Units' upkeep, so " + scoutsCounted(desertion.units())
+							+ " roaming the wilds deserted.");
+					continue;
+				}
 				if (desertion.spy() != null) {
 					report.add(RESOURCES, "You could not pay your Units' upkeep, so your Spy sent to " + desertion.spy().target()
 							+ " deserted.");
@@ -494,7 +502,7 @@ public class Game {
 				.forEach(warparty -> arrivals.add(new Arrival(attacker, warparty)));
 		}
 		Battle battle = Battle.fight(arrivals.stream().map(arrival -> arrival.warparty().units()).toList(),
-				defender.fighters(ruleset), ruleset, random);
+				defender.army(), ruleset, random);
 		defender.lose(battle.armyLost());
 		List<Double> strengths = IntStream.range(0, arrivals.size())
 			.mapToObj(arrival -> battle.warpartySurvivingStrength(arrival, ruleset))
@@ -512,7 +520,7 @@ public class Game {
 				: IntStream.range(0, arrivals.size())
 					.mapToObj(arrival -> battle.warpartySurvivors(arrival).isEmpty() ? 0.0 : 1.0)
 					.toList();
-		boolean conquered = battle.anyWarpartySurvived() && defender.hasNeitherPopulationNorFighters(ruleset);
+		boolean conquered = battle.anyWarpartySurvived() && defender.hasNeitherPopulationNorArmy();
 		Plunder taken;
 		if (conquered) {
 			List<String> conquerors = IntStream.range(0, arrivals.size())
@@ -805,7 +813,7 @@ public class Game {
 	}
 
 	/**
-	 * Has each Nation still in the Game in order, if it has Scouts at home,
+	 * Has each Nation still in the Game in order, if it has Scouts,
 	 * watch for every other Nation's Warparty abroad, taking the Nations in
 	 * order and each one's Warparties in the order sent, drawing once from the
 	 * seeded random source for each. Each Scout gives an equal chance, of its
@@ -815,7 +823,7 @@ public class Game {
 	 */
 	private void scout(Map<String, TurnReport.Draft> reports) {
 		for (Nation scouting : remaining()) {
-			int scouts = scouting.scouts(ruleset);
+			int scouts = scouting.scouts();
 			if (scouts == 0) {
 				continue;
 			}
@@ -1042,7 +1050,7 @@ public class Game {
 	/**
 	 * Has each Nation still in the Game in order try to catch other Nations'
 	 * Spies: with its Spies at home, those in place at it; then with its
-	 * Scouts at home, and then with each of its travelling Warparties in the
+	 * Scouts, and then with each of its travelling Warparties in the
 	 * order sent, those still travelling anywhere. Each try takes the other
 	 * Nations in order and each one's Spies in the order sent, drawing once
 	 * from the seeded random source for each Spy not yet caught; a Spy caught
@@ -1064,7 +1072,7 @@ public class Game {
 					}
 				}
 			}
-			int scouts = catching.scouts(ruleset);
+			int scouts = catching.scouts();
 			if (scouts > 0) {
 				double chance = 1 - Math.pow(1 - CATCH_CHANCE_PER_SCOUT, scouts);
 				for (Nation other : others(catching)) {
@@ -1308,7 +1316,7 @@ public class Game {
 					yield ActionResult.rejected("Choose at least one Unit to send.");
 				}
 				if (send.units().keySet().stream().anyMatch(unit -> ruleset.unit(unit).filter(UnitType::scout).isPresent())) {
-					yield ActionResult.rejected("Scouts stay at home and cannot be sent in a Warparty.");
+					yield ActionResult.rejected("Scouts roam the wilds and cannot be sent in a Warparty.");
 				}
 				if (send.units().keySet().stream().anyMatch(unit -> ruleset.unit(unit).filter(UnitType::spy).isPresent())) {
 					yield ActionResult.rejected("Spies are sent on their own, not in a Warparty.");
@@ -1520,6 +1528,15 @@ public class Game {
 	 */
 	private static String listed(Map<String, Integer> units) {
 		return joined(units.entrySet().stream().map(e -> e.getKey() + " ×" + e.getValue()).toList());
+	}
+
+	/**
+	 * Scouts counted together whatever their type, such as "1 Scout" or "3
+	 * Scouts".
+	 */
+	private static String scoutsCounted(Map<String, Integer> scouts) {
+		int count = scouts.values().stream().mapToInt(Integer::intValue).sum();
+		return count + (count == 1 ? " Scout" : " Scouts");
 	}
 
 	/**

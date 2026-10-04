@@ -10,8 +10,9 @@ import java.util.List;
  * @param strength how much it contributes in a Battle; Spies have only a
  * little
  * @param counters the Unit types this one multiplies its Strength against
- * @param scout whether it is a Scout: one that never fights or leaves its
- * Nation, but may discover other Nations' Warparties abroad
+ * @param scout whether it is a Scout: one that roams the wilds from the moment
+ * it is trained, never part of the Army and never fighting, but may discover
+ * other Nations' Warparties abroad and catch their travelling Spies
  * @param spy whether it is a Spy: one sent on its own, never in a Warparty, to
  * stay in another Nation and report its hidden state
  */

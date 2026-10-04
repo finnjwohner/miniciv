@@ -9,7 +9,7 @@ const TABS: { tab: ActionTab; label: string }[] = [
   { tab: 'train', label: 'Train' },
   { tab: 'tech', label: 'Tech' },
   { tab: 'army', label: 'Army' },
-  { tab: 'spies', label: 'Spies' },
+  { tab: 'spies', label: 'Spies & Scouts' },
 ]
 
 /** What a tab's badge says, if anything, and whether it warns the Player. */
@@ -28,7 +28,8 @@ function badges(nation: NationView): Record<ActionTab, Badge> {
     build: count(nation.construction.length + nation.repairs.length),
     train: count(nation.training.reduce((total, t) => total + t.count, 0)),
     tech: count(affordable.length),
-    army: nation.arrivals.length > 0 ? { text: warparties > 0 ? String(warparties) : '!', bad: true } : count(warparties),
+    army:
+      nation.arrivals.length > 0 ? { text: warparties > 0 ? String(warparties) : '!', bad: true } : count(warparties),
     spies: count(nation.spies.length),
   }
 }

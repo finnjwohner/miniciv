@@ -54,9 +54,7 @@ function NetChangeLine({ netChange }: { netChange: NetChange }) {
         return (
           <Fragment key={resource}>
             {i > 0 && ' · '}
-            <span className={amount > 0 ? 'report__gain' : 'report__loss'}>
-              {`${formatChange(amount)} ${name}`}
-            </span>
+            <span className={amount > 0 ? 'report__gain' : 'report__loss'}>{`${formatChange(amount)} ${name}`}</span>
           </Fragment>
         )
       })}

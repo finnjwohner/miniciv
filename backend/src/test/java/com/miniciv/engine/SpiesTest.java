@@ -52,7 +52,7 @@ class SpiesTest {
 
 	void armyOf(String nation, String unit, int count) {
 		assertThat(game.act(nation, new Action.TrainUnits(unit, count))).isEqualTo(ActionResult.ACCEPTED);
-		while (game.viewOf(nation).army().getOrDefault(unit, 0) < count) {
+		while (!game.viewOf(nation).training().isEmpty()) {
 			game.endTurn();
 		}
 	}
@@ -205,7 +205,7 @@ class SpiesTest {
 	}
 
 	@Test
-	void aSpyMayReportItsTargetsArmy() {
+	void aSpyMayReportItsTargetsArmyWhichNeverIncludesItsScouts() {
 		// Carthage's Scout does not catch the Spy on its way.
 		GameTest.Rigged luck = new GameTest.Rigged();
 		play(luck, "Rome", "Carthage");
@@ -219,9 +219,8 @@ class SpiesTest {
 
 		game.endTurn();
 
-		assertThat(report("Rome")).contains("Your Spy in Carthage reported that Carthage's Army is Warrior ×2 and Scout ×1.");
-		assertThat(onMapOf("Rome", "Carthage").facts().army())
-			.isEqualTo(new Fact<>(Map.of("Warrior", 2, "Scout", 1), 6));
+		assertThat(report("Rome")).contains("Your Spy in Carthage reported that Carthage's Army is Warrior ×2.");
+		assertThat(onMapOf("Rome", "Carthage").facts().army()).isEqualTo(new Fact<>(Map.of("Warrior", 2), 6));
 	}
 
 	@Test

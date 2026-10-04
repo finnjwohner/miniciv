@@ -246,12 +246,18 @@ export function DecisionsPanel({
         {accepted.map((t) => (
           <Decision key={`${t.to}-${t.warparty}`} kind="Tribute" open={false}>
             <p>
-              <MapName name={t.to} map={nation.map} /> accepted your Tribute of {describeTribute(t)}, and its Warparty turned back home.
+              <MapName name={t.to} map={nation.map} /> accepted your Tribute of {describeTribute(t)}, and its Warparty
+              turned back home.
             </p>
           </Decision>
         ))}
         {received.map((t) => (
-          <Decision key={`${t.from}-${t.warparty}`} kind="Tribute offered" open={t.answer === 'NONE'} answeredTag="answered">
+          <Decision
+            key={`${t.from}-${t.warparty}`}
+            kind="Tribute offered"
+            open={t.answer === 'NONE'}
+            answeredTag="answered"
+          >
             <p>
               <MapName name={t.from} map={nation.map} /> offers you {describeTribute(t)} to Recall your Warparty.
             </p>

@@ -117,7 +117,7 @@ A group of Units a Player sends from their Army toward another Nation; it travel
 _Avoid_: Attack, expedition, army
 
 **Scout**:
-A Unit that roams the wilds from the moment it is trained, giving its Nation a chance each Turn to discover Warparties abroad and to catch other Nations' Spies still travelling, better the more Scouts it has. Scouts are never at home or part of the Army, have no Strength and never fight, and no Warparty or Scout can meet or catch one; only Events can lose them.
+A Unit that roams the wilds from the moment it is trained, giving its Nation a chance each Turn to discover Warparties abroad and to catch other Nations' Spies still travelling, better the more Scouts it has. Scouts are never at home or part of the Army, have no Strength and never fight, and no Warparty or Scout can meet or catch one; only Events, or upkeep its Nation cannot pay, can lose them.
 _Avoid_: Spy, lookout
 
 **Spy**:

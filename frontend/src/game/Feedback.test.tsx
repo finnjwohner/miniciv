@@ -14,12 +14,17 @@ function roomWithTimeLeft(millisLeft: number, game: Partial<GameView> = {}) {
 /** The Room with the tests' Player done with the Turn and `millisLeft` of it left. */
 function roomDoneWithTimeLeft(millisLeft: number) {
   const room = roomWithTimeLeft(millisLeft)
-  return { ...room, players: room.players.map((p) => (p.id === MY_PLAYER_ID ? { ...p, done: true } : p)) }
+  return {
+    ...room,
+    players: room.players.map((p) => (p.id === MY_PLAYER_ID ? { ...p, done: true } : p)),
+  }
 }
 
 /** The End Turn button, under either of its labels. */
 function endTurn() {
-  return screen.getByRole('button', { name: /End Turn|Waiting for the others/ })
+  return screen.getByRole('button', {
+    name: /End Turn|Waiting for the others/,
+  })
 }
 
 /** Turns sound off in the settings pop-up. */
@@ -78,7 +83,11 @@ describe('time running out', () => {
   })
 
   it('stays still and quiet while the Game is Paused', () => {
-    renderGame({ room: roomWithTimeLeft(8_000, { waitingFor: [{ nation: 'Egypt', millisLeft: 60_000 }] }) })
+    renderGame({
+      room: roomWithTimeLeft(8_000, {
+        waitingFor: [{ nation: 'Egypt', millisLeft: 60_000 }],
+      }),
+    })
     gesture()
 
     passes(3_000)

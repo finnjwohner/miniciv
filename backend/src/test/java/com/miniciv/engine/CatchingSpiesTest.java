@@ -40,7 +40,7 @@ class CatchingSpiesTest {
 
 	void armyOf(String nation, String unit, int count) {
 		assertThat(game.act(nation, new Action.TrainUnits(unit, count))).isEqualTo(ActionResult.ACCEPTED);
-		while (game.viewOf(nation).army().getOrDefault(unit, 0) < count) {
+		while (!game.viewOf(nation).training().isEmpty()) {
 			game.endTurn();
 		}
 	}

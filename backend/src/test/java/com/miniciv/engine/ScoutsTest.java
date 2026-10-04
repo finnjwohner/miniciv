@@ -41,7 +41,7 @@ class ScoutsTest {
 
 	void armyOf(String nation, String unit, int count) {
 		assertThat(game.act(nation, new Action.TrainUnits(unit, count))).isEqualTo(ActionResult.ACCEPTED);
-		while (game.viewOf(nation).army().getOrDefault(unit, 0) < count) {
+		while (!game.viewOf(nation).training().isEmpty()) {
 			game.endTurn();
 		}
 	}
@@ -55,48 +55,72 @@ class ScoutsTest {
 	}
 
 	@Test
-	void scoutsAreTrainedLikeOtherUnitsAndJoinTheArmy() {
+	void scoutsAreTrainedLikeOtherUnitsAndSetOutIntoTheWildsNotTheArmy() {
+		armyOf("Rome", "Warrior", 1);
 		game.act("Rome", new Action.TrainUnits("Scout", 2));
-		assertThat(game.viewOf("Rome").gold()).isEqualTo(40);
-		assertThat(game.viewOf("Rome").population()).isEqualTo(8);
 
 		game.endTurn();
 
-		assertThat(game.viewOf("Rome").army()).containsExactly(entry("Scout", 2));
-		assertThat(report("Rome")).contains("Scout ×2 finished training and joined your Army.");
+		assertThat(game.viewOf("Rome").army()).containsExactly(entry("Warrior", 1));
+		assertThat(game.viewOf("Rome").scouts()).isEqualTo(2);
+		assertThat(report("Rome")).contains("2 Scouts set out into the wilds.")
+			.noneMatch(line -> line.contains("finished training"));
 	}
 
 	@Test
-	void scoutsStayAtHomeAndCannotBeSentInAWarparty() {
+	void oneScoutSetsOutIntoTheWildsAlongsideOtherUnitsFinishingTraining() {
+		game.act("Rome", new Action.TrainUnits("Scout", 1));
+		game.act("Rome", new Action.TrainUnits("Warrior", 1));
+
+		game.endTurn();
+
+		assertThat(report("Rome")).contains("1 Scout set out into the wilds.",
+				"Warrior ×1 finished training and joined your Army.");
+	}
+
+	@Test
+	void scoutsKeepPayingUpkeep() {
+		armyOf("Rome", "Scout", 3);
+
+		game.endTurn();
+
+		assertThat(game.viewOf("Rome").upkeep()).isEqualTo(3);
+		assertThat(report("Rome")).contains("Your Units' upkeep cost 3 Gold.");
+	}
+
+	@Test
+	void scoutsRoamTheWildsAndCannotBeSentInAWarparty() {
 		armyOf("Rome", "Scout", 2);
 		armyOf("Rome", "Warrior", 1);
-		ActionResult kept = ActionResult.rejected("Scouts stay at home and cannot be sent in a Warparty.");
+		ActionResult kept = ActionResult.rejected("Scouts roam the wilds and cannot be sent in a Warparty.");
 
 		assertThat(send("Rome", "Carthage", Map.of("Scout", 1))).isEqualTo(kept);
 		assertThat(send("Rome", "Carthage", Map.of("Warrior", 1, "Scout", 2))).isEqualTo(kept);
 
 		assertThat(game.viewOf("Rome").warparties()).isEmpty();
-		assertThat(game.viewOf("Rome").army()).containsExactly(entry("Scout", 2), entry("Warrior", 1));
+		assertThat(game.viewOf("Rome").army()).containsExactly(entry("Warrior", 1));
+		assertThat(game.viewOf("Rome").scouts()).isEqualTo(2);
 	}
 
 	@Test
-	void scoutsAtHomeTakeNoPartInABattleAndSurviveIt() {
+	void scoutsTakeNoPartInABattleAndSurviveIt() {
 		game.endTurn();
-		armyOf("Rome", "Warrior", 4);
-		armyOf("Carthage", "Warrior", 1);
+		armyOf("Rome", "Warrior", 1);
+		armyOf("Carthage", "Warrior", 3);
 		armyOf("Carthage", "Scout", 2);
-		send("Rome", "Carthage", Map.of("Warrior", 4));
-		for (int turn = 1; turn <= 5; turn++) {
+		send("Rome", "Carthage", Map.of("Warrior", 1));
+		for (int turn = 1; turn <= 5 && report("Carthage").stream().noneMatch(line -> line.startsWith("Your Army")); turn++) {
 			game.endTurn();
 		}
 
-		assertThat(report("Carthage")).contains(
-				"Your Army of Warrior ×1 fought Caesar of Rome's Warparty of Warrior ×4. You lost Warrior ×1 and Rome lost no Units.");
-		assertThat(game.viewOf("Carthage").army()).containsExactly(entry("Scout", 2));
+		assertThat(report("Carthage")).anyMatch(line -> line.startsWith("Your Army of Warrior ×3 fought Caesar of Rome's"))
+			.noneMatch(line -> line.contains("Scout"));
+		assertThat(game.viewOf("Carthage").conqueredBy()).isNull();
+		assertThat(game.viewOf("Carthage").scouts()).isEqualTo(2);
 	}
 
 	@Test
-	void aNationWithOnlyScoutsAtHomeMeetsAWarpartyWithNoArmy() {
+	void aNationWithOnlyScoutsMeetsAWarpartyWithNoArmy() {
 		armyOf("Rome", "Warrior", 2);
 		armyOf("Carthage", "Scout", 1);
 		send("Rome", "Carthage", Map.of("Warrior", 2));
@@ -106,11 +130,12 @@ class ScoutsTest {
 
 		assertThat(report("Carthage")).contains("Caesar of Rome's Warparty of Warrior ×2 met no Army at your Nation.");
 		assertThat(report("Rome")).contains("Your Warparty of Warrior ×2 met no Army at Carthage.");
-		assertThat(game.viewOf("Carthage").army()).containsExactly(entry("Scout", 1));
+		assertThat(game.viewOf("Carthage").army()).isEmpty();
+		assertThat(game.viewOf("Carthage").scouts()).isEqualTo(1);
 	}
 
 	@Test
-	void scoutsCannotHoldOffConquest() {
+	void aNationWithOnlyScoutsLeftAtNoPopulationIsConqueredAndLosesThem() {
 		UnitType giant = new UnitType("Giant", 10, 1, 1, 1, 100, List.of());
 		game = new Game(new Ruleset(List.of(giant, GameTest.SCOUT), List.of(), List.of()), Identities.of("Rome", "Carthage"),
 				EVEN_LUCK);
@@ -123,7 +148,30 @@ class ScoutsTest {
 		}
 
 		assertThat(game.viewOf("Carthage").conqueredBy()).isEqualTo("Rome");
+		assertThat(game.viewOf("Carthage").scouts()).isZero();
 		assertThat(game.winner()).contains("Rome");
+	}
+
+	@Test
+	void scoutsDesertWhenTheirUpkeepCannotBePaid() {
+		UnitType costly = new UnitType("Scout", 5, 1, 1, 100, 0, List.of(), true);
+		game = new Game(new Ruleset(List.of(costly), List.of(), List.of()), Identities.of("Rome", "Carthage"), EVEN_LUCK);
+		game.act("Rome", new Action.TrainUnits("Scout", 2));
+
+		game.endTurn();
+
+		assertThat(game.viewOf("Rome").scouts()).isZero();
+		assertThat(report("Rome")).contains("You could not pay your Units' upkeep, so 2 Scouts roaming the wilds deserted.");
+	}
+
+	@Test
+	void aRemovedNationLosesItsScouts() {
+		armyOf("Rome", "Scout", 2);
+
+		game.remove("Rome");
+
+		assertThat(game.viewOf("Rome").scouts()).isZero();
+		assertThat(game.viewOf("Rome").upkeep()).isZero();
 	}
 
 	@Test
@@ -191,7 +239,7 @@ class ScoutsTest {
 	}
 
 	@Test
-	void aNationWithNoScoutsAtHomeDiscoversNothing() {
+	void aNationWithNoScoutsDiscoversNothing() {
 		play(ALWAYS, "Rome", "Carthage", "Egypt");
 		armyOf("Rome", "Warrior", 1);
 		armyOf("Carthage", "Warrior", 2);

@@ -10,7 +10,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.function.Predicate;
 import java.util.function.ToIntFunction;
 
 /**
@@ -60,6 +59,12 @@ class Nation {
 	 * trained.
 	 */
 	private final Map<String, Integer> army = new LinkedHashMap<>();
+
+	/**
+	 * How many of each Scout type the Nation has roaming the wilds, in the
+	 * order first trained; they are never part of the Army.
+	 */
+	private final Map<String, Integer> scouts = new LinkedHashMap<>();
 
 	/**
 	 * The Nation's Warparties abroad, in the order sent.
@@ -146,7 +151,7 @@ class Nation {
 				Collections.unmodifiableMap(new LinkedHashMap<>(buildings)), construction, repairs, defense(ruleset), damage(ruleset),
 				sellValues(ruleset),
 				availableUnits,
-				Collections.unmodifiableMap(new LinkedHashMap<>(army)), training, warparties, spies, TravelBracket.ALL, Spy.TRAVEL_TURNS, upkeep(ruleset),
+				Collections.unmodifiableMap(new LinkedHashMap<>(army)), scouts(), training, warparties, spies, TravelBracket.ALL, Spy.TRAVEL_TURNS, upkeep(ruleset),
 				arrivals, tributes, encounters, techTree(ruleset), turnReport, awaitingChoice(winner),
 				conqueredBy, winner);
 	}
@@ -169,12 +174,13 @@ class Nation {
 
 	/**
 	 * Takes the Nation out of the Game without it being conquered; its
-	 * Warparties and Spies abroad are gone.
+	 * Warparties, Spies abroad and Scouts are gone.
 	 */
 	void remove() {
 		removed = true;
 		warparties.clear();
 		spies.clear();
+		scouts.clear();
 	}
 
 	/**
@@ -212,16 +218,16 @@ class Nation {
 	}
 
 	/**
-	 * Whether the Nation is left with neither Population nor Units that fight,
-	 * and so is conquered: Scouts, which never fight, cannot hold it.
+	 * Whether the Nation is left with neither Population nor Army, and so is
+	 * conquered: its Scouts, never at home, cannot hold it.
 	 */
-	boolean hasNeitherPopulationNorFighters(Ruleset ruleset) {
-		return population == 0 && fighters(ruleset).isEmpty();
+	boolean hasNeitherPopulationNorArmy() {
+		return population == 0 && army.isEmpty();
 	}
 
 	/**
-	 * Takes the Nation out of the Game: its Warparties and Spies abroad
-	 * disappear, and its conquerors seize a share of its Gold and Research,
+	 * Takes the Nation out of the Game: its Warparties, Spies abroad and
+	 * Scouts disappear, and its conquerors seize a share of its Gold and Research,
 	 * rounded down.
 	 *
 	 * @param conquerors the Nation or Nations that conquered it, such as "Rome
@@ -232,6 +238,7 @@ class Nation {
 		conqueredBy = conquerors;
 		warparties.clear();
 		spies.clear();
+		scouts.clear();
 		return plundered((int) Math.floor(gold * share), (int) Math.floor(research * share));
 	}
 
@@ -918,32 +925,19 @@ class Nation {
 	}
 
 	/**
-	 * The Army's Units that fight in a Battle: all but its Scouts.
+	 * How many Scouts the Nation has roaming the wilds.
 	 */
-	Map<String, Integer> fighters(Ruleset ruleset) {
-		Map<String, Integer> fighters = new LinkedHashMap<>(army);
-		fighters.keySet().removeIf(unit -> ruleset.unit(unit).orElseThrow().scout());
-		return Collections.unmodifiableMap(fighters);
-	}
-
-	/**
-	 * How many Scouts the Nation has at home.
-	 */
-	int scouts(Ruleset ruleset) {
-		return atHome(ruleset, UnitType::scout);
+	int scouts() {
+		return scouts.values().stream().mapToInt(Integer::intValue).sum();
 	}
 
 	/**
 	 * How many Spies the Nation has at home.
 	 */
 	int spiesAtHome(Ruleset ruleset) {
-		return atHome(ruleset, UnitType::spy);
-	}
-
-	private int atHome(Ruleset ruleset, Predicate<UnitType> kind) {
 		return army.entrySet()
 			.stream()
-			.filter(owned -> kind.test(ruleset.unit(owned.getKey()).orElseThrow()))
+			.filter(owned -> ruleset.unit(owned.getKey()).orElseThrow().spy())
 			.mapToInt(Map.Entry::getValue)
 			.sum();
 	}
@@ -1054,28 +1048,39 @@ class Nation {
 	}
 
 	/**
-	 * Moves the Units ready by the start of a Turn from training into the Army.
+	 * The Units that finished training as a Turn resolved, by type in the
+	 * order started.
 	 *
-	 * @return how many of each Unit type joined, in the order started
+	 * @param joined those that joined the Army
+	 * @param setOut the Scouts that set out into the wilds
 	 */
-	Map<String, Integer> progressTraining(int nextTurn) {
+	record Trained(Map<String, Integer> joined, Map<String, Integer> setOut) {
+	}
+
+	/**
+	 * Moves the Units ready by the start of a Turn out of training: Scouts set
+	 * out into the wilds, and every other Unit joins the Army.
+	 */
+	Trained progressTraining(int nextTurn, Ruleset ruleset) {
 		Map<String, Integer> joined = new LinkedHashMap<>();
+		Map<String, Integer> setOut = new LinkedHashMap<>();
 		for (var it = training.iterator(); it.hasNext();) {
 			Training current = it.next();
 			if (current.readyOnTurn() == nextTurn) {
 				it.remove();
-				army.merge(current.unit(), current.count(), Integer::sum);
-				joined.merge(current.unit(), current.count(), Integer::sum);
+				boolean scout = ruleset.unit(current.unit()).orElseThrow().scout();
+				(scout ? scouts : army).merge(current.unit(), current.count(), Integer::sum);
+				(scout ? setOut : joined).merge(current.unit(), current.count(), Integer::sum);
 			}
 		}
-		return joined;
+		return new Trained(joined, setOut);
 	}
 
 	/**
 	 * The Gold the Nation's Units cost each Turn, at home and abroad.
 	 */
 	int upkeep(Ruleset ruleset) {
-		return upkeepOf(army, ruleset) + warparties.stream().mapToInt(w -> upkeepOf(w.units(), ruleset)).sum()
+		return upkeepOf(army, ruleset) + upkeepOf(scouts, ruleset) + warparties.stream().mapToInt(w -> upkeepOf(w.units(), ruleset)).sum()
 				+ spies.stream().mapToInt(spy -> ruleset.unit(spy.unit()).orElseThrow().upkeep()).sum();
 	}
 
@@ -1087,31 +1092,34 @@ class Nation {
 	}
 
 	/**
-	 * Units that deserted as a Turn resolved, from the Army, from one
-	 * Warparty, or a Spy abroad.
+	 * Units that deserted as a Turn resolved, from the Scouts, from the Army,
+	 * from one Warparty, or a Spy abroad.
 	 *
+	 * @param scouts whether they were Scouts roaming the wilds
 	 * @param warparty the Warparty they left, as it was before, or null if they
 	 * did not leave a Warparty
 	 * @param spy the Spy abroad that deserted, or null if they were not one
 	 * @param units how many of each Unit type deserted, in the order they
 	 * deserted
 	 */
-	record Desertion(Warparty warparty, Spy spy, Map<String, Integer> units) {
+	record Desertion(boolean scouts, Warparty warparty, Spy spy, Map<String, Integer> units) {
 	}
 
 	/**
 	 * Lets Units desert, one at a time, until the Nation's Gold covers its
-	 * Units' upkeep. They desert from the Army and from Warparties abroad
+	 * Units' upkeep. They desert from the Scouts, the Army, Warparties abroad
 	 * and Spies abroad alike. The Unit costing the most upkeep deserts first;
-	 * between equally costly ones, the one listed last, taking the Army's types
-	 * in the order first trained, then each Warparty's in the order sent, then
-	 * each Spy in the order sent. A Warparty left with no Units disappears.
+	 * between equally costly ones, the one listed last, taking the Scouts'
+	 * types and then the Army's in the order first trained, then each
+	 * Warparty's in the order sent, then each Spy in the order sent. A
+	 * Warparty left with no Units disappears.
 	 *
-	 * @return the desertions from the Army first, then from each Warparty in
-	 * the order sent, then of each Spy in the order sent
+	 * @return the desertions from the Scouts first, then from the Army, then
+	 * from each Warparty in the order sent, then of each Spy in the order sent
 	 */
 	List<Desertion> desertUntilUpkeepIsAffordable(Ruleset ruleset) {
 		List<Map<String, Integer>> groups = new ArrayList<>();
+		groups.add(scouts);
 		groups.add(army);
 		warparties.forEach(w -> groups.add(new LinkedHashMap<>(w.units())));
 		spies.forEach(spy -> groups.add(new LinkedHashMap<>(Map.of(spy.unit(), 1))));
@@ -1135,27 +1143,30 @@ class Nation {
 			deserted.get(group).merge(deserter, 1, Integer::sum);
 		}
 		List<Desertion> desertions = new ArrayList<>();
-		if (!deserted.getFirst().isEmpty()) {
-			desertions.add(new Desertion(null, null, deserted.getFirst()));
+		if (!deserted.get(0).isEmpty()) {
+			desertions.add(new Desertion(true, null, null, deserted.get(0)));
+		}
+		if (!deserted.get(1).isEmpty()) {
+			desertions.add(new Desertion(false, null, null, deserted.get(1)));
 		}
 		List<Warparty> before = List.copyOf(warparties);
 		warparties.clear();
 		for (int i = 0; i < before.size(); i++) {
 			Warparty warparty = before.get(i);
-			if (!deserted.get(i + 1).isEmpty()) {
-				desertions.add(new Desertion(warparty, null, deserted.get(i + 1)));
+			if (!deserted.get(i + 2).isEmpty()) {
+				desertions.add(new Desertion(false, warparty, null, deserted.get(i + 2)));
 			}
-			if (!groups.get(i + 1).isEmpty()) {
-				warparties.add(warparty.with(groups.get(i + 1), ruleset));
+			if (!groups.get(i + 2).isEmpty()) {
+				warparties.add(warparty.with(groups.get(i + 2), ruleset));
 			}
 		}
 		List<Spy> spiesBefore = List.copyOf(spies);
 		spies.clear();
 		for (int i = 0; i < spiesBefore.size(); i++) {
 			Spy spy = spiesBefore.get(i);
-			int group = before.size() + 1 + i;
+			int group = before.size() + 2 + i;
 			if (groups.get(group).isEmpty()) {
-				desertions.add(new Desertion(null, spy, deserted.get(group)));
+				desertions.add(new Desertion(false, null, spy, deserted.get(group)));
 			}
 			else {
 				spies.add(spy);

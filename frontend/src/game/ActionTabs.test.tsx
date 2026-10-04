@@ -17,17 +17,25 @@ describe('ActionTabs', () => {
       }),
     })
 
-    expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual(['Build2', 'Train3', 'Tech1', 'Army2', 'Spies1'])
+    expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual([
+      'Build2',
+      'Train3',
+      'Tech1',
+      'Army2',
+      'Spies & Scouts1',
+    ])
   })
 
   it('shows no badge on a tab with nothing going on', () => {
     renderGame({ nation: nationView({ construction: [], training: [] }) })
 
-    expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual(['Build', 'Train', 'Tech', 'Army', 'Spies'])
+    expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual(['Build', 'Train', 'Tech', 'Army', 'Spies & Scouts'])
   })
 
   it('turns the Army badge bad while an enemy Warparty has arrived', () => {
-    renderGame({ nation: nationView({ arrivals: [{ nation: 'Egypt', warparty: 7 }] }) })
+    renderGame({
+      nation: nationView({ arrivals: [{ nation: 'Egypt', warparty: 7 }] }),
+    })
 
     const badge = within(tab('Army')).getByText('!')
     expect(badge).toHaveClass('tabs__badge--bad')
@@ -73,7 +81,10 @@ describe('ActionTabs', () => {
     ['Removed', { removed: ['Rome'] }],
     ['watching the end of the Game', { winner: 'Egypt' }],
   ])('leaves out the tabs for a Player %s', (_, game) => {
-    renderGame({ room: roomView({ game: { ...roomView().game!, ...game } }), playerId: MY_PLAYER_ID })
+    renderGame({
+      room: roomView({ game: { ...roomView().game!, ...game } }),
+      playerId: MY_PLAYER_ID,
+    })
 
     expect(screen.queryByRole('tablist')).not.toBeInTheDocument()
     expect(screen.getByRole('region', { name: 'Map' })).toBeInTheDocument()
