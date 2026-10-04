@@ -686,7 +686,8 @@ class Nation {
 	 */
 	Optional<ActionResult> locked(String unitOrBuilding, Ruleset ruleset) {
 		return lockedBehind(unitOrBuilding, ruleset)
-			.map(technology -> requiredFirst(unitOrBuilding, List.of(technology.name())));
+			.map(technology -> sees(technology, ruleset) ? requiredFirst(unitOrBuilding, List.of(technology.name()))
+					: ActionResult.rejected(unitOrBuilding + " requires a Technology still unknown to you."));
 	}
 
 	private Optional<Technology> lockedBehind(String unitOrBuilding, Ruleset ruleset) {
@@ -702,26 +703,47 @@ class Nation {
 	 * more than one step beyond what it can unlock now.
 	 */
 	private List<TechTreeEntry> techTree(Ruleset ruleset) {
-		Set<String> available = ruleset.technologies()
+		Set<String> available = available(ruleset);
+		return ruleset.technologies().stream().map(technology -> {
+			TechTreeEntry.Standing standing = standing(technology, available);
+			return standing == TechTreeEntry.Standing.HIDDEN ? TechTreeEntry.hidden()
+					: techTreeEntry(technology, standing);
+		}).toList();
+	}
+
+	/**
+	 * Whether the Nation sees a Technology in its Tech Tree, rather than only
+	 * that it is there.
+	 */
+	boolean sees(Technology technology, Ruleset ruleset) {
+		return standing(technology, available(ruleset)) != TechTreeEntry.Standing.HIDDEN;
+	}
+
+	/**
+	 * The names of the Technologies the Nation can unlock now.
+	 */
+	private Set<String> available(Ruleset ruleset) {
+		return ruleset.technologies()
 			.stream()
 			.filter(technology -> !technologies.contains(technology.name())
 					&& technologies.containsAll(technology.prerequisites()))
 			.map(Technology::name)
 			.collect(Collectors.toSet());
-		return ruleset.technologies().stream().map(technology -> {
-			if (technologies.contains(technology.name())) {
-				return techTreeEntry(technology, TechTreeEntry.Standing.UNLOCKED);
-			}
-			if (available.contains(technology.name())) {
-				return techTreeEntry(technology, TechTreeEntry.Standing.AVAILABLE);
-			}
-			if (technology.prerequisites()
-				.stream()
-				.allMatch(prerequisite -> technologies.contains(prerequisite) || available.contains(prerequisite))) {
-				return techTreeEntry(technology, TechTreeEntry.Standing.LOCKED);
-			}
-			return TechTreeEntry.hidden();
-		}).toList();
+	}
+
+	private TechTreeEntry.Standing standing(Technology technology, Set<String> available) {
+		if (technologies.contains(technology.name())) {
+			return TechTreeEntry.Standing.UNLOCKED;
+		}
+		if (available.contains(technology.name())) {
+			return TechTreeEntry.Standing.AVAILABLE;
+		}
+		if (technology.prerequisites()
+			.stream()
+			.allMatch(prerequisite -> technologies.contains(prerequisite) || available.contains(prerequisite))) {
+			return TechTreeEntry.Standing.LOCKED;
+		}
+		return TechTreeEntry.Standing.HIDDEN;
 	}
 
 	private static TechTreeEntry techTreeEntry(Technology technology, TechTreeEntry.Standing standing) {

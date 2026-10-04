@@ -159,4 +159,17 @@ class TechTreeTest {
 			.isEqualTo(Map.of("reason", "Mathematics requires Masonry to be unlocked first."));
 	}
 
+	@Test
+	void aRejectedUnlockOfAHiddenTechnologyDoesNotRevealItsPrerequisites() throws Exception {
+		startAndEndFirstTurn();
+		rome.privately().next();
+		StompConnection.Messages romeRejections = rome.stomp().subscribe("/user/queue/rejections");
+
+		send(rome, "/technologies", Map.of("token", rome.token(), "technology", "Astronomy"));
+
+		Map<?, ?> rejection = romeRejections.next();
+		assertThat(rejection).isEqualTo(Map.of("reason", "There is no Technology called Astronomy."));
+		assertThat(rejection.toString()).doesNotContain("Mathematics");
+	}
+
 }

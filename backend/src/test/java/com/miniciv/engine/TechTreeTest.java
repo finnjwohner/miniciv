@@ -95,6 +95,35 @@ class TechTreeTest {
 	}
 
 	@Test
+	void unlockingAHiddenTechnologyIsRejectedAsIfItDidNotExist() {
+		game = new Game(CHAIN, Identities.of("Rome", "Carthage"), EVEN_LUCK);
+
+		assertThat(unlock("A")).isEqualTo(ActionResult.rejected("There is no Technology called A."));
+	}
+
+	@Test
+	void aUnitTypeOrBuildingBehindAHiddenTechnologyIsRejectedWithoutNamingIt() {
+		game = new Game(new Ruleset(List.of(WARRIOR, HORSEMAN), List.of(FARM, WALLS),
+				List.of(new Technology("A", 1, List.of("B"), List.of("Horseman", "Walls")),
+						new Technology("B", 1, List.of("C"), List.of()), new Technology("C", 1, List.of(), List.of()))),
+				Identities.of("Rome", "Carthage"), EVEN_LUCK);
+
+		assertThat(game.act("Rome", new Action.TrainUnits("Horseman", 1)))
+			.isEqualTo(ActionResult.rejected("Horseman requires a Technology still unknown to you."));
+		assertThat(game.act("Rome", new Action.StartBuilding("Walls")))
+			.isEqualTo(ActionResult.rejected("Walls requires a Technology still unknown to you."));
+	}
+
+	@Test
+	void aUnitTypeBehindALockedTechnologyNamesIt() {
+		assertThat(game.viewOf("Rome").techTree()).extracting(TechTreeEntry::name, TechTreeEntry::standing)
+			.contains(tuple("Chivalry", TechTreeEntry.Standing.LOCKED));
+
+		assertThat(game.act("Rome", new Action.TrainUnits("Horseman", 1)))
+			.isEqualTo(ActionResult.rejected("Horseman requires Chivalry to be unlocked first."));
+	}
+
+	@Test
 	void aBuildingATechnologyUnlocksCannotBeStartedUntilItIsUnlocked() {
 		assertThat(game.viewOf("Rome").availableBuildings()).containsExactly(FARM);
 		assertThat(game.act("Rome", new Action.StartBuilding("Walls")))
