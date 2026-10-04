@@ -351,19 +351,19 @@ public class Game {
 						? Line.of("You did not choose in time what to do about " + faced.dilemma().name() + ". ", line)
 						: line);
 			}
-			for (String completed : nation.progressConstruction()) {
-				report.add(COMPLETED, "Your " + completed + " has been built.");
-			}
-			for (Repair finished : nation.progressRepairs()) {
-				report.add(COMPLETED, "Your " + finished.building() + " has been " + (finished.rebuild() ? "rebuilt." : "repaired."));
-			}
+			tallied(nation.progressConstruction())
+				.forEach((building, count) -> report.add(COMPLETED, yourBuildings(building, count, "built")));
+			List<Repair> repairs = nation.progressRepairs();
+			tallied(repairs.stream().filter(repair -> !repair.rebuild()).map(Repair::building).toList())
+				.forEach((building, count) -> report.add(COMPLETED, yourBuildings(building, count, "repaired")));
+			tallied(repairs.stream().filter(Repair::rebuild).map(Repair::building).toList())
+				.forEach((building, count) -> report.add(COMPLETED, yourBuildings(building, count, "rebuilt")));
 			Nation.Trained trained = nation.progressTraining(turn + 1, ruleset);
-			if (!trained.joined().isEmpty()) {
-				report.add(COMPLETED, listed(trained.joined()) + " finished training and joined your Army.");
-			}
-			if (!trained.setOut().isEmpty()) {
-				report.add(COMPLETED, scoutsCounted(trained.setOut()) + " set out into the wilds.");
-			}
+			trained.joined()
+				.forEach((unit, count) -> report.add(COMPLETED,
+						counted(unit, count) + " finished training and joined your Army."));
+			trained.setOut()
+				.forEach((unit, count) -> report.add(COMPLETED, counted(unit, count) + " set out into the wilds."));
 		}
 		for (Nation nation : inPlay) {
 			for (Warparty returned : nation.travelHome()) {
@@ -1566,6 +1566,49 @@ public class Game {
 	private static String scoutsCounted(Map<String, Integer> scouts) {
 		int count = scouts.values().stream().mapToInt(Integer::intValue).sum();
 		return count + (count == 1 ? " Scout" : " Scouts");
+	}
+
+	/**
+	 * How many of each type are in the given list, in the order each first
+	 * appears.
+	 */
+	private static Map<String, Integer> tallied(List<String> types) {
+		Map<String, Integer> tally = new LinkedHashMap<>();
+		types.forEach(type -> tally.merge(type, 1, Integer::sum));
+		return tally;
+	}
+
+	/**
+	 * The Buildings of one type that a Turn built, repaired or rebuilt, such as
+	 * "Your Farm has been built." or "Your 2 Farms have been built.".
+	 */
+	private static String yourBuildings(String building, int count, String done) {
+		return count == 1 ? "Your " + building + " has been " + done + "."
+				: "Your " + counted(building, count) + " have been " + done + ".";
+	}
+
+	/**
+	 * A count of one type, such as "1 Archer", "3 Archers" or "2 Horsemen".
+	 */
+	static String counted(String type, int count) {
+		return count + " " + (count == 1 ? type : plural(type));
+	}
+
+	/**
+	 * The plural of a Unit or Building type, such as Archers, Horsemen, Spies,
+	 * Libraries or Walls.
+	 */
+	static String plural(String type) {
+		if (type.endsWith("s")) {
+			return type;
+		}
+		if (type.endsWith("man")) {
+			return type.substring(0, type.length() - 3) + "men";
+		}
+		if (type.endsWith("y") && !type.matches(".*[aeiou]y")) {
+			return type.substring(0, type.length() - 1) + "ies";
+		}
+		return type + "s";
 	}
 
 	/**

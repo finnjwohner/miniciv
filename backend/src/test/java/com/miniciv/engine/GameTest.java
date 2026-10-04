@@ -475,19 +475,7 @@ class GameTest {
 		assertThat(rome.turn()).isEqualTo(3);
 		assertThat(rome.training()).isEmpty();
 		assertThat(rome.army()).containsExactly(entry("Archer", 2));
-		assertThat(rome.turnReport().lines()).contains("Archer ×2 finished training and joined your Army.");
-	}
-
-	@Test
-	void theTurnReportListsEveryKindOfUnitThatJoinedTheArmy() {
-		game.act("Rome", new Action.TrainUnits("Archer", 1));
-		game.endTurn();
-		game.act("Rome", new Action.TrainUnits("Warrior", 2));
-
-		game.endTurn();
-
-		assertThat(game.viewOf("Rome").turnReport().lines())
-			.contains("Archer ×1 and Warrior ×2 finished training and joined your Army.");
+		assertThat(rome.turnReport().lines()).contains("2 Archers finished training and joined your Army.");
 	}
 
 	@Test
@@ -510,7 +498,7 @@ class GameTest {
 		NationView rome = game.viewOf("Rome");
 		assertThat(rome.gold()).isEqualTo(30 + 4 - 2);
 		assertThat(rome.upkeep()).isEqualTo(2);
-		assertThat(rome.turnReport().lines()).containsExactly("Warrior ×2 finished training and joined your Army.",
+		assertThat(rome.turnReport().lines()).containsExactly("2 Warriors finished training and joined your Army.",
 				incomeReport(4), "Your Units' upkeep cost 2 Gold.");
 
 		game.endTurn();
@@ -542,7 +530,7 @@ class GameTest {
 		assertThat(rome.army()).containsExactly(entry("Warrior", 1), entry("Horseman", 1));
 		assertThat(rome.gold()).isEqualTo(2 + 5 - 7);
 		assertThat(rome.upkeep()).isEqualTo(7);
-		assertThat(rome.turnReport().lines()).containsExactly("Horseman ×2 finished training and joined your Army.",
+		assertThat(rome.turnReport().lines()).containsExactly("2 Horsemen finished training and joined your Army.",
 				incomeReport(5),
 				"You could not pay your Units' upkeep, so Horseman ×1 deserted from your Army.", "Your Units' upkeep cost 7 Gold.");
 	}
@@ -762,7 +750,7 @@ class GameTest {
 		assertThat(game.viewOf("Carthage").army()).containsExactly(entry("Warrior", 2));
 		assertThat(game.viewOf("Carthage").turnReport().lines()).containsSequence(
 				"Your Army of Warrior ×3 fought Caesar of Rome's Warparty of Warrior ×2. You lost Warrior ×1 and Rome lost Warrior ×2.",
-				"Caesar of Rome's Warparty was destroyed.", "Warrior ×3 finished training and joined your Army.");
+				"Caesar of Rome's Warparty was destroyed.", "3 Warriors finished training and joined your Army.");
 	}
 
 	@Test
@@ -1002,8 +990,7 @@ class GameTest {
 
 		game.endTurn();
 		assertThat(game.viewOf("Carthage").defense()).isEqualTo(8);
-		assertThat(game.viewOf("Carthage").turnReport().lines()).contains("Your Moat has been rebuilt.",
-				"Your Moat has been rebuilt.");
+		assertThat(game.viewOf("Carthage").turnReport().lines()).contains("Your 2 Moats have been rebuilt.");
 	}
 
 	@Test

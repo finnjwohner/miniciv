@@ -75,7 +75,7 @@ class ScoutsTest {
 		game.endTurn();
 
 		assertThat(report("Rome")).contains("1 Scout set out into the wilds.",
-				"Warrior ×1 finished training and joined your Army.");
+				"1 Warrior finished training and joined your Army.");
 	}
 
 	@Test
