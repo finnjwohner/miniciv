@@ -240,6 +240,32 @@ describe('SpiesPanel', () => {
     expect(within(spies).queryByRole('combobox', { name: 'Mission for Spy 3 in Egypt' })).not.toBeInTheDocument()
   })
 
+  it('offers hostile Missions apart from Intel ones, with their chance of success', () => {
+    renderGame({
+      nation: nationView({
+        spies: [spy({ id: 1 })],
+        missions: [
+          { name: 'Report Gold', turns: 2, reports: 'GOLD', chance: 0, harm: null, text: null },
+          {
+            name: 'Sabotage Buildings',
+            turns: 4,
+            reports: null,
+            chance: 0.6,
+            harm: { damageDefense: 0, damageBuildings: 1, armyKilled: 0, populationLost: 0 },
+            text: 'Saboteurs struck in the night',
+          },
+        ],
+      }),
+    })
+    fireEvent.click(tab('Spies & Scouts'))
+
+    const picker = screen.getByRole('combobox', { name: 'Mission for Spy 1 in Egypt' })
+    expect(options(within(picker).getByRole('group', { name: 'Intel' }))).toEqual(['Report Gold (2 Turns)'])
+    expect(options(within(picker).getByRole('group', { name: 'Hostile' }))).toEqual([
+      'Sabotage Buildings (4 Turns, 60% chance)',
+    ])
+  })
+
   it('sets a Spy’s Mission when one is picked', () => {
     const onSetMission = vi.fn()
     renderGame({ nation: nationView({ spies: [spy({ id: 1 }), spy({ id: 2, mission: 'Report Gold', missionTurnsLeft: 1 })] }), onSetMission })

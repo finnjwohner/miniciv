@@ -100,6 +100,12 @@ public class Game {
 	private static final double CATCH_CHANCE_PER_SPY_AT_HOME = 0.2;
 
 	/**
+	 * How many times the usual chance each Spy at home gives of catching a Spy
+	 * on a hostile Mission.
+	 */
+	private static final int HOSTILE_CATCH_MULTIPLIER = 2;
+
+	/**
 	 * The chance each Scout gives its Nation, each Turn, of catching
 	 * each other Nation's Spy still travelling.
 	 */
@@ -1181,21 +1187,78 @@ public class Game {
 	/**
 	 * Has each Nation still in the Game in order move each of its Spies on a
 	 * Mission, in the order sent, one Turn further into it. A Spy whose
-	 * Mission ends reports its Fact, as it stands once the Turn has resolved,
-	 * in the Turn Report and on the Map, tagged with this Turn, then goes
-	 * Idle, and the Player is alerted. Idle Spies do nothing. No luck is drawn.
+	 * Mission ends goes Idle, and the Player is alerted. Idle Spies do
+	 * nothing.
+	 * <p>
+	 * An Intel Mission that ends reports its Fact, as it stands once the Turn
+	 * has resolved, in the Turn Report and on the Map, tagged with this Turn,
+	 * drawing no luck. A hostile Mission that ends draws once from the seeded
+	 * random source for whether it succeeds, and its sender is told which; one
+	 * that succeeds harms its target (see {@link #sabotage}), whose Turn
+	 * Report says what it harmed without naming the sender.
 	 */
 	private void workOnMissions(Map<String, TurnReport.Draft> reports) {
 		for (Nation spying : remaining()) {
 			for (Spy spy : spying.workOnMissions()) {
 				TurnReport.Draft report = reports.get(spying.name());
 				Mission mission = ruleset.mission(spy.mission()).orElseThrow();
-				report.add(SPIES_AND_SCOUTS,
-						Line.of("Your Spy in " + spy.target() + " reported that ", learnFact(spying, spy.target(), mission.reports()), "."));
+				if (mission.hostile()) {
+					boolean succeeded = random.nextDouble() < mission.chance();
+					report.add(SPIES_AND_SCOUTS, "Your Spy in " + spy.target() + (succeeded ? " succeeded" : " failed")
+							+ " at " + mission.name() + ".");
+					if (succeeded) {
+						List<Line> harmed = sabotage(mission, nation(spy.target()), reports);
+						if (!harmed.isEmpty()) {
+							reports.get(spy.target()).add(SPIES_AND_SCOUTS, announced(mission.text(), harmed));
+						}
+					}
+				}
+				else {
+					report.add(SPIES_AND_SCOUTS, Line.of("Your Spy in " + spy.target() + " reported that ",
+							learnFact(spying, spy.target(), mission.reports()), "."));
+				}
 				report.add(DECISIONS_AND_ALERTS,
 						"Your Spy in " + spy.target() + " finished " + mission.name() + " and is Idle; set it a new Mission.");
 			}
 		}
+	}
+
+	/**
+	 * Applies a hostile Mission's harm to the Nation its Spy is at: its
+	 * Population loss, Defense wear and Building damage as an Event's effects
+	 * would be, varied by luck and drawing as {@link #befall} does, then its
+	 * Army losses, drawing once from the seeded random source to vary how many
+	 * Units die and once more for each one, picked from those left with each
+	 * Unit as likely as any other.
+	 *
+	 * @return what it harmed, such as "your Farm ×1 was damaged"
+	 */
+	private List<Line> sabotage(Mission mission, Nation target, Map<String, TurnReport.Draft> reports) {
+		Mission.Harm harm = mission.harm();
+		Event.Effects effects = new Event.Effects(0, -harm.populationLost(), 0, harm.damageDefense(), 0, null, 0, null, 0,
+				null, harm.damageBuildings());
+		// It catches no Spy, so nothing is witnessed.
+		List<Line> harmed = new ArrayList<>(befall(mission.name(), effects, target, reports, new ArrayList<>()));
+		int units = target.army().values().stream().mapToInt(Integer::intValue).sum();
+		if (harm.armyKilled() > 0 && units > 0) {
+			int dying = Math.min(units,
+					Event.Effects.varied(Math.max(1, (int) Math.round(units * harm.armyKilled())), random));
+			Map<String, Integer> died = new LinkedHashMap<>();
+			for (int left = dying; left > 0; left--) {
+				Map<String, Integer> army = target.army();
+				int pick = (int) (random.nextDouble() * army.values().stream().mapToInt(Integer::intValue).sum());
+				for (Map.Entry<String, Integer> unit : army.entrySet()) {
+					if (pick < unit.getValue()) {
+						target.changeArmy(Map.of(unit.getKey(), -1));
+						died.merge(unit.getKey(), 1, Integer::sum);
+						break;
+					}
+					pick -= unit.getValue();
+				}
+			}
+			harmed.add(Line.of(countedEach(died) + " died"));
+		}
+		return harmed;
 	}
 
 	/**
@@ -1255,7 +1318,9 @@ public class Game {
 
 	/**
 	 * Has each Nation still in the Game in order try to catch other Nations'
-	 * Spies: with its Spies at home, those in place at it; then with its
+	 * Spies: with its Spies at home, those in place at it, each Spy on a
+	 * hostile Mission {@value #HOSTILE_CATCH_MULTIPLIER} times as likely to be
+	 * caught as any other; then with its
 	 * Scouts, and then with each of its travelling Warparties in the
 	 * order sent, those still travelling anywhere. Each try takes the other
 	 * Nations in order and each one's Spies in the order sent, drawing once
@@ -1266,10 +1331,11 @@ public class Game {
 		for (Nation catching : remaining()) {
 			int spies = catching.spiesAtHome(ruleset);
 			if (spies > 0) {
-				double chance = 1 - Math.pow(1 - CATCH_CHANCE_PER_SPY_AT_HOME, spies);
 				for (Nation other : others(catching)) {
 					for (Spy spy : other.spiesInPlace()) {
-						if (spy.target().equals(catching.name()) && random.nextDouble() < chance) {
+						double perSpy = onHostileMission(spy) ? HOSTILE_CATCH_MULTIPLIER * CATCH_CHANCE_PER_SPY_AT_HOME
+								: CATCH_CHANCE_PER_SPY_AT_HOME;
+						if (spy.target().equals(catching.name()) && random.nextDouble() < 1 - Math.pow(1 - perSpy, spies)) {
 							caught(spy, other, catching, "Your Spies", reports, witnessed);
 						}
 					}
@@ -1300,6 +1366,13 @@ public class Game {
 				}
 			}
 		}
+	}
+
+	/**
+	 * Whether a Spy is on a hostile Mission.
+	 */
+	private boolean onHostileMission(Spy spy) {
+		return spy.mission() != null && ruleset.mission(spy.mission()).orElseThrow().hostile();
 	}
 
 	/**

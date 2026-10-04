@@ -212,8 +212,24 @@ export type Spy = {
 }
 /** The kinds of Fact a Mission may report. */
 export type FactKind = 'GOLD' | 'POPULATION' | 'RESEARCH' | 'ARMY' | 'BUILDINGS'
-/** What a Spy in place may be set to do, for `turns` Turns; it reports the kind of Fact `reports` when it ends. */
-export type Mission = { name: string; turns: number; reports: FactKind }
+/**
+ * What a hostile Mission that succeeds does to the Nation its Spy is at: Defense worn down, non-defensive
+ * Buildings Damaged, the share of the Army killed, and Population lost.
+ */
+export type Harm = { damageDefense: number; damageBuildings: number; armyKilled: number; populationLost: number }
+/**
+ * What a Spy in place may be set to do, for `turns` Turns. An Intel Mission reports the kind of Fact `reports`
+ * when it ends; a hostile one, with `harm`, succeeds with probability `chance` when it ends, and its target is
+ * told `text` without being told who sent the Spy.
+ */
+export type Mission = {
+  name: string
+  turns: number
+  reports: FactKind | null
+  chance: number
+  harm: Harm | null
+  text: string | null
+}
 /** A kind of Task Scouts can be set to: `LOCATE` searches for a Nation not yet Located until it is Located. */
 export type TaskKind = 'LOCATE'
 /** What some of the Nation's Scouts are set to do, told apart by `id`; `target` is the Nation it is about. */

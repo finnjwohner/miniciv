@@ -3,5 +3,9 @@
   { "name": "Report Population", "turns": 2, "reports": "POPULATION" },
   { "name": "Report Research", "turns": 2, "reports": "RESEARCH" },
   { "name": "Report Army", "turns": 2, "reports": "ARMY" },
-  { "name": "Report Buildings", "turns": 2, "reports": "BUILDINGS" }
+  { "name": "Report Buildings", "turns": 2, "reports": "BUILDINGS" },
+  { "name": "Sabotage Defenses", "turns": 4, "chance": 0.6, "harm": { "damageDefense": 8 }, "text": "Saboteurs undermined your fortifications" },
+  { "name": "Sabotage Buildings", "turns": 4, "chance": 0.6, "harm": { "damageBuildings": 1 }, "text": "Saboteurs struck in the night" },
+  { "name": "Poison Army", "turns": 4, "chance": 0.5, "harm": { "armyKilled": 0.2 }, "text": "Poison was found in your soldiers' wells" },
+  { "name": "Incite Unrest", "turns": 3, "chance": 0.6, "harm": { "populationLost": 4 }, "text": "Agitators stirred up unrest in your streets" }
 ]
