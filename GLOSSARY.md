@@ -79,26 +79,34 @@ A Nation's protection against attack, raised by defensive Buildings, which must 
 _Avoid_: Walls, fortification, armour
 
 **Damaged**:
-A defensive Building that has lost some of the Defense it raises but still stands; it raises only what it has left.
+A Building harmed but still standing. A Damaged defensive Building has lost some of the Defense it raises and raises only what it has left; any other Damaged Building adds none of its effects until Repaired, and harming it further does nothing more.
 _Avoid_: Hurt, worn, weakened
 
 **Destroyed**:
-A defensive Building that has lost all of its Defense; it raises no Defense and adds none of its other effects until Rebuilt.
+A defensive Building that has lost all of its Defense; it raises no Defense and adds none of its other effects until Rebuilt. Only defensive Buildings can be Destroyed.
 _Avoid_: Ruined, razed, lost
 
 **Repair**:
-Restoring the Defense one Damaged Building lost, paying Gold upfront and taking some Turns, both half of what constructing it would, in proportion to the Defense lost.
+Restoring one Damaged Building, paying Gold upfront and taking some Turns: for a defensive Building, half of what constructing it would in proportion to the Defense lost; for any other, half of what constructing it would, rounded up.
 _Avoid_: Fix, mend
 
 **Rebuild**:
 Restoring one Destroyed Building, paying Gold upfront and taking some Turns, both half of what constructing it would, rounded up.
 _Avoid_: Reconstruct, restore
 
+**Breached**:
+The state of a Nation that has at least one Destroyed defensive Building, or none at all; a Battle at a Breached Nation can also Damage its other Buildings.
+_Avoid_: Open, undefended, sacked
+
 **Sell**:
 Giving up one standing Building at once in return for Gold: half its cost, or a quarter if it is Damaged. A Destroyed Building cannot be Sold.
 _Avoid_: Demolish, scrap, refund
 
 ## Warfare
+
+**Located**:
+Another Nation a Nation has found, through a Scout Task, a Battle that Nation's Warparty fought against it, or a caught Spy of that Nation confessing; only a Located Nation can be sent Spies or Warparties. Locating is one-way and lasts the whole Game.
+_Avoid_: Found, discovered, known
 
 **Unit**:
 A single soldier of a given type (e.g. archer, horseman, warrior, scout) that a Nation trains over one or more Turns by paying Gold and Population upfront, and then pays a small Gold upkeep for each Turn.
@@ -117,12 +125,32 @@ A group of Units a Player sends from their Army toward another Nation; it travel
 _Avoid_: Attack, expedition, army
 
 **Scout**:
-A Unit that roams the wilds from the moment it is trained, giving its Nation a chance each Turn to discover Warparties abroad and to catch other Nations' Spies still travelling, better the more Scouts it has. Scouts are never at home or part of the Army, have no Strength and never fight, and no Warparty or Scout can meet or catch one; only Events, or upkeep its Nation cannot pay, can lose them.
+A Unit that roams the wilds from the moment it is trained, doing whatever Task it is set: Locating a Nation, watching for Warparties abroad or hunting other Nations' travelling Spies. Scouts are never at home or part of the Army, have no Strength and never fight, and no Warparty or Scout can meet or catch one; only Events, or upkeep its Nation cannot pay, can lose them.
 _Avoid_: Spy, lookout
 
 **Spy**:
-A Unit that travels to another Nation and stays there until caught, now and then reporting a snapshot of its hidden state (Gold, Population, Research, Army or Buildings). Spies kept at home run Counter-intelligence, and Scouts and travelling Warparties can catch Spies still travelling. A caught Spy dies, stays silent or confesses, revealing its sender and a snapshot of the sender's Nation; the sender is told only if another of its Spies in the catching Nation reports it.
+A Unit that travels to another Located Nation and stays there carrying out whatever Mission it is set, until caught, Unmasked, or heading home with a Haul. Spies kept at home run Counter-intelligence, and Scouts hunting travelling Spies and travelling Warparties can catch Spies still travelling, to or from their target. A caught Spy dies, stays silent or confesses, revealing its sender and a snapshot of the sender's Nation; the sender is told only if another of its Spies in the catching Nation reports it.
 _Avoid_: Scout, agent
+
+**Mission**:
+What one Spy in place at another Nation is set to do for a fixed number of Turns: report one kind of Fact, or sabotage, poison, incite or steal. The Player may switch it at any time, losing its progress; when it ends the Spy is Idle.
+_Avoid_: Task, activity, operation, order
+
+**Task**:
+What some of a Nation's Scouts are set to do, such as Locating a Nation or watching for Warparties; some take any number of Scouts, others exactly one.
+_Avoid_: Mission, activity, job
+
+**Idle**:
+A Spy with no Mission or a Scout with no Task; it does nothing at all, though an Idle Spy abroad can still be caught.
+_Avoid_: Waiting, unassigned, free
+
+**Unmasked**:
+A Spy whose sender the Nation it is at learns, by chance, as one of its Missions ends, more likely when the Mission failed. It is caught on the spot or flees home carrying any Haul; its sender learns of it only if it fled, and the Nation that unmasked it does not thereby Locate the sender.
+_Avoid_: Exposed, blown, discovered
+
+**Haul**:
+The Gold or Research a Spy steals, taken from what its target gains the Turn after the Mission succeeds rather than from what the target holds, and only reaching the Spy's Nation once the Spy has carried it home. A Nation that catches the Spy on the way chooses to keep the Haul or send it back to the Nation it was stolen from; either way it takes some Turns to arrive.
+_Avoid_: Loot, spoils, stolen goods, Plunder
 
 **Counter-intelligence**:
 What a Nation's Spies kept at home do: give it a chance each Turn to catch other Nations' Spies in its land.
@@ -167,5 +195,5 @@ An Event whose change applies again each Turn for some Turns. A Nation has at mo
 _Avoid_: Modifier, buff, debuff, status
 
 **Dilemma**:
-An Event that offers its Player two or three choices; the Player may change their choice until the Turn ends, and if they have not chosen by then, the worst choice applies. What a choice leads to is partly luck, so even the best choice can turn out badly and the worst well; the Player is not told the odds.
+An Event that offers its Player two or three choices; the Player may change their choice until the Turn ends, and if they have not chosen by then, the worst choice applies. What a choice leads to is partly luck, so even the best choice can turn out badly and the worst well; the Player is not told the odds. A Nation faces at most one Dilemma per Turn, preferring one it has never faced.
 _Avoid_: Choice, decision, prompt
