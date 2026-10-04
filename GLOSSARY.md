@@ -32,6 +32,10 @@ _Avoid_: Round, tick
 The short text description each Player receives at the start of a Turn of what happened as the previous Turn resolved, headed by how its Nation's Gold, Population and Research moved and grouped into sections by kind (alerts, warfare, completions, Events, Spies and Scouts, resources).
 _Avoid_: Log, summary, news
 
+**Message**:
+Private text one Player sends to one other Player during a Game, seen only by the two of them and kept until the Game's Room is gone; Players knocked out can still send and receive them, Players Removed cannot.
+_Avoid_: Chat, DM, whisper
+
 **Map**:
 A read-only graphic of every Nation's state; Players do not act through it.
 _Avoid_: Board
@@ -63,7 +67,7 @@ An unlockable entry in the Tech Tree that gives access to new Buildings or Units
 _Avoid_: Tech, upgrade, discovery
 
 **Tech Tree**:
-The small branching set of Technologies, where some Technologies must be unlocked before others become available.
+The small branching set of Technologies, where some Technologies must be unlocked before others become available. A Nation sees the Technologies it has unlocked or can unlock now, and those whose prerequisites are all among them; every other Technology shows only as unknown.
 _Avoid_: Research tree, skill tree
 
 **Building**:
@@ -105,7 +109,7 @@ How much a Unit contributes in a Battle, multiplied when it fights a Unit type i
 _Avoid_: Power, attack, damage
 
 **Army**:
-The Units a Nation has at home in its own land; Units away in a Warparty are not part of it.
+The Units a Nation has at home in its own land; Units away in a Warparty, Spies abroad and Scouts are not part of it.
 _Avoid_: Garrison, defenders
 
 **Warparty**:
@@ -113,12 +117,16 @@ A group of Units a Player sends from their Army toward another Nation; it travel
 _Avoid_: Attack, expedition, army
 
 **Scout**:
-A Unit that works unseen in the background, giving its Nation a chance each Turn to discover Warparties abroad and to catch other Nations' Spies still travelling, better the more Scouts it has. Scouts stay at home and never fight, so they cannot hold off a Battle or Conquest.
+A Unit that roams the wilds from the moment it is trained, giving its Nation a chance each Turn to discover Warparties abroad and to catch other Nations' Spies still travelling, better the more Scouts it has. Scouts are never at home or part of the Army, have no Strength and never fight, and no Warparty or Scout can meet or catch one; only Events can lose them.
 _Avoid_: Spy, lookout
 
 **Spy**:
-A Unit that travels to another Nation and stays there until caught, now and then reporting a snapshot of its hidden state (Gold, Population, Research, Army or Buildings). Spies kept at home can catch enemy Spies in their Nation, and Scouts and travelling Warparties can catch Spies still travelling. A caught Spy dies, stays silent or confesses, revealing its sender and a snapshot of the sender's Nation; the sender is told only if another of its Spies in the catching Nation reports it.
+A Unit that travels to another Nation and stays there until caught, now and then reporting a snapshot of its hidden state (Gold, Population, Research, Army or Buildings). Spies kept at home run Counter-intelligence, and Scouts and travelling Warparties can catch Spies still travelling. A caught Spy dies, stays silent or confesses, revealing its sender and a snapshot of the sender's Nation; the sender is told only if another of its Spies in the catching Nation reports it.
 _Avoid_: Scout, agent
+
+**Counter-intelligence**:
+What a Nation's Spies kept at home do: give it a chance each Turn to catch other Nations' Spies in its land.
+_Avoid_: Spy-catching, security
 
 **Fact**:
 One piece of another Nation's hidden state a Spy reported or a caught Spy confessed, shown on the Map against that Nation with the Turn it was learned; a later report of the same kind replaces it.
@@ -129,11 +137,11 @@ Ordering a Warparty to turn back home; the trip home takes as long as it has tra
 _Avoid_: Retreat, withdraw
 
 **Tribute**:
-Gold or Population a defending Nation offers an attacker, mid-Turn, in return for Recalling its Warparty; if accepted, no Battle takes place.
+Gold or Population a defending Nation offers an attacker, mid-Turn, in return for Recalling its Warparty; if accepted, no Battle takes place. An offer, and the answer to it, cannot be taken back.
 _Avoid_: Bribe, ransom, payment
 
 **Encounter**:
-Two Warparties from different Nations meeting by chance while abroad, each seeing the other's Units; if either Player chooses to fight, they fight each other.
+Two Warparties from different Nations meeting by chance while abroad, each seeing the other's Units; if either Player chooses to fight, they fight each other. Each Player may change their choice until the Turn ends.
 _Avoid_: Skirmish, ambush
 
 **Battle**:
@@ -151,9 +159,13 @@ _Avoid_: Domination, elimination
 ## Events
 
 **Event**:
-Something that happens to a Nation or a Warparty outside the Players' direct actions, announced through the Turn Report (e.g. a plague, a good harvest, a dust storm delaying a Warparty, rumours of an approaching army). How much it changes varies a little by luck.
+Something that happens to a Nation, a Warparty or a Nation's Scouts outside the Players' direct actions, announced through the Turn Report (e.g. a plague, a good harvest, a dust storm delaying a Warparty, rumours of an approaching army). How much it changes varies a little by luck.
 _Avoid_: Incident, occurrence
 
+**Lasting Event**:
+An Event whose change applies again each Turn for some Turns. A Nation has at most one at a time, and none can begin for a few Turns after one ends.
+_Avoid_: Modifier, buff, debuff, status
+
 **Dilemma**:
-An Event that offers its Player two or three choices; if the Player does not choose before the Turn ends, the worst choice applies. What a choice leads to is partly luck, so even the best choice can turn out badly and the worst well; the Player is not told the odds.
+An Event that offers its Player two or three choices; the Player may change their choice until the Turn ends, and if they have not chosen by then, the worst choice applies. What a choice leads to is partly luck, so even the best choice can turn out badly and the worst well; the Player is not told the odds.
 _Avoid_: Choice, decision, prompt
