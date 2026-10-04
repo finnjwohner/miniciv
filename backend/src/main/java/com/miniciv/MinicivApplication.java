@@ -1,6 +1,10 @@
 package com.miniciv;
 
+import java.security.SecureRandom;
 import java.time.Clock;
+import java.util.Random;
+import java.util.function.Supplier;
+import java.util.random.RandomGenerator;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -21,6 +25,16 @@ public class MinicivApplication {
 	@Bean
 	Clock clock() {
 		return Clock.systemUTC();
+	}
+
+	/**
+	 * The luck each new Game draws on, seeded afresh, injected so tests can
+	 * control it.
+	 */
+	@Bean
+	Supplier<RandomGenerator> luck() {
+		SecureRandom seeds = new SecureRandom();
+		return () -> new Random(seeds.nextLong());
 	}
 
 }

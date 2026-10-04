@@ -1450,8 +1450,9 @@ public class Game {
 
 	/**
 	 * Records whether a Player chose to fight with one of their Nation's
-	 * Warparties in an Encounter, once; the other Player sees the choice at
-	 * once, and the Warparties fight, if either chose to, as the Turn ends.
+	 * Warparties in an Encounter, replacing any earlier choice; the other
+	 * Player sees the choice at once, and the Warparties fight, if either's
+	 * latest choice was to, as the Turn ends.
 	 */
 	private ActionResult answer(Nation nation, Action.AnswerEncounter answer) {
 		Optional<Encounter> awaiting = encounters.stream()
@@ -1463,9 +1464,6 @@ public class Game {
 		Encounter encounter = awaiting.get();
 		Encounter.Side side = encounter.sideOf(nation.name(), answer.warparty()).orElseThrow();
 		Encounter.Side other = encounter.facing(side);
-		if (side.choice() != Encounter.Choice.NONE) {
-			return ActionResult.rejected("You have already chosen whether to fight " + other.nation() + "'s Warparty.");
-		}
 		encounters.set(encounters.indexOf(encounter),
 				encounter.chosen(side, answer.fight() ? Encounter.Choice.FIGHT : Encounter.Choice.PASS));
 		nation.changed();
@@ -1474,16 +1472,14 @@ public class Game {
 	}
 
 	/**
-	 * Records the choice a Player made for one of their Nation's Dilemmas; it
-	 * applies as the Turn ends, when their Turn Report describes it.
+	 * Records the choice a Player made for one of their Nation's Dilemmas,
+	 * replacing any earlier choice; the latest applies as the Turn ends, when
+	 * their Turn Report describes it.
 	 */
 	private ActionResult answer(Nation nation, Action.AnswerDilemma answer) {
 		Optional<Nation.FacedDilemma> faced = nation.dilemma(answer.dilemma());
 		if (faced.isEmpty()) {
 			return ActionResult.rejected("There is no Dilemma called " + answer.dilemma() + " awaiting your choice.");
-		}
-		if (faced.get().chosen() != null) {
-			return ActionResult.rejected("You have already chosen what to do about " + answer.dilemma() + ".");
 		}
 		Optional<Event.Choice> choice = faced.get().dilemma().choice(answer.choice());
 		if (choice.isEmpty()) {

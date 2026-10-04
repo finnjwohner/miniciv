@@ -861,7 +861,8 @@ input[type='range'] {
   gap: var(--space);
 }
 
-.button--chosen:disabled {
+/* The choice a Player made, which they may still change */
+.button--chosen {
   color: var(--accent);
   border-color: var(--accent);
 }

@@ -147,6 +147,17 @@ class TributeTest {
 	}
 
 	@Test
+	void anAcceptedTributeCannotBeAnsweredAgain() {
+		offer("Carthage", "Rome", 1, 20, 3);
+		answer("Rome", 1, true);
+
+		assertThat(answer("Rome", 1, false))
+			.isEqualTo(ActionResult.rejected("No Tribute awaits your answer for that Warparty."));
+		assertThat(game.viewOf("Carthage").tributes())
+			.containsExactly(new Tribute("Carthage", "Rome", 1, 20, 3, Tribute.Answer.ACCEPTED));
+	}
+
+	@Test
 	void acceptingFailsIfTheDefenderCanNoLongerAffordTheTributeAndTheOfferStillStands() {
 		int gold = game.viewOf("Carthage").gold();
 		offer("Carthage", "Rome", 1, gold, 0);
