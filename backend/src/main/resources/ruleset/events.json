@@ -278,5 +278,535 @@
           "text": "You left the cracks, and your defensive Buildings gave way" },
         { "chance": 0.25, "text": "You left the cracks, and they held for now" }
       ] }
+    ] },
+  { "name": "Volunteers", "subject": "Nation", "chance": 0.05, "when": { "turnAtLeast": 3 },
+    "effects": { "units": { "Warrior": 1 } }, "text": "Young volunteers took up arms for your Nation" },
+  { "name": "Deserters", "subject": "Nation", "chance": 0.03, "when": { "turnAtLeast": 5 },
+    "effects": { "units": { "Warrior": -1 } }, "text": "Some of your Warriors deserted in the night" },
+  { "name": "Horse fair", "subject": "Nation", "chance": 0.03, "when": { "turnAtLeast": 12 },
+    "effects": { "units": { "Horseman": 1 } }, "text": "Breeders brought fine horses to your stables, and Horsemen to ride them" },
+  { "name": "Wandering archers", "subject": "Nation", "chance": 0.03, "when": { "turnAtLeast": 6 },
+    "effects": { "units": { "Archer": 1 } }, "text": "A band of wandering Archers swore themselves to your service" },
+  { "name": "Skilled masons", "subject": "Nation", "chance": 0.05, "when": { "turnAtLeast": 3 },
+    "effects": { "workTurns": -1 }, "text": "Skilled masons arrived and hurried your work along" },
+  { "name": "Holy days", "subject": "Nation", "chance": 0.04, "when": { "turnAtLeast": 4 },
+    "effects": { "workTurns": 1 }, "text": "Your workers downed tools for a run of holy days" },
+  { "name": "Timber shortage", "subject": "Nation", "chance": 0.03, "when": { "turnAtLeast": 6 },
+    "effects": { "workTurns": 2 }, "text": "A shortage of timber held up your work" },
+  { "name": "Spy unmasked", "subject": "Nation", "chance": 0.08, "when": { "turnAtLeast": 6 },
+    "effects": { "spyCaught": "enemy" }, "text": "A sharp-eyed innkeeper unmasked a foreign Spy" },
+  { "name": "Loose tongues", "subject": "Nation", "chance": 0.05, "when": { "turnAtLeast": 6 },
+    "effects": { "spyCaught": "own" }, "text": "One of your Spies talked too freely in a tavern" },
+  { "name": "Mild winter", "subject": "Nation", "chance": 0.04, "when": { "turnAtLeast": 4 },
+    "effects": { "lasting": { "turns": 3, "population": 1 } }, "text": "A mild winter let your people thrive" },
+  { "name": "Trade boom", "subject": "Nation", "chance": 0.03, "when": { "turnAtLeast": 6 },
+    "effects": { "lasting": { "turns": 4, "gold": 4 } }, "text": "Caravans crowded your roads, bringing trade" },
+  { "name": "Age of inquiry", "subject": "Nation", "chance": 0.03, "when": { "turnAtLeast": 8 },
+    "effects": { "lasting": { "turns": 3, "research": 3 } }, "text": "A spirit of inquiry took hold of your scholars" },
+  { "name": "Locusts", "subject": "Nation", "chance": 0.03, "when": { "turnAtLeast": 6 },
+    "effects": { "lasting": { "turns": 2, "gold": -3, "noGrowth": true } }, "text": "Locusts descended on your fields" },
+  { "name": "Wasting sickness", "subject": "Nation", "chance": 0.02, "when": { "turnAtLeast": 8, "populationAtLeast": 20 },
+    "effects": { "lasting": { "turns": 3, "population": -2 } }, "text": "A wasting sickness lingered in your cities" },
+  { "name": "Counterfeit coin", "subject": "Nation", "chance": 0.03, "when": { "turnAtLeast": 5, "goldAtLeast": 30 },
+    "effects": { "gold": -20 }, "text": "Counterfeit coin flooded your markets" },
+  { "name": "Bumper vintage", "subject": "Nation", "chance": 0.05, "when": { "turnAtLeast": 3 },
+    "effects": { "gold": 15 }, "text": "Your vineyards gave a bumper vintage" },
+  { "name": "Camp fever", "subject": "Warparty", "chance": 0.04, "when": { "turnAtLeast": 4, "unitsAtLeast": 4 },
+    "effects": { "units": { "Warrior": -1 } }, "text": "Fever swept through the camp" },
+  { "name": "Raiders", "subject": "Warparty", "chance": 0.03, "when": { "turnAtLeast": 6, "unitsAtLeast": 3 },
+    "effects": { "units": { "Archer": -1 } }, "text": "Raiders ambushed the column" },
+  { "name": "Horse thieves", "subject": "Warparty", "chance": 0.03, "when": { "turnAtLeast": 5 },
+    "effects": { "units": { "Horseman": -1 } }, "text": "Horse thieves struck the camp" },
+  { "name": "Sellswords", "subject": "Warparty", "chance": 0.04, "when": { "turnAtLeast": 4 },
+    "effects": { "units": { "Warrior": 1 } }, "text": "Wandering sellswords joined the march" },
+  { "name": "Washed-out bridge", "subject": "Warparty", "chance": 0.05, "when": { "turnAtLeast": 3 },
+    "effects": { "travelTurns": 1 }, "text": "A washed-out bridge forced a detour" },
+  { "name": "Forced march", "subject": "Warparty", "chance": 0.04, "when": { "turnAtLeast": 4 },
+    "effects": { "travelTurns": -1 }, "text": "The Warparty pressed on through the night" },
+  { "name": "Fog", "subject": "Warparty", "chance": 0.06,
+    "effects": { "travelTurns": 1 }, "text": "Thick fog hid the road" },
+  { "name": "Rockslide", "subject": "Scouts", "chance": 0.03, "when": { "turnAtLeast": 4 },
+    "effects": { "scoutsLost": 1 }, "text": "A Scout was lost in a rockslide" },
+  { "name": "Wolves", "subject": "Scouts", "chance": 0.03, "when": { "turnAtLeast": 6 },
+    "effects": { "scoutsLost": 1 }, "text": "Wolves took one of your Scouts" },
+  { "name": "Friendly tribe", "subject": "Scouts", "chance": 0.04, "when": { "turnAtLeast": 3 },
+    "effects": { "gold": 10, "population": 2 },
+    "text": "Your Scouts were welcomed by a friendly tribe, and some of its people came home with them" },
+  { "name": "Open grasslands", "subject": "Scouts", "chance": 0.04, "when": { "turnAtLeast": 4 },
+    "effects": { "population": 4 }, "text": "Your Scouts found open grasslands, and settlers followed them there" },
+  { "name": "Old battlefield", "subject": "Scouts", "chance": 0.04, "when": { "turnAtLeast": 5 },
+    "effects": { "research": 6 }, "text": "Your Scouts found an old battlefield and studied how it was fought" },
+  { "name": "Fine timber", "subject": "Scouts", "chance": 0.04, "when": { "turnAtLeast": 3 },
+    "effects": { "workTurns": -1 }, "text": "Your Scouts found a stand of fine timber, and your builders worked faster" },
+  { "name": "Lurking Spy", "subject": "Scouts", "chance": 0.05, "when": { "turnAtLeast": 6 },
+    "effects": { "spyCaught": "enemy" }, "text": "Your Scouts caught a foreign Spy lurking at your borders" },
+  { "name": "Mercenaries", "subject": "Nation", "chance": 0.03, "when": { "turnAtLeast": 5, "goldAtLeast": 35 },
+    "text": "A band of mercenaries offers to fight for you",
+    "choices": [
+      { "name": "Hire them", "outcomes": [
+        { "chance": 0.8, "effects": { "gold": -35, "units": { "Warrior": 2 } }, "text": "You hired the mercenaries" },
+        { "chance": 0.2, "effects": { "gold": -35 },
+          "text": "You hired the mercenaries, but they vanished with their pay" }
+      ] },
+      { "name": "Send them away", "worst": true, "outcomes": [
+        { "chance": 0.7, "text": "You sent the mercenaries away" },
+        { "chance": 0.3, "effects": { "gold": -25 },
+          "text": "You sent the mercenaries away, and they looted a village on their way out" }
+      ] }
+    ] },
+  { "name": "Soldiers' pay", "subject": "Nation", "chance": 0.03, "when": { "turnAtLeast": 6, "goldAtLeast": 30 },
+    "text": "Your soldiers are demanding better pay",
+    "choices": [
+      { "name": "Pay them", "outcomes": [
+        { "chance": 0.8, "effects": { "gold": -20 }, "text": "You raised your soldiers' pay" },
+        { "chance": 0.2, "effects": { "gold": -35 }, "text": "You raised your soldiers' pay, and they soon demanded more" }
+      ] },
+      { "name": "Refuse", "worst": true, "outcomes": [
+        { "chance": 0.7, "effects": { "units": { "Warrior": -2 } },
+          "text": "You refused, and some of your Warriors deserted" },
+        { "chance": 0.3, "text": "You refused, and the grumbling died down" }
+      ] }
+    ] },
+  { "name": "Master builder", "subject": "Nation", "chance": 0.04, "when": { "turnAtLeast": 4, "goldAtLeast": 30 },
+    "text": "A master builder offers to oversee your works",
+    "choices": [
+      { "name": "Hire them", "outcomes": [
+        { "chance": 0.7, "effects": { "gold": -15, "workTurns": -2 }, "text": "You hired the master builder" },
+        { "chance": 0.3, "effects": { "gold": -15 },
+          "text": "You hired the master builder, but they were more talk than skill" }
+      ] },
+      { "name": "Decline", "worst": true, "outcomes": [
+        { "chance": 0.7, "text": "You declined the master builder's offer" },
+        { "chance": 0.3, "effects": { "workTurns": 1 },
+          "text": "You declined, and your own builders took offence at the comparison" }
+      ] }
+    ] },
+  { "name": "Builders' strike", "subject": "Nation", "chance": 0.03, "when": { "turnAtLeast": 6, "populationAtLeast": 15 },
+    "text": "Your builders have downed their tools, demanding a share of your treasury",
+    "choices": [
+      { "name": "Pay them", "outcomes": [
+        { "chance": 0.8, "effects": { "gold": -20 }, "text": "You paid the builders" },
+        { "chance": 0.2, "effects": { "gold": -20, "workTurns": 1 },
+          "text": "You paid the builders, but they still dragged their feet" }
+      ] },
+      { "name": "Hire farmhands", "outcomes": [
+        { "chance": 0.6, "effects": { "workTurns": 1 }, "text": "You put farmhands to work in the builders' place" },
+        { "chance": 0.4, "effects": { "workTurns": 2, "population": -1 },
+          "text": "You put farmhands to work in the builders' place, and one was killed by a falling beam" }
+      ] },
+      { "name": "Wait it out", "worst": true, "outcomes": [
+        { "chance": 0.7, "effects": { "workTurns": 3 }, "text": "You waited out the strike" },
+        { "chance": 0.3, "effects": { "workTurns": 1 }, "text": "You waited out the strike, and it soon collapsed" }
+      ] }
+    ] },
+  { "name": "Whispers at court", "subject": "Nation", "chance": 0.03, "when": { "turnAtLeast": 6 },
+    "text": "Your courtiers suspect a foreign Spy is among them",
+    "choices": [
+      { "name": "Hunt for the Spy", "outcomes": [
+        { "chance": 0.6, "effects": { "gold": -10, "spyCaught": "enemy" }, "text": "You hunted for the Spy" },
+        { "chance": 0.4, "effects": { "gold": -10, "population": -2 },
+          "text": "You hunted for the Spy, but only accused the innocent" }
+      ] },
+      { "name": "Ignore the whispers", "worst": true, "outcomes": [
+        { "chance": 0.6, "effects": { "research": -5 }, "text": "You ignored the whispers, and your secrets slipped away" },
+        { "chance": 0.4, "text": "You ignored the whispers, and they came to nothing" }
+      ] }
+    ] },
+  { "name": "Horse traders", "subject": "Nation", "chance": 0.03, "when": { "turnAtLeast": 10, "goldAtLeast": 30 },
+    "text": "Horse traders from the steppes offer you their finest mounts",
+    "choices": [
+      { "name": "Buy the horses", "outcomes": [
+        { "chance": 0.75, "effects": { "gold": -30, "units": { "Horseman": 1 } }, "text": "You bought the horses" },
+        { "chance": 0.25, "effects": { "gold": -30 }, "text": "You bought the horses, but they were too wild to ride" }
+      ] },
+      { "name": "Turn them away", "worst": true, "outcomes": [
+        { "chance": 0.75, "text": "You turned the horse traders away" },
+        { "chance": 0.25, "effects": { "units": { "Horseman": -1 } },
+          "text": "You turned the horse traders away, and they made off with some of your horses" }
+      ] }
+    ] },
+  { "name": "Veterans", "subject": "Nation", "chance": 0.03, "when": { "turnAtLeast": 8 },
+    "text": "Veterans of a distant war ask to settle in your Nation",
+    "choices": [
+      { "name": "Give them land", "outcomes": [
+        { "chance": 0.7, "effects": { "gold": -20, "population": 3, "units": { "Warrior": 1 } },
+          "text": "You gave the veterans land, and some took up arms for you" },
+        { "chance": 0.3, "effects": { "gold": -20, "population": 3 },
+          "text": "You gave the veterans land, but they had had their fill of fighting" }
+      ] },
+      { "name": "Turn them away", "worst": true, "outcomes": [
+        { "chance": 0.8, "text": "You turned the veterans away" },
+        { "chance": 0.2, "effects": { "gold": -15 },
+          "text": "You turned the veterans away, and they turned to banditry" }
+      ] }
+    ] },
+  { "name": "Failing harvest", "subject": "Nation", "chance": 0.03, "when": { "turnAtLeast": 5 },
+    "text": "The harvest is failing in the fields",
+    "choices": [
+      { "name": "Buy grain", "outcomes": [
+        { "chance": 0.8, "effects": { "gold": -25 }, "text": "You bought grain from your neighbours" },
+        { "chance": 0.2, "effects": { "gold": -25, "lasting": { "turns": 2, "noGrowth": true } },
+          "text": "You bought grain from your neighbours, but not enough of it" }
+      ] },
+      { "name": "Ration food", "outcomes": [
+        { "chance": 0.7, "effects": { "lasting": { "turns": 2, "noGrowth": true } }, "text": "You rationed food" },
+        { "chance": 0.3, "effects": { "lasting": { "turns": 1, "noGrowth": true } },
+          "text": "You rationed food, and the late crops came in" }
+      ] },
+      { "name": "Hope for the best", "worst": true, "outcomes": [
+        { "chance": 0.7, "effects": { "population": -3, "lasting": { "turns": 3, "noGrowth": true } },
+          "text": "You hoped for the best, and hunger spread" },
+        { "chance": 0.3, "effects": { "lasting": { "turns": 3, "noGrowth": true } },
+          "text": "You hoped for the best, and your people tightened their belts" }
+      ] }
+    ] },
+  { "name": "Caravan route", "subject": "Nation", "chance": 0.03, "when": { "turnAtLeast": 6, "goldAtLeast": 25 },
+    "text": "Merchants ask leave to run a caravan route through your lands",
+    "choices": [
+      { "name": "Build them a road", "outcomes": [
+        { "chance": 0.75, "effects": { "gold": -25, "lasting": { "turns": 5, "gold": 6 } },
+          "text": "You built the merchants a road" },
+        { "chance": 0.25, "effects": { "gold": -25 },
+          "text": "You built the merchants a road, but they soon found another way" }
+      ] },
+      { "name": "Let them pass", "outcomes": [
+        { "chance": 0.8, "effects": { "lasting": { "turns": 3, "gold": 3 } }, "text": "You let the caravans pass" },
+        { "chance": 0.2, "effects": { "gold": -10 }, "text": "You let the caravans pass, and they cheated your traders" }
+      ] },
+      { "name": "Refuse", "worst": true, "outcomes": [
+        { "chance": 0.7, "text": "You refused the merchants" },
+        { "chance": 0.3, "effects": { "gold": -15, "population": -2 },
+          "text": "You refused the merchants, and their guards raided your villages in spite" }
+      ] }
+    ] },
+  { "name": "Academy", "subject": "Nation", "chance": 0.03,
+    "when": { "turnAtLeast": 8, "goldAtLeast": 40, "researchAtLeast": 10 },
+    "text": "Your scholars ask for funds to found an academy",
+    "choices": [
+      { "name": "Found it", "outcomes": [
+        { "chance": 0.75, "effects": { "gold": -40, "lasting": { "turns": 4, "research": 3 } },
+          "text": "You founded an academy" },
+        { "chance": 0.25, "effects": { "gold": -40, "research": 5 },
+          "text": "You founded an academy, but its scholars spent their time squabbling" }
+      ] },
+      { "name": "Fund a small school", "outcomes": [
+        { "chance": 0.7, "effects": { "gold": -15, "research": 3 }, "text": "You funded a small school" },
+        { "chance": 0.3, "effects": { "gold": -15 }, "text": "You funded a small school, but few came to learn" }
+      ] },
+      { "name": "Refuse", "worst": true, "outcomes": [
+        { "chance": 0.6, "effects": { "research": -8 },
+          "text": "You refused, and your best scholars left for richer courts" },
+        { "chance": 0.4, "text": "You refused, and your scholars went back to their books" }
+      ] }
+    ] },
+  { "name": "Promised land", "subject": "Nation", "chance": 0.03, "when": { "turnAtLeast": 6 },
+    "text": "Word of your Nation's plenty has spread, and families are asking to settle",
+    "choices": [
+      { "name": "Welcome them", "outcomes": [
+        { "chance": 0.7, "effects": { "gold": -20, "lasting": { "turns": 3, "population": 2 } },
+          "text": "You welcomed the settlers" },
+        { "chance": 0.3, "effects": { "gold": -20, "population": 2 },
+          "text": "You welcomed the settlers, but fewer came than promised" }
+      ] },
+      { "name": "Close the gates", "worst": true, "outcomes": [
+        { "chance": 0.8, "text": "You closed the gates to the settlers" },
+        { "chance": 0.2, "effects": { "population": -2 },
+          "text": "You closed the gates, and some of your own people left with the turned-away families" }
+      ] }
+    ] },
+  { "name": "Lingering fever", "subject": "Nation", "chance": 0.03, "when": { "turnAtLeast": 6, "populationAtLeast": 15 },
+    "text": "A fever is lingering in your cities",
+    "choices": [
+      { "name": "Burn the sickhouses", "outcomes": [
+        { "chance": 0.7, "effects": { "gold": -15, "population": -2 }, "text": "You burned the sickhouses" },
+        { "chance": 0.3, "effects": { "gold": -15, "lasting": { "turns": 2, "population": -2 } },
+          "text": "You burned the sickhouses, but the fever had already spread" }
+      ] },
+      { "name": "Send the sick away", "outcomes": [
+        { "chance": 0.7, "effects": { "population": -4 }, "text": "You sent the sick away" },
+        { "chance": 0.3, "effects": { "population": -6 }, "text": "You sent the sick away, but too late" }
+      ] },
+      { "name": "Let it run its course", "worst": true, "outcomes": [
+        { "chance": 0.7, "effects": { "lasting": { "turns": 4, "population": -2 } },
+          "text": "You let the fever run its course" },
+        { "chance": 0.3, "effects": { "lasting": { "turns": 2, "population": -1 } },
+          "text": "You let the fever run its course, and it was mild" }
+      ] }
+    ] },
+  { "name": "Bribed officials", "subject": "Nation", "chance": 0.03, "when": { "turnAtLeast": 8, "goldAtLeast": 30 },
+    "text": "Foreign Spies are bribing your officials",
+    "choices": [
+      { "name": "Purge the bribed", "outcomes": [
+        { "chance": 0.6, "effects": { "gold": -10, "spyCaught": "enemy" }, "text": "You purged the bribed officials" },
+        { "chance": 0.4, "effects": { "population": -3 },
+          "text": "You purged the bribed officials, and honest ones fell with them" }
+      ] },
+      { "name": "Outbid them", "outcomes": [
+        { "chance": 0.8, "effects": { "gold": -25 }, "text": "You outbid the foreign Spies" },
+        { "chance": 0.2, "effects": { "gold": -25, "spyCaught": "enemy" },
+          "text": "You outbid the foreign Spies, and an official you bought back betrayed one of them" }
+      ] },
+      { "name": "Look away", "worst": true, "outcomes": [
+        { "chance": 0.7, "effects": { "gold": -20, "research": -5 },
+          "text": "You looked away, and your officials sold your Gold and secrets" },
+        { "chance": 0.3, "text": "You looked away, and the Spies moved on" }
+      ] }
+    ] },
+  { "name": "Sacred grove", "subject": "Nation", "chance": 0.03, "when": { "turnAtLeast": 4 },
+    "text": "Your woodcutters want to fell a grove your priests call sacred",
+    "choices": [
+      { "name": "Fell it", "outcomes": [
+        { "chance": 0.6, "effects": { "gold": 20, "workTurns": -1 }, "text": "You felled the grove for timber" },
+        { "chance": 0.4, "effects": { "gold": 20, "population": -3 },
+          "text": "You felled the grove for timber, and the faithful left in anger" }
+      ] },
+      { "name": "Spare it", "worst": true, "outcomes": [
+        { "chance": 0.8, "text": "You spared the grove" },
+        { "chance": 0.2, "effects": { "population": 2 }, "text": "You spared the grove, and pilgrims came to see it" }
+      ] }
+    ] },
+  { "name": "Rich vein", "subject": "Nation", "chance": 0.03, "when": { "turnAtLeast": 6 },
+    "text": "Your miners have found a rich vein deep under a hill",
+    "choices": [
+      { "name": "Dig deep", "outcomes": [
+        { "chance": 0.65, "effects": { "gold": 40 }, "text": "Your miners dug deep and struck it rich" },
+        { "chance": 0.35, "effects": { "gold": 10, "population": -4 },
+          "text": "Your miners dug deep, and the tunnel collapsed on them" }
+      ] },
+      { "name": "Dig carefully", "outcomes": [
+        { "chance": 0.8, "effects": { "gold": 15, "workTurns": 1 },
+          "text": "Your miners dug carefully, borrowing builders to shore up the tunnel" },
+        { "chance": 0.2, "effects": { "gold": 25 }, "text": "Your miners dug carefully, and the vein ran close to the surface" }
+      ] },
+      { "name": "Seal it", "worst": true, "outcomes": [
+        { "chance": 0.7, "text": "You sealed the mine" },
+        { "chance": 0.3, "effects": { "gold": -10 },
+          "text": "You sealed the mine, and smugglers dug it out and flooded your markets with cheap silver" }
+      ] }
+    ] },
+  { "name": "Wild horses", "subject": "Nation", "chance": 0.03, "when": { "turnAtLeast": 10 },
+    "text": "A herd of wild horses is grazing in your valleys",
+    "choices": [
+      { "name": "Tame them", "outcomes": [
+        { "chance": 0.5, "effects": { "population": -1, "units": { "Horseman": 1 } },
+          "text": "Your riders tamed the wild horses" },
+        { "chance": 0.5, "effects": { "population": -2 }, "text": "The wild horses threw your riders" }
+      ] },
+      { "name": "Leave them", "worst": true, "outcomes": [
+        { "chance": 0.8, "text": "You left the wild horses to graze" },
+        { "chance": 0.2, "effects": { "population": -1 }, "text": "You left the wild horses, and they trampled a village" }
+      ] }
+    ] },
+  { "name": "Single combat", "subject": "Nation", "chance": 0.03, "when": { "turnAtLeast": 7 },
+    "text": "A champion from a rival Nation challenges your best Warrior to single combat",
+    "choices": [
+      { "name": "Accept", "outcomes": [
+        { "chance": 0.55, "effects": { "population": 4 }, "text": "Your champion won, and your people took heart" },
+        { "chance": 0.45, "effects": { "units": { "Warrior": -1 } }, "text": "Your champion fell" }
+      ] },
+      { "name": "Refuse", "worst": true, "outcomes": [
+        { "chance": 0.7, "effects": { "population": -2 },
+          "text": "You refused the challenge, and some of your people left in shame" },
+        { "chance": 0.3, "text": "You refused the challenge, and your people soon forgot it" }
+      ] }
+    ] },
+  { "name": "Armoury fire", "subject": "Nation", "chance": 0.03, "when": { "turnAtLeast": 8 },
+    "text": "Fire has broken out in your armoury",
+    "choices": [
+      { "name": "Save the weapons", "outcomes": [
+        { "chance": 0.6, "effects": { "population": -2 }, "text": "Your people saved the weapons, but some were lost to the flames" },
+        { "chance": 0.4, "effects": { "population": -2, "units": { "Archer": -1 } },
+          "text": "Your people tried to save the weapons, but the bows burned anyway" }
+      ] },
+      { "name": "Let it burn", "worst": true, "outcomes": [
+        { "chance": 0.7, "effects": { "units": { "Warrior": -1, "Archer": -1 } },
+          "text": "You let the armoury burn, and your soldiers were left without weapons" },
+        { "chance": 0.3, "effects": { "units": { "Warrior": -1 } },
+          "text": "You let the armoury burn, but most of the weapons were stored elsewhere" }
+      ] }
+    ] },
+  { "name": "Flooded quarry", "subject": "Nation", "chance": 0.03, "when": { "turnAtLeast": 5 },
+    "text": "The quarry supplying your builders has flooded",
+    "choices": [
+      { "name": "Pump it out", "outcomes": [
+        { "chance": 0.75, "effects": { "gold": -15 }, "text": "You paid to pump the quarry out" },
+        { "chance": 0.25, "effects": { "gold": -15, "workTurns": 1 },
+          "text": "You paid to pump the quarry out, but it flooded again" }
+      ] },
+      { "name": "Wait for it to drain", "worst": true, "outcomes": [
+        { "chance": 0.6, "effects": { "workTurns": 3 }, "text": "You waited for the quarry to drain" },
+        { "chance": 0.4, "effects": { "workTurns": 1 }, "text": "You waited for the quarry to drain, and it drained quickly" }
+      ] }
+    ] },
+  { "name": "Inventor", "subject": "Nation", "chance": 0.03, "when": { "turnAtLeast": 8, "goldAtLeast": 30 },
+    "text": "A strange inventor asks for funds for a marvellous machine",
+    "choices": [
+      { "name": "Fund them", "outcomes": [
+        { "chance": 0.4, "effects": { "gold": -30, "research": 20, "workTurns": -1 },
+          "text": "You funded the inventor, and the machine worked" },
+        { "chance": 0.6, "effects": { "gold": -30 }, "text": "You funded the inventor, and the machine exploded" }
+      ] },
+      { "name": "Turn them away", "worst": true, "outcomes": [
+        { "chance": 0.7, "text": "You turned the inventor away" },
+        { "chance": 0.3, "effects": { "research": -5 },
+          "text": "You turned the inventor away, and your scholars wasted weeks arguing over the plans" }
+      ] }
+    ] },
+  { "name": "Eclipse", "subject": "Nation", "chance": 0.03, "when": { "turnAtLeast": 5 },
+    "text": "The sun went dark at noon, and your people are terrified",
+    "choices": [
+      { "name": "Consult the astronomers", "outcomes": [
+        { "chance": 0.7, "effects": { "research": 8 }, "text": "Your astronomers explained the eclipse" },
+        { "chance": 0.3, "effects": { "population": -2 },
+          "text": "Your astronomers explained the eclipse, but nobody believed them" }
+      ] },
+      { "name": "Hold a sacrifice", "outcomes": [
+        { "chance": 0.8, "effects": { "gold": -15, "population": 1 }, "text": "You held a sacrifice, and the sun returned" },
+        { "chance": 0.2, "effects": { "gold": -15 }, "text": "You held a sacrifice, but your people stayed afraid" }
+      ] },
+      { "name": "Do nothing", "worst": true, "outcomes": [
+        { "chance": 0.6, "effects": { "population": -4 }, "text": "You did nothing, and some of your people fled" },
+        { "chance": 0.4, "text": "You did nothing, and the sun soon returned" }
+      ] }
+    ] },
+  { "name": "Granary thieves", "subject": "Nation", "chance": 0.03, "when": { "turnAtLeast": 4, "populationAtLeast": 12 },
+    "text": "Thieves have been stealing from your granaries",
+    "choices": [
+      { "name": "Post guards", "outcomes": [
+        { "chance": 0.8, "effects": { "gold": -10 }, "text": "You posted guards on your granaries" },
+        { "chance": 0.2, "effects": { "gold": -10, "population": -1 },
+          "text": "You posted guards, and the thieves fought back" }
+      ] },
+      { "name": "Banish the thieves", "outcomes": [
+        { "chance": 0.7, "effects": { "population": -2 }, "text": "You banished the thieves" },
+        { "chance": 0.3, "effects": { "gold": 10, "population": -3 },
+          "text": "You banished the thieves and their kin, and recovered their hoard" }
+      ] },
+      { "name": "Ignore it", "worst": true, "outcomes": [
+        { "chance": 0.7, "effects": { "lasting": { "turns": 2, "noGrowth": true } },
+          "text": "You ignored the thieves, and your granaries emptied" },
+        { "chance": 0.3, "effects": { "population": -1 }, "text": "You ignored the thieves, and they grew bolder" }
+      ] }
+    ] },
+  { "name": "Missing Scout", "subject": "Scouts", "chance": 0.03, "when": { "turnAtLeast": 4 },
+    "text": "One of your Scouts has gone missing in the wilds",
+    "choices": [
+      { "name": "Send a search party", "outcomes": [
+        { "chance": 0.7, "effects": { "gold": -5 }, "text": "Your search party found the missing Scout" },
+        { "chance": 0.3, "effects": { "gold": -5, "scoutsLost": 1 },
+          "text": "Your search party found only the missing Scout's pack" }
+      ] },
+      { "name": "Give them up", "worst": true, "outcomes": [
+        { "chance": 0.7, "effects": { "scoutsLost": 1 }, "text": "You gave up the missing Scout for lost" },
+        { "chance": 0.3, "text": "You gave up the missing Scout, but they found their own way back" }
+      ] }
+    ] },
+  { "name": "Hermit's maps", "subject": "Scouts", "chance": 0.03, "when": { "turnAtLeast": 5 },
+    "text": "Your Scouts met a hermit who offers to sell them their maps",
+    "choices": [
+      { "name": "Buy the maps", "outcomes": [
+        { "chance": 0.7, "effects": { "gold": -15, "research": 8 }, "text": "Your Scouts bought the hermit's maps" },
+        { "chance": 0.3, "effects": { "gold": -15 }, "text": "Your Scouts bought the hermit's maps, but they were wrong" }
+      ] },
+      { "name": "Take them by force", "outcomes": [
+        { "chance": 0.5, "effects": { "research": 8 }, "text": "Your Scouts took the hermit's maps by force" },
+        { "chance": 0.5, "effects": { "scoutsLost": 1 },
+          "text": "Your Scouts tried to take the hermit's maps, and the hermit fought back" }
+      ] },
+      { "name": "Move on", "worst": true, "outcomes": [
+        { "chance": 0.8, "text": "Your Scouts moved on" },
+        { "chance": 0.2, "effects": { "scoutsLost": 1 },
+          "text": "Your Scouts moved on, and one was lost in the pass the hermit warned of" }
+      ] }
+    ] },
+  { "name": "Nomad camp", "subject": "Scouts", "chance": 0.03, "when": { "turnAtLeast": 4 },
+    "text": "Your Scouts came upon a camp of nomads",
+    "choices": [
+      { "name": "Trade with them", "outcomes": [
+        { "chance": 0.7, "effects": { "gold": 15 }, "text": "Your Scouts traded with the nomads" },
+        { "chance": 0.3, "effects": { "gold": -10 }, "text": "Your Scouts traded with the nomads, and were cheated" }
+      ] },
+      { "name": "Invite them to settle", "outcomes": [
+        { "chance": 0.5, "effects": { "population": 4 }, "text": "Some of the nomads settled in your Nation" },
+        { "chance": 0.5, "effects": { "gold": -10 }, "text": "The nomads came, ate their fill and left" }
+      ] },
+      { "name": "Avoid them", "worst": true, "outcomes": [
+        { "chance": 0.8, "text": "Your Scouts kept clear of the nomads" },
+        { "chance": 0.2, "effects": { "scoutsLost": 1 }, "text": "Your Scouts tried to keep clear, but the nomads caught one" }
+      ] }
+    ] },
+  { "name": "Closing pass", "subject": "Scouts", "chance": 0.03, "when": { "turnAtLeast": 6 },
+    "text": "Snow is closing the mountain pass your Scouts are crossing",
+    "choices": [
+      { "name": "Press on", "outcomes": [
+        { "chance": 0.6, "effects": { "research": 6 }, "text": "Your Scouts pressed on and mapped the lands beyond" },
+        { "chance": 0.4, "effects": { "scoutsLost": 1 }, "text": "Your Scouts pressed on, and one was lost in the snow" }
+      ] },
+      { "name": "Turn back", "worst": true, "outcomes": [
+        { "chance": 0.7, "text": "Your Scouts turned back" },
+        { "chance": 0.3, "effects": { "scoutsLost": 1 }, "text": "Your Scouts turned back, but one fell behind in the snow" }
+      ] }
+    ] },
+  { "name": "Spy's hideout", "subject": "Scouts", "chance": 0.03, "when": { "turnAtLeast": 6 },
+    "text": "Your Scouts have spotted a hideout in the hills, where a foreign Spy may be lying low",
+    "choices": [
+      { "name": "Raid it", "outcomes": [
+        { "chance": 0.6, "effects": { "spyCaught": "enemy" }, "text": "Your Scouts raided the hideout" },
+        { "chance": 0.4, "effects": { "scoutsLost": 1 }, "text": "Your Scouts raided the hideout, and walked into a trap" }
+      ] },
+      { "name": "Watch it", "outcomes": [
+        { "chance": 0.7, "effects": { "research": 5 }, "text": "Your Scouts watched the hideout and learned its codes" },
+        { "chance": 0.3, "text": "Your Scouts watched the hideout, but no one came or went" }
+      ] },
+      { "name": "Leave it", "worst": true, "outcomes": [
+        { "chance": 0.8, "text": "Your Scouts left the hideout alone" },
+        { "chance": 0.2, "effects": { "research": -5 },
+          "text": "Your Scouts left the hideout alone, and secrets went out of it" }
+      ] }
+    ] },
+  { "name": "Fertile valley", "subject": "Scouts", "chance": 0.03, "when": { "turnAtLeast": 5, "goldAtLeast": 20 },
+    "text": "Your Scouts found a fertile valley beyond the hills",
+    "choices": [
+      { "name": "Send settlers", "outcomes": [
+        { "chance": 0.75, "effects": { "gold": -20, "lasting": { "turns": 3, "population": 2 } },
+          "text": "You sent settlers to the valley" },
+        { "chance": 0.25, "effects": { "gold": -20, "population": -2 },
+          "text": "You sent settlers to the valley, and raiders fell on them" }
+      ] },
+      { "name": "Mark it on the map", "worst": true, "outcomes": [
+        { "chance": 0.9, "text": "Your Scouts marked the valley on the map" },
+        { "chance": 0.1, "effects": { "research": 3 },
+          "text": "Your Scouts marked the valley on the map, and noted the strange plants growing there" }
+      ] }
+    ] },
+  { "name": "Bear cave", "subject": "Scouts", "chance": 0.03, "when": { "turnAtLeast": 3 },
+    "text": "Your Scouts found a bear's cave littered with bones and old treasures",
+    "choices": [
+      { "name": "Search it", "outcomes": [
+        { "chance": 0.6, "effects": { "gold": 20 }, "text": "Your Scouts searched the cave and found treasure" },
+        { "chance": 0.4, "effects": { "scoutsLost": 1 }, "text": "Your Scouts searched the cave, and the bear came home" }
+      ] },
+      { "name": "Leave it", "worst": true, "outcomes": [
+        { "chance": 0.8, "text": "Your Scouts left the cave alone" },
+        { "chance": 0.2, "effects": { "gold": 5 }, "text": "Your Scouts left the cave, but found a few coins at its mouth" }
+      ] }
+    ] },
+  { "name": "Abandoned fort", "subject": "Scouts", "chance": 0.03, "when": { "turnAtLeast": 7 },
+    "text": "Your Scouts found an abandoned fort with weapons still in its armoury",
+    "choices": [
+      { "name": "Bring the weapons home", "outcomes": [
+        { "chance": 0.6, "effects": { "units": { "Archer": 1 } }, "text": "Your Scouts brought the weapons home and armed new Archers" },
+        { "chance": 0.4, "effects": { "scoutsLost": 1 },
+          "text": "Your Scouts were ambushed bringing the weapons home" }
+      ] },
+      { "name": "Sell them", "outcomes": [
+        { "chance": 0.7, "effects": { "gold": 15 }, "text": "Your Scouts sold the weapons" },
+        { "chance": 0.3, "effects": { "gold": 5 }, "text": "Your Scouts sold the weapons, but most were rusted through" }
+      ] },
+      { "name": "Leave it", "worst": true, "outcomes": [
+        { "chance": 0.7, "text": "Your Scouts left the fort alone" },
+        { "chance": 0.3, "effects": { "gold": -10 },
+          "text": "Your Scouts left the fort, and raiders used it to strike your borders" }
+      ] }
     ] }
 ]

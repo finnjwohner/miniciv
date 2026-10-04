@@ -134,8 +134,12 @@ class EventsTest {
 
 	@Test
 	void everyShippedTurnGatedNationEventFirstHappensOnItsTurn() {
+		// Those whose effects need nothing a fresh Nation lacks: Units to lose,
+		// work in progress or a Spy to catch.
 		List<Event> gated = STARTER.stream()
 			.filter(event -> event.subject() == Event.Subject.NATION && event.when().turnAtLeast() != null)
+			.filter(event -> event.effects().unitsLeaving().isEmpty() && event.effects().workTurns() == 0
+					&& event.effects().spyCaught() == null)
 			.toList();
 		assertThat(gated).extracting(Event::name).contains("Famine", "Great fire", "Drought", "Cracked foundations");
 
