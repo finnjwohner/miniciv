@@ -28,6 +28,40 @@ describe('BuildPanel', () => {
 })
 
 describe('TrainPanel', () => {
+  it('runs the Train slider from 1 to the most the Nation can afford, clamping when that drops', () => {
+    const { rerenderGame } = renderGame({ nation: nationView({ gold: 50 }) })
+    fireEvent.click(tab('Train'))
+
+    const slider = screen.getByRole('slider', { name: 'How many Warrior to train' })
+    expect(slider).toHaveAttribute('min', '1')
+    expect(slider).toHaveAttribute('max', '2')
+    fireEvent.change(slider, { target: { value: '2' } })
+    expect(slider).toHaveValue('2')
+
+    rerenderGame({ nation: nationView({ version: 2, gold: 30 }) })
+
+    expect(slider).toHaveAttribute('max', '1')
+    expect(slider).toHaveValue('1')
+    expect(screen.getByRole('button', { name: 'Train Warrior' })).toBeEnabled()
+  })
+
+  it('limits the Train slider by Population too', () => {
+    renderGame({ nation: nationView({ gold: 1000, population: 5 }) })
+    fireEvent.click(tab('Train'))
+
+    expect(screen.getByRole('slider', { name: 'How many Warrior to train' })).toHaveAttribute('max', '2')
+  })
+
+  it('disables the slider of a Unit the Nation cannot afford, showing no numbers', () => {
+    renderGame({ nation: nationView({ gold: 10 }) })
+    fireEvent.click(tab('Train'))
+
+    const slider = screen.getByRole('slider', { name: 'How many Warrior to train' })
+    expect(slider).toBeDisabled()
+    expect(slider.parentElement).not.toHaveTextContent(/\d/)
+    expect(screen.getByRole('button', { name: 'Train Warrior' })).toBeDisabled()
+  })
+
   it('describes the Scout as roaming the wilds, not staying home', () => {
     renderGame()
     fireEvent.click(tab('Train'))

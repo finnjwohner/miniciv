@@ -13,6 +13,28 @@ describe('ArmyPanel', () => {
     expect(precedes(send, within(army).getByText('Warrior ×3'))).toBe(true)
     expect(precedes(send, within(army).getByRole('button', { name: /^Recall/ }))).toBe(true)
   })
+
+  it('runs a Warparty slider per Unit type from 0 to the number owned', () => {
+    renderGame({ nation: nationView({ army: { Warrior: 3, Archer: 2 } }) })
+    fireEvent.click(tab('Army'))
+
+    const warriors = screen.getByRole('slider', { name: 'How many Warrior to send' })
+    expect(warriors).toHaveAttribute('min', '0')
+    expect(warriors).toHaveAttribute('max', '3')
+    expect(warriors).toHaveValue('0')
+    expect(screen.getByRole('slider', { name: 'How many Archer to send' })).toHaveAttribute('max', '2')
+  })
+
+  it('shows no travel brackets, keeping the arrival and Recall Turns', () => {
+    renderGame({ nation: nationView({ warparties: [warparty()] }) })
+    fireEvent.click(tab('Army'))
+
+    const army = screen.getByRole('region', { name: 'Army & Warparties' })
+    expect(within(army).queryByText(/Turns to arrive by Strength/)).not.toBeInTheDocument()
+    fireEvent.change(within(army).getByRole('slider', { name: 'How many Warrior to send' }), { target: { value: '1' } })
+    expect(within(army).getByText(/arrives in 1 Turn/)).toBeInTheDocument()
+    expect(within(army).getByRole('button', { name: /^Recall \(home in/ })).toBeInTheDocument()
+  })
 })
 
 describe('SpiesPanel', () => {

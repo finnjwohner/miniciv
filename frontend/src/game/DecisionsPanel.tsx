@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react'
 import type { Dilemma, Encounter, MapNation, NationView, Tribute } from '../api'
 import { Panel } from '../ui/Panel'
-import { CountInput } from './controls'
+import { CountSlider } from './controls'
 import { listCounts } from './format'
 import { MapName } from './MapName'
 
@@ -136,25 +136,35 @@ function EncounterDecision({
   )
 }
 
-/** The Gold and Population to offer one arrived Warparty as Tribute. */
+/** The Gold and Population, each up to what the Nation holds, to offer one arrived Warparty as Tribute. */
 function TributeOffer({
-  nation,
+  attacker,
   warparty,
+  held,
   onOffer,
 }: {
-  nation: string
+  attacker: string
   warparty: number
+  held: Pick<NationView, 'gold' | 'population'>
   onOffer: (nation: string, warparty: number, gold: number, population: number) => void
 }) {
-  const [gold, setGold] = useState(0)
-  const [population, setPopulation] = useState(0)
+  const [chosenGold, setGold] = useState(0)
+  const [chosenPopulation, setPopulation] = useState(0)
+  const gold = Math.min(chosenGold, held.gold)
+  const population = Math.min(chosenPopulation, held.population)
   return (
     <div className="button-row">
-      <CountInput value={gold} min={0} label={`Gold to offer ${nation}`} onChange={setGold} />
+      <CountSlider value={gold} min={0} max={held.gold} label={`Gold to offer ${attacker}`} onChange={setGold} />
       Gold
-      <CountInput value={population} min={0} label={`Population to offer ${nation}`} onChange={setPopulation} />
+      <CountSlider
+        value={population}
+        min={0}
+        max={held.population}
+        label={`Population to offer ${attacker}`}
+        onChange={setPopulation}
+      />
       Population
-      <button onClick={() => onOffer(nation, warparty, gold, population)} disabled={gold + population <= 0}>
+      <button onClick={() => onOffer(attacker, warparty, gold, population)} disabled={gold + population <= 0}>
         Offer Tribute
       </button>
     </div>
@@ -230,7 +240,7 @@ export function DecisionsPanel({
             <Decision key={`${a.nation}-${a.warparty}`} kind="Warparty arrived" open={!offered} answeredTag="offered">
               <p>A Warparty from {attacker} has arrived; the Battle will be fought as this Turn ends.</p>
               {!offered ? (
-                <TributeOffer nation={a.nation} warparty={a.warparty} onOffer={onOfferTribute} />
+                <TributeOffer attacker={a.nation} warparty={a.warparty} held={nation} onOffer={onOfferTribute} />
               ) : offered.answer === 'REFUSED' ? (
                 <p>
                   {attacker} refused your Tribute of {describeTribute(offered)}.

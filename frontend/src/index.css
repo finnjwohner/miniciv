@@ -892,8 +892,25 @@ input[type='range'] {
   border-color: var(--accent);
 }
 
-.count-input {
-  width: 4.5em;
+.count-slider {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--space) * 0.5);
+}
+
+.count-slider__input {
+  width: 8em;
+}
+
+.count-slider__bound {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.count-slider__value {
+  min-width: 2.5ch;
+  font-weight: 600;
+  text-align: right;
 }
 
 .stack--tight {
