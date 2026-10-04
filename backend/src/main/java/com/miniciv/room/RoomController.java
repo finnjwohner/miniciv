@@ -63,6 +63,9 @@ class RoomController {
 	record SendSpyRequest(String token, String target) {
 	}
 
+	record SetMissionRequest(String token, int spy, String mission) {
+	}
+
 	record SetTaskRequest(String token, String kind, String target, int scouts) {
 	}
 
@@ -255,6 +258,19 @@ class RoomController {
 	@SendToUser(destinations = "/queue/rejections", broadcast = false)
 	Rejection sendSpy(@DestinationVariable String code, SendSpyRequest request) {
 		ActionResult result = rooms.act(code, request.token(), new Action.SendSpy(String.valueOf(request.target())));
+		return result.accepted() ? null : new Rejection(result.reason());
+	}
+
+	/**
+	 * Sets one of the Nation's Spies in place to a Mission; the Player's
+	 * changed view arrives on {@code /user/queue/game}, or the reason it was
+	 * rejected on {@code /user/queue/rejections}.
+	 */
+	@MessageMapping("/rooms/{code}/spies/missions")
+	@SendToUser(destinations = "/queue/rejections", broadcast = false)
+	Rejection setMission(@DestinationVariable String code, SetMissionRequest request) {
+		ActionResult result = rooms.act(code, request.token(),
+				new Action.SetMission(request.spy(), String.valueOf(request.mission())));
 		return result.accepted() ? null : new Rejection(result.reason());
 	}
 

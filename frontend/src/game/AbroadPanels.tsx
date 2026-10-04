@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { locatableNations, locatedNations, recallTurns, travelTurns } from '../api'
-import type { Fact, MapNation, NationView, Spy, Task, TaskKind, Warparty } from '../api'
+import type { Fact, MapNation, Mission, NationView, Spy, Task, TaskKind, Warparty } from '../api'
 import { NationEmblem } from '../ui/NationName'
 import { Panel } from '../ui/Panel'
 import { TypeCounts, TypeName } from '../ui/TypeIcon'
@@ -160,6 +160,44 @@ export function ArmyPanel({
   )
 }
 
+/** Whether a Spy has arrived at its target and stays there. */
+function inPlace(spy: Spy) {
+  return !spy.homeward && spy.turnsLeft === 0
+}
+
+/**
+ * Picks the Mission a Spy in place is set to, starting it from scratch; an Idle Spy shows a prompt to
+ * choose one.
+ */
+function MissionSelect({
+  spy,
+  missions,
+  onChange,
+}: {
+  spy: Spy
+  missions: Mission[]
+  onChange: (mission: string) => void
+}) {
+  return (
+    <select
+      value={spy.mission ?? ''}
+      aria-label={`Mission for Spy ${spy.id} in ${spy.target}`}
+      onChange={(e) => onChange(e.target.value)}
+    >
+      {spy.mission === null && (
+        <option value="" disabled>
+          Choose a Mission
+        </option>
+      )}
+      {missions.map((m) => (
+        <option key={m.name} value={m.name}>
+          {m.name} ({plural(m.turns, 'Turn')})
+        </option>
+      ))}
+    </select>
+  )
+}
+
 function describeSpy(spy: Spy, map: MapNation[]) {
   const target = <MapName name={spy.target} map={map} />
   if (spy.homeward) {
@@ -169,7 +207,15 @@ function describeSpy(spy: Spy, map: MapNation[]) {
       </>
     )
   }
-  if (spy.turnsLeft === 0) return <>in place at {target}, reporting now and then</>
+  if (inPlace(spy)) {
+    return spy.mission === null ? (
+      <>in place at {target}, Idle</>
+    ) : (
+      <>
+        in place at {target}, on {spy.mission}, {plural(spy.missionTurnsLeft, 'Turn')} left
+      </>
+    )
+  }
   return (
     <>
       travelling to {target}, {plural(spy.turnsLeft, 'Turn')} left
@@ -257,19 +303,22 @@ function ScoutTasks({
 
 /**
  * A form to send a Spy from the Army to a Located Nation, what the Spies at home are doing, then the
- * Nation's Spies abroad, those with the same target and state merged into one row, then its Scouts
- * roaming the wilds and their Tasks.
+ * Nation's Spies abroad: each in place on its own row with its Mission and a picker to set one, those
+ * travelling with the same target and state merged into one row. Then its Scouts roaming the wilds and
+ * their Tasks.
  */
 export function SpiesPanel({
   nation,
   rejection,
   onSend,
+  onSetMission,
   onSetTask,
   onCancelTask,
 }: {
   nation: NationView
   rejection: string | null
   onSend: (target: string) => void
+  onSetMission: (spy: number, mission: string) => void
   onSetTask: (kind: TaskKind, target: string, scouts: number) => void
   onCancelTask: (task: number) => void
 }) {
@@ -312,14 +361,23 @@ export function SpiesPanel({
         <p className="muted">No Spies abroad.</p>
       ) : (
         <ul className="list">
-          {mergeAlike(nation.spies, (s) => [s.unit, s.target, s.homeward, s.turnsLeft]).map(({ key, item, count }) => (
-            <li key={key} className="row row--wrap">
-              <span className="row__name">
-                <TypeName name={item.unit} kind="unit" size={24} /> ×{count}
-              </span>
-              <span className="row__meta">{describeSpy(item, nation.map)}</span>
-            </li>
-          ))}
+          {mergeAlike(nation.spies, (s) => [s.unit, s.target, s.homeward, s.turnsLeft, inPlace(s) ? s.id : 0]).map(
+            ({ key, item, count }) => (
+              <li key={key} className="row row--wrap">
+                <span className="row__name">
+                  <TypeName name={item.unit} kind="unit" size={24} /> ×{count}
+                </span>
+                <span className="row__meta">{describeSpy(item, nation.map)}</span>
+                {inPlace(item) && (
+                  <MissionSelect
+                    spy={item}
+                    missions={nation.missions}
+                    onChange={(mission) => onSetMission(item.id, mission)}
+                  />
+                )}
+              </li>
+            ),
+          )}
         </ul>
       )}
       <h3>Scouts</h3>

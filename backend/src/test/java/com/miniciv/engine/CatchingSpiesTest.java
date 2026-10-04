@@ -141,7 +141,7 @@ class CatchingSpiesTest {
 
 		spyArrivesAtCarthage();
 
-		assertThat(game.viewOf("Rome").spies()).containsExactly(new Spy(2, "Spy", "Carthage", false, 0, 3));
+		assertThat(game.viewOf("Rome").spies()).containsExactly(new Spy(2, "Spy", "Carthage", false, 0, 3, null, 0));
 		assertThat(report("Rome"))
 			.contains("Your Spy in Carthage reported that Carthage caught your other Spy there, and it died.");
 	}
@@ -189,7 +189,7 @@ class CatchingSpiesTest {
 		game.endTurn();
 		game.endTurn();
 
-		assertThat(game.viewOf("Rome").spies()).containsExactly(new Spy(1, "Spy", "Carthage", false, 1, 2));
+		assertThat(game.viewOf("Rome").spies()).containsExactly(new Spy(1, "Spy", "Carthage", false, 1, 2, null, 0));
 		assertThat(report("Carthage")).noneMatch(line -> line.contains("caught"));
 	}
 
@@ -201,7 +201,7 @@ class CatchingSpiesTest {
 		spyArrivesAtCarthage();
 		game.endTurn();
 
-		assertThat(game.viewOf("Rome").spies()).containsExactly(new Spy(1, "Spy", "Carthage", false, 0, 3));
+		assertThat(game.viewOf("Rome").spies()).containsExactly(new Spy(1, "Spy", "Carthage", false, 0, 3, null, 0));
 		assertThat(report("Carthage")).noneMatch(line -> line.contains("caught"));
 	}
 
@@ -249,7 +249,7 @@ class CatchingSpiesTest {
 
 		game.endTurn();
 
-		assertThat(game.viewOf("Rome").spies()).containsExactly(new Spy(1, "Spy", "Carthage", false, 0, 3));
+		assertThat(game.viewOf("Rome").spies()).containsExactly(new Spy(1, "Spy", "Carthage", false, 0, 3, null, 0));
 		assertThat(report("Carthage")).noneMatch(line -> line.contains("caught"));
 		assertThat(report("Rome")).noneMatch(line -> line.contains("caught"));
 	}
@@ -293,7 +293,7 @@ class CatchingSpiesTest {
 
 		game.endTurn();
 
-		assertThat(game.viewOf("Rome").spies()).containsExactly(new Spy(1, "Spy", "Egypt", false, 0, 3));
+		assertThat(game.viewOf("Rome").spies()).containsExactly(new Spy(1, "Spy", "Egypt", false, 0, 3, null, 0));
 		assertThat(report("Egypt"))
 			.contains("Your Scouts caught a Spy heading to Carthage, and it died before saying who sent it.");
 		assertThat(report("Rome"))

@@ -45,7 +45,8 @@ class DamagedBuildingsTest {
 	 * {@link Locating}.
 	 */
 	void playLocated(Event... events) {
-		game = Locating.everyone(new Ruleset(SpiesTest.RULESET.units(), List.of(MARKET, LIBRARY, WALLS), List.of(), List.of(events)),
+		game = Locating.everyone(new Ruleset(SpiesTest.RULESET.units(), List.of(MARKET, LIBRARY, WALLS), List.of(), List.of(events),
+				SpyMissionsTest.MISSIONS),
 				Identities.of("Rome", "Carthage"), luck);
 	}
 
@@ -279,9 +280,11 @@ class DamagedBuildingsTest {
 		act("Rome", new Action.SendSpy("Carthage"));
 		game.endTurn();
 		game.endTurn();
-		// The Fire misses Carthage's undamaged Market, and the Spy arrives,
-		// reports, and reports Carthage's Buildings.
-		luck.then(0.99, 0, 0.95);
+		// The Fire misses Carthage's undamaged Market from now on.
+		game.endTurn();
+		act("Rome", new Action.SetMission(1, "Report Buildings"));
+		game.endTurn();
+		game.endTurn();
 
 		game.endTurn();
 
@@ -294,8 +297,8 @@ class DamagedBuildingsTest {
 			.findFirst()
 			.orElseThrow()
 			.facts();
-		assertThat(facts.buildings()).isEqualTo(new Fact<>(Map.of("Market", 2), 6));
-		assertThat(facts.damaged()).isEqualTo(new Fact<>(Map.of("Market", 1), 6));
+		assertThat(facts.buildings()).isEqualTo(new Fact<>(Map.of("Market", 2), 9));
+		assertThat(facts.damaged()).isEqualTo(new Fact<>(Map.of("Market", 1), 9));
 	}
 
 	@Test

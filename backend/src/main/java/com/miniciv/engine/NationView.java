@@ -37,7 +37,10 @@ import java.util.Map;
  *        Warparties to, in the order Located
  * @param training the Units in training, in the order started
  * @param warparties the Nation's Warparties abroad, in the order sent
- * @param spies the Nation's Spies abroad, in the order sent
+ * @param spies the Nation's Spies abroad, in the order sent, each with the
+ *        Mission it is on and the Turns left on it
+ * @param missions the Missions its Spies in place may be set to, in the
+ *        ruleset's order
  * @param travelBrackets how many Turns a Warparty takes to reach another
  *        Nation, by its Strength, from the weakest Warparties up
  * @param spyTravelTurns how many Turns a Spy takes to reach another Nation
@@ -70,7 +73,8 @@ public record NationView(int version, int turn, String nation, int gold, int pop
 		List<Construction> construction, List<Repair> repairs, int defense, List<BuildingDamage> damage,
 		Map<String, Integer> sellValues, List<UnitType> availableUnits,
 		Map<String, Integer> army, int scouts, int idleScouts, List<Task> tasks, List<String> located,
-		List<Training> training, List<Warparty> warparties, List<Spy> spies, List<TravelBracket> travelBrackets,
+		List<Training> training, List<Warparty> warparties, List<Spy> spies, List<Mission> missions,
+		List<TravelBracket> travelBrackets,
 		int spyTravelTurns, int upkeep, GoldForecast goldForecast, LastingEvent lastingEvent,
 		List<ArrivedWarparty> arrivals,
 		List<Tribute> tributes, List<Encounter> encounters, List<TechTreeEntry> techTree,
@@ -89,6 +93,7 @@ public record NationView(int version, int turn, String nation, int gold, int pop
 		training = List.copyOf(training);
 		warparties = List.copyOf(warparties);
 		spies = List.copyOf(spies);
+		missions = List.copyOf(missions);
 		travelBrackets = List.copyOf(travelBrackets);
 		arrivals = List.copyOf(arrivals);
 		tributes = List.copyOf(tributes);

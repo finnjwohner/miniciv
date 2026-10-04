@@ -53,9 +53,19 @@ public sealed interface Action {
 
 	/**
 	 * Sends a Spy from the Army to another Nation it has Located, where it
-	 * stays and now and then reports its hidden state.
+	 * stays, Idle until set a Mission.
 	 */
 	record SendSpy(String target) implements Action {
+	}
+
+	/**
+	 * Sets one of the Nation's Spies in place to a Mission, from scratch,
+	 * giving up any it was on.
+	 *
+	 * @param spy the Spy's id
+	 * @param mission the Mission's name
+	 */
+	record SetMission(int spy, String mission) implements Action {
 	}
 
 	/**

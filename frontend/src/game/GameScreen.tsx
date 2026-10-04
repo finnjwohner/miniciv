@@ -53,6 +53,7 @@ function GameScreen({
   onSendWarparty,
   onRecallWarparty,
   onSendSpy,
+  onSetMission,
   onSetTask,
   onCancelTask,
   onAnswerDilemma,
@@ -74,6 +75,7 @@ function GameScreen({
   onSendWarparty: (target: string, units: Record<string, number>) => void
   onRecallWarparty: (warparty: number) => void
   onSendSpy: (target: string) => void
+  onSetMission: (spy: number, mission: string) => void
   onSetTask: (kind: TaskKind, target: string, scouts: number) => void
   onCancelTask: (task: number) => void
   onAnswerDilemma: (dilemma: string, choice: string) => void
@@ -223,6 +225,7 @@ function GameScreen({
                   nation={nation}
                   rejection={rejectionIn('spies')}
                   onSend={from('spies', onSendSpy)}
+                  onSetMission={from('spies', onSetMission)}
                   onSetTask={from('spies', onSetTask)}
                   onCancelTask={from('spies', onCancelTask)}
                 />

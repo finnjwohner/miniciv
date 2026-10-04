@@ -22,6 +22,26 @@ class RulesetTest {
 	}
 
 	@Test
+	void aMissionMustTakeATurnReportSomethingAndHaveAName() {
+		assertThatExceptionOfType(InvalidRuleset.class)
+			.isThrownBy(() -> new Ruleset(List.of(), List.of(), List.of(), List.of(),
+					List.of(new Mission("Report Gold", 0, Mission.FactKind.GOLD), new Mission("Loiter", 2, null),
+							new Mission(" ", 2, Mission.FactKind.ARMY))))
+			.withMessageContaining("Mission Report Gold must take at least 1 Turn.")
+			.withMessageContaining("Mission Loiter reports nothing.")
+			.withMessageContaining("A Mission has no name.");
+	}
+
+	@Test
+	void noTwoMissionsShareAName() {
+		assertThatExceptionOfType(InvalidRuleset.class)
+			.isThrownBy(() -> new Ruleset(List.of(), List.of(), List.of(), List.of(),
+					List.of(new Mission("Report Gold", 2, Mission.FactKind.GOLD),
+							new Mission("Report Gold", 3, Mission.FactKind.GOLD))))
+			.withMessageContaining("There is more than one Mission called Report Gold.");
+	}
+
+	@Test
 	void aTechnologyCannotRequireAnUnknownTechnology() {
 		Technology mathematics = new Technology("Mathematics", 20, List.of("Writing"), List.of());
 

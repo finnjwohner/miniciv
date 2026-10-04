@@ -226,7 +226,7 @@ class Nation {
 				Collections.unmodifiableMap(new LinkedHashMap<>(buildings)), construction, repairs, defense(ruleset), damage(ruleset),
 				sellValues(ruleset),
 				availableUnits,
-				Collections.unmodifiableMap(new LinkedHashMap<>(army)), scouts(), idleScouts(), tasks, List.copyOf(located), training, warparties, spies, TravelBracket.ALL, Spy.TRAVEL_TURNS, upkeep(ruleset),
+				Collections.unmodifiableMap(new LinkedHashMap<>(army)), scouts(), idleScouts(), tasks, List.copyOf(located), training, warparties, spies, ruleset.missions(), TravelBracket.ALL, Spy.TRAVEL_TURNS, upkeep(ruleset),
 				goldForecast, lastingEvent,
 				arrivals, tributes, encounters, techTree(ruleset), turnReport, awaitingChoice(winner),
 				conqueredBy, winner);
@@ -1086,9 +1086,55 @@ class Nation {
 			return ActionResult.rejected("Your Army has no Spy.");
 		}
 		army.computeIfPresent(spy.get(), (unit, owned) -> owned == 1 ? null : owned - 1);
-		spies.add(new Spy(nextSpyId++, spy.get(), target, false, Spy.TRAVEL_TURNS, 0));
+		spies.add(Spy.sent(nextSpyId++, spy.get(), target));
 		version++;
 		return ActionResult.ACCEPTED;
+	}
+
+	/**
+	 * Sets one of the Nation's Spies in place to a Mission, from scratch,
+	 * giving up any other it was on.
+	 *
+	 * @param id the Spy's id
+	 */
+	ActionResult setMission(int id, Mission mission) {
+		for (var it = spies.listIterator(); it.hasNext();) {
+			Spy current = it.next();
+			if (current.id() != id) {
+				continue;
+			}
+			if (!current.inPlace()) {
+				return ActionResult.rejected(current.homeward() ? "Your Spy is heading home."
+						: "Your Spy has not yet arrived at " + current.target() + ".");
+			}
+			it.set(current.onMission(mission));
+			version++;
+			return ActionResult.ACCEPTED;
+		}
+		return ActionResult.rejected("You have no such Spy.");
+	}
+
+	/**
+	 * Moves every Spy in place on a Mission one Turn further into it; one whose
+	 * Mission ends goes Idle.
+	 *
+	 * @return the Spies whose Mission ended, as they were before, in the order
+	 *         sent
+	 */
+	List<Spy> workOnMissions() {
+		List<Spy> ended = new ArrayList<>();
+		for (var it = spies.listIterator(); it.hasNext();) {
+			Spy current = it.next();
+			if (!current.inPlace() || current.mission() == null) {
+				continue;
+			}
+			it.set(current.workedOnMission());
+			if (current.missionTurnsLeft() == 1) {
+				ended.add(current);
+			}
+			version++;
+		}
+		return ended;
 	}
 
 	/**

@@ -1,0 +1,7 @@
+[
+  { "name": "Report Gold", "turns": 2, "reports": "GOLD" },
+  { "name": "Report Population", "turns": 2, "reports": "POPULATION" },
+  { "name": "Report Research", "turns": 2, "reports": "RESEARCH" },
+  { "name": "Report Army", "turns": 2, "reports": "ARMY" },
+  { "name": "Report Buildings", "turns": 2, "reports": "BUILDINGS" }
+]
