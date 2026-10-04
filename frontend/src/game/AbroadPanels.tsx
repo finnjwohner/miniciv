@@ -3,6 +3,7 @@ import { otherNations, recallTurns, travelTurns } from '../api'
 import type { Fact, MapNation, NationView, Spy, Warparty } from '../api'
 import { NationEmblem } from '../ui/NationName'
 import { Panel } from '../ui/Panel'
+import { TypeCounts, TypeName } from '../ui/TypeIcon'
 import { CountSlider, TargetSelect } from './controls'
 import { currentTarget, formatAmount, listCounts, mergeAlike, plural } from './format'
 import { MapName } from './MapName'
@@ -95,7 +96,9 @@ export function ArmyPanel({
                   label={`How many ${name} to send`}
                   onChange={(count) => setChosen({ ...chosen, [name]: count })}
                 />
-                <span className="row__name">{name}</span>
+                <span className="row__name">
+                  <TypeName name={name} kind="unit" size={24} />
+                </span>
                 <span className="row__meta">of {owned}</span>
               </li>
             ))}
@@ -121,7 +124,7 @@ export function ArmyPanel({
           {army.map(([name, count]) => (
             <li key={name} className={rowClass(isFresh(name))}>
               <span className="row__name">
-                {name} ×{count}
+                <TypeName name={name} kind="unit" size={24} /> ×{count}
               </span>
               <span className="row__meta">Strength {formatAmount(strengthOf(name, count))}</span>
             </li>
@@ -139,7 +142,9 @@ export function ArmyPanel({
         <ul className="list">
           {nation.warparties.map((w) => (
             <li key={w.id} className="row row--wrap">
-              <span className="row__name">{listCounts(w.units)}</span>
+              <span className="row__name">
+                <TypeCounts counts={w.units} kind="unit" size={24} />
+              </span>
               <span className="tag">Strength {formatAmount(w.strength)}</span>
               <span className="row__meta">{describeWarparty(w, nation.map)}</span>
               {!w.homeward && (
@@ -228,7 +233,7 @@ export function SpiesPanel({
           {mergeAlike(nation.spies, (s) => [s.unit, s.target, s.homeward, s.turnsLeft]).map(({ key, item, count }) => (
             <li key={key} className="row row--wrap">
               <span className="row__name">
-                {item.unit} ×{count}
+                <TypeName name={item.unit} kind="unit" size={24} /> ×{count}
               </span>
               <span className="row__meta">{describeSpy(item, nation.map)}</span>
             </li>
