@@ -139,6 +139,12 @@ public class Game {
 	private static final double CATCH_CHANCE_PER_SCOUT = 0.1;
 
 	/**
+	 * How many Turns a Haul seized from a caught Spy takes to reach the Nation
+	 * keeping it or getting it back.
+	 */
+	static final int HAUL_DELIVERY_TURNS = 3;
+
+	/**
 	 * The chance each travelling Warparty has, each Turn, of catching each
 	 * other Nation's Spy still travelling.
 	 */
@@ -210,6 +216,12 @@ public class Game {
 	 * The Tribute offered this Turn, in the order offered.
 	 */
 	private final List<Tribute> tributes = new ArrayList<>();
+
+	/**
+	 * The Hauls on their way to a Nation, kept, sent back or taken back from a
+	 * caught Spy, in the order sent.
+	 */
+	private final List<Delivery> deliveries = new ArrayList<>();
 
 	/**
 	 * The Encounters Warparties had as the last Turn resolved, in the order
@@ -403,6 +415,8 @@ public class Game {
 									" and joined your Spies at home."));
 			}
 		}
+		deliverHauls(reports);
+		settleHauls(reports);
 		// A Nation conquered earlier in this Turn no longer fights, and its
 		// Warparties are gone.
 		for (Optional<String> target = nextBattle(); target.isPresent(); target = nextBattle()) {
@@ -1477,7 +1491,8 @@ public class Game {
 	 * anywhere. No one tries to catch an Escaping Spy. Each try takes the other
 	 * Nations in order and each one's Spies in the order sent, drawing once
 	 * from the seeded random source for each Spy not yet caught; a Spy caught
-	 * draws once more for what becomes of it. See {@link #caught}.
+	 * draws once more for what becomes of it. See {@link #caught}. The Haul a
+	 * travelling Spy caught carried is seized; see {@link #seize}.
 	 */
 	private void catchSpies(Map<String, TurnReport.Draft> reports, List<Witnessed> witnessed) {
 		for (Nation catching : remaining()) {
@@ -1506,6 +1521,7 @@ public class Game {
 					for (Spy spy : other.spiesTravelling()) {
 						if (random.nextDouble() < chance) {
 							caught(spy, other, catching, "Your Scouts", reports, witnessed);
+							seize(spy, catching, "your Scouts", reports);
 						}
 					}
 				}
@@ -1519,9 +1535,112 @@ public class Game {
 						if (random.nextDouble() < CATCH_CHANCE_PER_WARPARTY) {
 							caught(spy, other, catching, "Your Warparty of " + listed(warparty.units()) + " "
 									+ whereabouts(warparty, catching.name()), reports, witnessed);
+							seize(spy, catching, "your Warparty", reports);
 						}
 					}
 				}
+			}
+		}
+	}
+
+	/**
+	 * Seizes the Haul, if any, a Spy caught travelling carried. If the Nation
+	 * that caught it is the one it was stolen from, the Haul is on its way back
+	 * there; otherwise that Nation decides, by the end of the next Turn,
+	 * whether to keep it or send it back.
+	 *
+	 * @param caughtBy what caught it, such as "your Scouts"
+	 */
+	private void seize(Spy spy, Nation catching, String caughtBy, Map<String, TurnReport.Draft> reports) {
+		Haul haul = spy.haul();
+		if (haul == null) {
+			return;
+		}
+		Line carried = Line.of("The Spy " + caughtBy + " caught carried ", neutral(haul.resource(), haul.amount()));
+		if (spy.target().equals(catching.name())) {
+			deliveries.add(new Delivery(catching.name(), catching.name(), spy.target(), haul, HAUL_DELIVERY_TURNS));
+			reports.get(catching.name())
+				.add(SPIES_AND_SCOUTS, Line.of(carried, " stolen from your Nation; it will be back in "
+						+ HAUL_DELIVERY_TURNS + " Turns."));
+			return;
+		}
+		catching.faceHaul(spy.target(), haul);
+		reports.get(catching.name())
+			.add(DECISIONS_AND_ALERTS, Line.of(carried, " stolen from " + spy.target()
+					+ "; choose whether to keep it or send it back before this Turn ends."));
+	}
+
+	/**
+	 * A Haul on its way to a Nation.
+	 *
+	 * @param to the Nation it is on its way to
+	 * @param sentBy the Nation that seized it from a caught Spy and sent it
+	 * @param stolenFrom the Nation it was stolen from
+	 * @param turnsLeft how many more Turns must resolve before it arrives
+	 */
+	private record Delivery(String to, String sentBy, String stolenFrom, Haul haul, int turnsLeft) {
+
+		Delivery travelled() {
+			return new Delivery(to, sentBy, stolenFrom, haul, turnsLeft - 1);
+		}
+
+	}
+
+	/**
+	 * Brings every Haul on its way one Turn closer, in the order sent. One
+	 * that arrives is added to the Nation it was on its way to, if it is still
+	 * in the Game, which is told whose it was, or who returned it.
+	 */
+	private void deliverHauls(Map<String, TurnReport.Draft> reports) {
+		List<Delivery> travelling = List.copyOf(deliveries);
+		deliveries.clear();
+		for (Delivery delivery : travelling) {
+			Delivery travelled = delivery.travelled();
+			if (travelled.turnsLeft() > 0) {
+				deliveries.add(travelled);
+				continue;
+			}
+			Nation receiving = nation(delivery.to());
+			if (!receiving.inGame()) {
+				continue;
+			}
+			receiving.gain(delivery.haul());
+			Line amount = Line.of(gain(delivery.haul().resource(), delivery.haul().amount()));
+			Line arrived = !delivery.to().equals(delivery.stolenFrom())
+					? Line.of("The ", amount, " you kept, stolen from " + delivery.stolenFrom() + ", arrived.")
+					: delivery.sentBy().equals(delivery.to()) ? Line.of("The ", amount, " stolen from your Nation came back.")
+							: Line.of(ruled(delivery.sentBy()) + " returned the ", amount, " stolen from your Nation.");
+			reports.get(delivery.to()).add(SPIES_AND_SCOUTS, arrived);
+		}
+	}
+
+	/**
+	 * Has each Nation still in the Game in order settle its Haul decisions, in
+	 * the order seized: each Haul, kept unless the Player chose to send it
+	 * back, sets off to arrive in {@value #HAUL_DELIVERY_TURNS} Turns, and
+	 * nothing can intercept it. One sent back to a Nation no longer in the
+	 * Game is kept.
+	 */
+	private void settleHauls(Map<String, TurnReport.Draft> reports) {
+		for (Nation deciding : remaining()) {
+			TurnReport.Draft report = reports.get(deciding.name());
+			for (HaulDecision decision : deciding.settleHauls()) {
+				Line amount = Line.of(neutral(decision.haul().resource(), decision.haul().amount()));
+				String arriving = "; it will arrive in " + HAUL_DELIVERY_TURNS + " Turns.";
+				boolean returnable = nation(decision.stolenFrom()).inGame();
+				if (decision.kept() || !returnable) {
+					deliveries.add(new Delivery(deciding.name(), deciding.name(), decision.stolenFrom(), decision.haul(),
+							HAUL_DELIVERY_TURNS));
+					report.add(SPIES_AND_SCOUTS, decision.kept()
+							? Line.of("You kept the ", amount, " stolen from " + decision.stolenFrom() + arriving)
+							: Line.of(decision.stolenFrom() + " is no longer in the Game, so you kept the ", amount,
+									" stolen from it" + arriving));
+					continue;
+				}
+				deliveries.add(new Delivery(decision.stolenFrom(), deciding.name(), decision.stolenFrom(), decision.haul(),
+						HAUL_DELIVERY_TURNS));
+				report.add(SPIES_AND_SCOUTS,
+						Line.of("You sent the ", amount, " back to " + decision.stolenFrom() + arriving));
 			}
 		}
 	}
@@ -1990,6 +2109,7 @@ public class Game {
 			case Action.AnswerTribute answer -> answer(actor, answer);
 			case Action.AnswerEncounter answer -> answer(actor, answer);
 			case Action.AnswerDilemma answer -> answer(actor, answer);
+			case Action.AnswerHaul answer -> actor.answerHaul(answer.haul(), answer.keep());
 			case Action.UnlockTechnology unlock -> ruleset.technology(unlock.technology())
 				.filter(technology -> actor.sees(technology, ruleset))
 				.map(actor::unlock)

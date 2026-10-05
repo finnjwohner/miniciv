@@ -70,6 +70,7 @@ function JoinedRoom({ code, membership }: { code: string; membership: Membership
     setTask,
     cancelTask,
     answerDilemma,
+    answerHaul,
     unlockTechnology,
     offerTribute,
     answerTribute,
@@ -102,6 +103,7 @@ function JoinedRoom({ code, membership }: { code: string; membership: Membership
           onSetTask={setTask}
           onCancelTask={cancelTask}
           onAnswerDilemma={answerDilemma}
+          onAnswerHaul={answerHaul}
           onUnlockTechnology={unlockTechnology}
           onOfferTribute={offerTribute}
           onAnswerTribute={answerTribute}

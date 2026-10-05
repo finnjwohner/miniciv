@@ -254,6 +254,12 @@ export type Task = { id: number; kind: TaskKind; target: string | null; scouts: 
  */
 export type Choice = { name: string; worst: boolean }
 /**
+ * A Haul seized from another Nation's Spy this Nation caught carrying it home, told apart by `id`; the Player
+ * chooses until the Turn ends to keep it or send it back to `stolenFrom`, and unanswered (`NONE`) it is kept.
+ * Either way it arrives 3 Turns after the Turn ends, and nothing can intercept it.
+ */
+export type HaulDecision = { id: number; stolenFrom: string; haul: Haul; choice: 'NONE' | 'KEEP' | 'RETURN' }
+/**
  * A Dilemma this Player may answer, by its `name`, until the Turn ends; `chosen` is the name of the
  * choice they made, or null. The choice made, or else the worst, applies as the Turn ends.
  */
@@ -401,6 +407,8 @@ export type NationView = {
   turnReport: TurnReport | null
   /** The Dilemmas awaiting this Player's choice before the Turn ends, in the order they happened. */
   dilemmas: Dilemma[]
+  /** The Hauls seized from caught Spies awaiting this Player's choice to keep or send back, in the order seized. */
+  hauls: HaulDecision[]
   /** The Nation or Nations that conquered this one, such as "Rome and Egypt", knocking this Player out, or null. */
   conqueredBy: string | null
   /** The Nation that won the Game, or null while it goes on. */

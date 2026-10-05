@@ -87,6 +87,9 @@ class RoomController {
 	record AnswerDilemmaRequest(String token, String dilemma, String choice) {
 	}
 
+	record AnswerHaulRequest(String token, int haul, boolean keep) {
+	}
+
 	record UnlockTechnologyRequest(String token, String technology) {
 	}
 
@@ -362,6 +365,18 @@ class RoomController {
 	Rejection answerDilemma(@DestinationVariable String code, AnswerDilemmaRequest request) {
 		ActionResult result = rooms.act(code, request.token(),
 				new Action.AnswerDilemma(String.valueOf(request.dilemma()), String.valueOf(request.choice())));
+		return result.accepted() ? null : new Rejection(result.reason());
+	}
+
+	/**
+	 * Chooses whether to keep a Haul seized from a caught Spy or send it back;
+	 * the Player's changed view arrives on {@code /user/queue/game}, or the
+	 * reason it was rejected on {@code /user/queue/rejections}.
+	 */
+	@MessageMapping("/rooms/{code}/hauls")
+	@SendToUser(destinations = "/queue/rejections", broadcast = false)
+	Rejection answerHaul(@DestinationVariable String code, AnswerHaulRequest request) {
+		ActionResult result = rooms.act(code, request.token(), new Action.AnswerHaul(request.haul(), request.keep()));
 		return result.accepted() ? null : new Rejection(result.reason());
 	}
 

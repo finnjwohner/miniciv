@@ -216,6 +216,7 @@ export function nationView(overrides: Partial<NationView> = {}): NationView {
         chosen: null,
       },
     ],
+    hauls: [],
     conqueredBy: null,
     winner: null,
     ...overrides,
@@ -248,6 +249,7 @@ export function renderGame(props: Partial<ComponentProps<typeof GameScreen>> = {
       onSetTask={noop}
       onCancelTask={noop}
       onAnswerDilemma={noop}
+      onAnswerHaul={noop}
       onUnlockTechnology={noop}
       onOfferTribute={noop}
       onAnswerTribute={noop}

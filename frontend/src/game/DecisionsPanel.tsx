@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react'
-import type { Dilemma, Encounter, MapNation, NationView, Tribute } from '../api'
+import type { Dilemma, Encounter, HaulDecision, MapNation, NationView, Tribute } from '../api'
 import { Panel } from '../ui/Panel'
 import { CountSlider } from './controls'
 import { listCounts } from './format'
@@ -78,6 +78,55 @@ function DilemmaDecision({
           </li>
         ))}
       </ul>
+    </Decision>
+  )
+}
+
+/** Such as "12 Gold" or "5 Research". */
+function describeHaul(decision: HaulDecision) {
+  return `${decision.haul.amount} ${decision.haul.resource === 'GOLD' ? 'Gold' : 'Research'}`
+}
+
+/**
+ * A Haul seized from a caught Spy, to keep or send back to the Nation it was stolen from; the Player may
+ * change their choice until the Turn ends, and unanswered it is kept.
+ */
+function HaulChoice({
+  decision,
+  map,
+  onAnswer,
+}: {
+  decision: HaulDecision
+  map: MapNation[]
+  onAnswer: (haul: number, keep: boolean) => void
+}) {
+  const victim = <MapName name={decision.stolenFrom} map={map} />
+  const chosen = decision.choice === 'KEEP' ? 'keep it' : 'send it back'
+  return (
+    <Decision kind="Haul" open={decision.choice === 'NONE'} answeredTag="chosen">
+      <p>
+        The Spy you caught carried {describeHaul(decision)} stolen from {victim}.
+      </p>
+      <div className="button-row">
+        <button
+          className={decision.choice === 'KEEP' ? 'button--chosen' : undefined}
+          onClick={() => onAnswer(decision.id, true)}
+        >
+          Keep it
+        </button>
+        <button
+          className={decision.choice === 'RETURN' ? 'button--chosen' : undefined}
+          onClick={() => onAnswer(decision.id, false)}
+        >
+          Send it back
+        </button>
+      </div>
+      <p className="muted">
+        {decision.choice === 'NONE'
+          ? 'Unanswered as the Turn ends, you keep it.'
+          : `You chose to ${chosen}; you can change it until the Turn ends.`}{' '}
+        It arrives 3 Turns after this one, and no one can intercept it.
+      </p>
     </Decision>
   )
 }
@@ -171,10 +220,11 @@ function TributeOffer({
   )
 }
 
-/** Whether the Nation has any Dilemma, Encounter or Tribute to show this Turn. */
+/** Whether the Nation has any Dilemma, Haul, Encounter or Tribute to show this Turn. */
 function hasDecisions(nation: NationView) {
   return (
     nation.dilemmas.length > 0 ||
+    nation.hauls.length > 0 ||
     nation.encounters.length > 0 ||
     nation.arrivals.length > 0 ||
     nation.tributes.some((t) => t.to === nation.nation || t.answer === 'ACCEPTED')
@@ -182,7 +232,8 @@ function hasDecisions(nation: NationView) {
 }
 
 /**
- * The highlighted strip of this Turn's decisions: Dilemmas, Encounters, enemy Warparties that arrived
+ * The highlighted strip of this Turn's decisions: Dilemmas, Hauls seized from caught Spies, Encounters, enemy
+ * Warparties that arrived
  * with a form to offer Tribute, and Tribute offered to this Nation with buttons to accept or refuse it;
  * nothing if there are none this Turn.
  */
@@ -190,6 +241,7 @@ export function DecisionsPanel({
   nation,
   rejection,
   onAnswerDilemma,
+  onAnswerHaul,
   onAnswerEncounter,
   onOfferTribute,
   onAnswerTribute,
@@ -197,6 +249,7 @@ export function DecisionsPanel({
   nation: NationView
   rejection: string | null
   onAnswerDilemma: (dilemma: string, choice: string) => void
+  onAnswerHaul: (haul: number, keep: boolean) => void
   onAnswerEncounter: (warparty: number, fight: boolean) => void
   onOfferTribute: (nation: string, warparty: number, gold: number, population: number) => void
   onAnswerTribute: (warparty: number, accept: boolean) => void
@@ -208,6 +261,7 @@ export function DecisionsPanel({
   const accepted = nation.tributes.filter((t) => t.from === nation.nation && t.answer === 'ACCEPTED')
   const open =
     nation.dilemmas.filter((d) => d.chosen === null).length +
+    nation.hauls.filter((h) => h.choice === 'NONE').length +
     nation.encounters.filter((e) => sides(e, nation.nation)[0].choice === 'NONE').length +
     nation.arrivals.filter((a) => !offeredFor(a.nation, a.warparty)).length +
     received.filter((t) => t.answer === 'NONE').length
@@ -223,6 +277,9 @@ export function DecisionsPanel({
       <ul className="decisions">
         {nation.dilemmas.map((d) => (
           <DilemmaDecision key={d.name} dilemma={d} onAnswer={onAnswerDilemma} />
+        ))}
+        {nation.hauls.map((h) => (
+          <HaulChoice key={h.id} decision={h} map={nation.map} onAnswer={onAnswerHaul} />
         ))}
         {nation.encounters.map((e) => (
           <EncounterDecision

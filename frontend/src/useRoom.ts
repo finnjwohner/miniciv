@@ -173,6 +173,18 @@ export function useRoom(code: string, token: string) {
     })
   }
 
+  /**
+   * Chooses whether to keep a Haul seized from a caught Spy or send it back, applying as the Turn ends; a
+   * rejection's reason arrives in `rejection`.
+   */
+  const answerHaul = (haul: number, keep: boolean) => {
+    setRejection(null)
+    client.current?.publish({
+      destination: `/app/rooms/${code}/hauls`,
+      body: JSON.stringify({ token, haul, keep }),
+    })
+  }
+
   /** Unlocks a Technology, paying its Research at once; a rejection's reason arrives in `rejection`. */
   const unlockTechnology = (technology: string) => {
     setRejection(null)
@@ -243,6 +255,7 @@ export function useRoom(code: string, token: string) {
     setTask,
     cancelTask,
     answerDilemma,
+    answerHaul,
     unlockTechnology,
     offerTribute,
     answerTribute,

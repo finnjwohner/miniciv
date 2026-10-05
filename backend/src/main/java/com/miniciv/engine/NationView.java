@@ -63,6 +63,8 @@ import java.util.Map;
  *        unlock its prerequisites, or only that it is there if it is hidden
  * @param dilemmas the Dilemmas awaiting the Player's choice before this Turn
  *        ends, in the order they happened
+ * @param hauls the Hauls seized from caught Spies that the Player chooses to
+ *        keep or send back before this Turn ends, in the order seized
  * @param conqueredBy the Nation or Nations that conquered this one, such as
  *        "Rome and Egypt", knocking its Player out of the Game, or null if
  *        none has
@@ -79,7 +81,7 @@ public record NationView(int version, int turn, String nation, int gold, int pop
 		List<ArrivedWarparty> arrivals,
 		List<Tribute> tributes, List<Encounter> encounters, List<TechTreeEntry> techTree,
 		TurnReport turnReport,
-		List<Dilemma> dilemmas, String conqueredBy, String winner) {
+		List<Dilemma> dilemmas, List<HaulDecision> hauls, String conqueredBy, String winner) {
 
 	public NationView {
 		map = List.copyOf(map);
@@ -100,6 +102,7 @@ public record NationView(int version, int turn, String nation, int gold, int pop
 		encounters = List.copyOf(encounters);
 		techTree = List.copyOf(techTree);
 		dilemmas = List.copyOf(dilemmas);
+		hauls = List.copyOf(hauls);
 	}
 
 	/**
