@@ -120,6 +120,23 @@ public class Rooms {
 	}
 
 	/**
+	 * Sends a private Message to another Player, delivering it on
+	 * {@code /user/queue/messages} to both its sender and its recipient, while
+	 * still holding the Room, so that Messages arrive in the order sent. A
+	 * Message changes neither the Room's view nor any Nation's, so it does not
+	 * go through {@link #change}.
+	 */
+	public ActionResult message(String code, String token, String to, String text) {
+		Room room = find(code).orElseThrow();
+		synchronized (room) {
+			Room.Sending sending = room.message(token, to, text);
+			sending.playerIds()
+				.forEach(playerId -> messaging.convertAndSendToUser(playerId, "/queue/messages", sending.message()));
+			return sending.result();
+		}
+	}
+
+	/**
 	 * Records a connection identified as a Player opening. Listens for the
 	 * connection being acknowledged rather than requested, as only then has
 	 * {@link PlayerIdentification} surely identified it.

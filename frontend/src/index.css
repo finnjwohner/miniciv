@@ -103,6 +103,126 @@ a {
   width: 16rem;
 }
 
+/* Where a screen puts its own controls in the top bar, left of the gear. */
+.topbar__slot {
+  display: flex;
+  align-items: center;
+  gap: var(--space);
+  margin-left: auto;
+}
+
+.topbar__slot + .settings {
+  margin-left: 0;
+}
+
+/* Messages: a toggle in the top bar, and the drawer it opens down the right of the screen. */
+.messages-toggle {
+  position: relative;
+  padding: calc(var(--space) * 0.5);
+}
+
+.messages-toggle .unread {
+  position: absolute;
+  top: -0.4rem;
+  right: -0.4rem;
+}
+
+.unread {
+  display: inline-block;
+  min-width: 1.25rem;
+  padding: 0 0.25rem;
+  background: var(--bad);
+  color: var(--text);
+  font-size: 0.7rem;
+  line-height: 1.25rem;
+  text-align: center;
+}
+
+.messages-drawer {
+  position: fixed;
+  top: 4rem;
+  right: var(--space);
+  bottom: var(--space);
+  z-index: 10;
+  width: min(24rem, calc(100vw - var(--space) * 2));
+  display: flex;
+  flex-direction: column;
+}
+
+.messages-drawer > .panel__body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space);
+}
+
+.conversations {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(var(--space) * 0.5);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.conversation {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--space) * 0.5);
+}
+
+.conversation-view {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space);
+}
+
+.thread {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space) * 0.5);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.thread__message {
+  align-self: flex-start;
+  max-width: 85%;
+  padding: calc(var(--space) * 0.5) var(--space);
+  border: var(--line) solid var(--border);
+  background: var(--surface-raised);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.thread__message--mine {
+  align-self: flex-end;
+  border-color: var(--accent);
+}
+
+.compose {
+  display: grid;
+  gap: calc(var(--space) * 0.5);
+}
+
+.compose textarea {
+  width: 100%;
+  resize: none;
+}
+
+.compose__bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
 .screen {
   max-width: 64rem;
   margin: 0 auto;
@@ -235,7 +355,8 @@ button:disabled {
 }
 
 input,
-select {
+select,
+textarea {
   min-width: 0;
   padding: calc(var(--space) * 0.75) var(--space);
   font: inherit;
@@ -247,6 +368,7 @@ select {
 
 input:focus-visible,
 select:focus-visible,
+textarea:focus-visible,
 button:focus-visible,
 a:focus-visible {
   outline: var(--line) solid var(--accent);

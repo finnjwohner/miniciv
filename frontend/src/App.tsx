@@ -7,6 +7,7 @@ import RoomScreen from './RoomScreen'
 import { SettingsProvider } from './SettingsProvider'
 import { Icon } from './ui/Icon'
 import { SettingsMenu } from './ui/SettingsMenu'
+import { TOPBAR_SLOT } from './ui/TopbarSlot'
 import { useRoom } from './useRoom'
 
 function usePath() {
@@ -32,6 +33,7 @@ function App() {
       <header className="topbar">
         <Icon name="castle" />
         <h1>miniciv</h1>
+        <div id={TOPBAR_SLOT} className="topbar__slot" />
         <SettingsMenu />
       </header>
       <main>
@@ -55,6 +57,7 @@ function JoinedRoom({ code, membership }: { code: string; membership: Membership
   const {
     room,
     nation,
+    messages,
     rejection,
     setReady,
     setIdentity,
@@ -75,6 +78,7 @@ function JoinedRoom({ code, membership }: { code: string; membership: Membership
     offerTribute,
     answerTribute,
     answerEncounter,
+    sendMessage,
     markDone,
   } = useRoom(code, membership.token)
   if (!room)
@@ -109,6 +113,8 @@ function JoinedRoom({ code, membership }: { code: string; membership: Membership
           onAnswerTribute={answerTribute}
           onAnswerEncounter={answerEncounter}
           onDone={markDone}
+          messages={messages}
+          onSendMessage={sendMessage}
         />
       </div>
     )

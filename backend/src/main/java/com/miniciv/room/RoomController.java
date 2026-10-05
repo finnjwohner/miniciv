@@ -93,6 +93,9 @@ class RoomController {
 	record UnlockTechnologyRequest(String token, String technology) {
 	}
 
+	record MessageRequest(String token, String to, String text) {
+	}
+
 	/**
 	 * Why an Action was not accepted, for the Player who sent it.
 	 */
@@ -151,6 +154,18 @@ class RoomController {
 			throw new IllegalArgumentException("Connect with a Player token to see a Nation");
 		}
 		return rooms.find(code).orElseThrow().nationViewOf(player.getName());
+	}
+
+	/**
+	 * Sends a Player the Messages they have sent and received so far; later
+	 * Messages arrive on {@code /user/queue/messages}.
+	 */
+	@SubscribeMapping("/rooms/{code}/messages")
+	Room.MessageHistory messages(@DestinationVariable String code, Principal player) {
+		if (player == null) {
+			throw new IllegalArgumentException("Connect with a Player token to see Messages");
+		}
+		return rooms.find(code).orElseThrow().messagesOf(player.getName());
 	}
 
 	/**
@@ -390,6 +405,18 @@ class RoomController {
 	Rejection unlockTechnology(@DestinationVariable String code, UnlockTechnologyRequest request) {
 		ActionResult result = rooms.act(code, request.token(),
 				new Action.UnlockTechnology(String.valueOf(request.technology())));
+		return result.accepted() ? null : new Rejection(result.reason());
+	}
+
+	/**
+	 * Sends a private Message to another Player; it arrives for both of them
+	 * on {@code /user/queue/messages}, or the reason it was refused on
+	 * {@code /user/queue/rejections}. Never part of the Game.
+	 */
+	@MessageMapping("/rooms/{code}/messages")
+	@SendToUser(destinations = "/queue/rejections", broadcast = false)
+	Rejection message(@DestinationVariable String code, MessageRequest request) {
+		ActionResult result = rooms.message(code, request.token(), request.to(), request.text());
 		return result.accepted() ? null : new Rejection(result.reason());
 	}
 
