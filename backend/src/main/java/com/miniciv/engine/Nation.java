@@ -12,6 +12,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.function.ToIntFunction;
 import java.util.function.UnaryOperator;
+import java.util.random.RandomGenerator;
 import java.util.stream.Collectors;
 
 /**
@@ -1350,11 +1351,12 @@ class Nation {
 
 	/**
 	 * Loses some of the Nation's Scouts, no more than it has, taking its Scout
-	 * types in the reverse of the order first trained.
+	 * types in the reverse of the order first trained, and each Scout from
+	 * among all of them, Idle or on Tasks, as {@link #fitTasksToScouts} picks.
 	 *
 	 * @return how many of each Scout type were lost
 	 */
-	Map<String, Integer> loseScouts(int count) {
+	Map<String, Integer> loseScouts(int count, RandomGenerator random) {
 		Map<String, Integer> lost = new LinkedHashMap<>();
 		int left = count;
 		for (String type : List.copyOf(scouts.keySet()).reversed()) {
@@ -1367,7 +1369,7 @@ class Nation {
 			left -= losing;
 		}
 		if (!lost.isEmpty()) {
-			fitTasksToScouts();
+			fitTasksToScouts(lost.values().stream().mapToInt(Integer::intValue).sum(), random);
 			version++;
 		}
 		return lost;
@@ -1422,7 +1424,7 @@ class Nation {
 	 * @return the Tasks ended, in the order set
 	 */
 	List<Task> endTasksFor(String target) {
-		List<Task> ended = tasks.stream().filter(task -> task.target().equals(target)).toList();
+		List<Task> ended = tasks.stream().filter(task -> target.equals(task.target())).toList();
 		if (!ended.isEmpty()) {
 			tasks.removeAll(ended);
 			version++;
@@ -1431,23 +1433,64 @@ class Nation {
 	}
 
 	/**
-	 * Takes Scouts from the Nation's Tasks once it has fewer Scouts than they
-	 * hold, Idle Scouts having gone first: from the Task set last, ending each
-	 * left with none.
+	 * Takes the given number of Scouts just lost from among all of the
+	 * Nation's Scouts as they were, Idle or on Tasks, ending each Task left
+	 * with none. While they are on more than one Task, or some are Idle and
+	 * some on Tasks, each Scout lost draws once from the seeded random source,
+	 * every Scout as likely as any other, taking the Idle Scouts first and then
+	 * each Task's in the order set.
 	 */
-	private void fitTasksToScouts() {
-		int missing = -idleScouts();
-		for (int at = tasks.size() - 1; at >= 0 && missing > 0; at--) {
-			Task task = tasks.get(at);
-			int taken = Math.min(missing, task.scouts());
-			if (taken == task.scouts()) {
-				tasks.remove(at);
+	private void fitTasksToScouts(int lost, RandomGenerator random) {
+		int idle = idleScouts() + lost;
+		for (int losing = 0; losing < lost; losing++) {
+			if (tasks.isEmpty()) {
+				return;
 			}
-			else {
-				tasks.set(at, task.withScouts(task.scouts() - taken));
+			if (idle == 0 && tasks.size() == 1) {
+				takeFromTask(0);
+				continue;
 			}
-			missing -= taken;
+			int total = idle + tasks.stream().mapToInt(Task::scouts).sum();
+			int pick = (int) (random.nextDouble() * total) - idle;
+			if (pick < 0) {
+				idle--;
+				continue;
+			}
+			for (int at = 0; at < tasks.size(); at++) {
+				if (pick < tasks.get(at).scouts()) {
+					takeFromTask(at);
+					break;
+				}
+				pick -= tasks.get(at).scouts();
+			}
 		}
+	}
+
+	/**
+	 * Takes one Scout from a Task, ending it if left with none.
+	 */
+	private void takeFromTask(int at) {
+		Task task = tasks.get(at);
+		if (task.scouts() == 1) {
+			tasks.remove(at);
+		}
+		else {
+			tasks.set(at, task.withScouts(task.scouts() - 1));
+		}
+	}
+
+	/**
+	 * How many Tasks the Nation has set to Watch for Warparties.
+	 */
+	int watching() {
+		return (int) tasks.stream().filter(task -> task.kind() == Task.Kind.WATCH).count();
+	}
+
+	/**
+	 * How many of the Nation's Scouts are set to Hunt Travelling Spies.
+	 */
+	int hunting() {
+		return tasks.stream().filter(task -> task.kind() == Task.Kind.HUNT).mapToInt(Task::scouts).sum();
 	}
 
 	/**
@@ -1701,12 +1744,12 @@ class Nation {
 	 * types and then the Army's in the order first trained, then each
 	 * Warparty's in the order sent, then each Spy in the order sent. A
 	 * Warparty left with no Units disappears. Scouts that desert are taken
-	 * from Tasks as {@link #loseScouts} takes them.
+	 * from among all Scouts as {@link #loseScouts} takes them.
 	 *
 	 * @return the desertions from the Scouts first, then from the Army, then
 	 * from each Warparty in the order sent, then of each Spy in the order sent
 	 */
-	List<Desertion> desertUntilUpkeepIsAffordable(Ruleset ruleset) {
+	List<Desertion> desertUntilUpkeepIsAffordable(Ruleset ruleset, RandomGenerator random) {
 		List<Map<String, Integer>> groups = new ArrayList<>();
 		groups.add(scouts);
 		groups.add(army);
@@ -1734,7 +1777,7 @@ class Nation {
 		List<Desertion> desertions = new ArrayList<>();
 		if (!deserted.get(0).isEmpty()) {
 			desertions.add(new Desertion(true, null, null, deserted.get(0)));
-			fitTasksToScouts();
+			fitTasksToScouts(deserted.get(0).values().stream().mapToInt(Integer::intValue).sum(), random);
 		}
 		if (!deserted.get(1).isEmpty()) {
 			desertions.add(new Desertion(false, null, null, deserted.get(1)));

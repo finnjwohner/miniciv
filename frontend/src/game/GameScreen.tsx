@@ -76,7 +76,7 @@ function GameScreen({
   onRecallWarparty: (warparty: number) => void
   onSendSpy: (target: string) => void
   onSetMission: (spy: number, mission: string) => void
-  onSetTask: (kind: TaskKind, target: string, scouts: number) => void
+  onSetTask: (kind: TaskKind, target: string | null, scouts: number) => void
   onCancelTask: (task: number) => void
   onAnswerDilemma: (dilemma: string, choice: string) => void
   onUnlockTechnology: (technology: string) => void

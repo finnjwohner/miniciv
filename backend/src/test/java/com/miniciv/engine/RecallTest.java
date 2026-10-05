@@ -217,9 +217,8 @@ class RecallTest {
 		armyOf("Carthage", "Soldier", 67);
 		game.act("Rome", new Action.SendWarparty("Carthage", Map.of("Soldier", 50)));
 		game.act("Carthage", new Action.SendWarparty("Rome", Map.of("Soldier", 67)));
-		// Neither Nation's Pathfinders discover the other's Warparty, and then
-		// the two meet.
-		luck.then(0.99, 0.99, 0);
+		// The two meet.
+		luck.then(0);
 		game.endTurn();
 		game.act("Rome", new Action.AnswerEncounter(1, true));
 		game.endTurn();

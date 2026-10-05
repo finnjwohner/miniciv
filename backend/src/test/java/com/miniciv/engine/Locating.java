@@ -16,7 +16,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * Locate one Nation on the second, through Actions like any Player; scripted
  * luck makes every Locate Task succeed at once and nothing else happen. The
  * test's own luck takes over from the third Turn, untouched. The Pathfinders
- * stay on, Idle.
+ * stay on, Idle, doing nothing.
  */
 final class Locating {
 
@@ -61,8 +61,7 @@ final class Locating {
 
 	/**
 	 * A Game, on its third Turn, in which one Nation has Located every other,
-	 * and only it has Pathfinders, which may discover the others' Warparties
-	 * and catch their travelling Spies.
+	 * and only it has Pathfinders.
 	 */
 	static Game by(String nation, Ruleset ruleset, List<NationIdentity> nations, RandomGenerator luck) {
 		return in(ruleset, nations, luck).locate(nation, nations.stream()

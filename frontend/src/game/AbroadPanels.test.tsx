@@ -152,6 +152,55 @@ describe('SpiesPanel', () => {
     expect(onSetTask).toHaveBeenCalledWith('LOCATE', 'Sparta', 2)
   })
 
+  it('shows Watch and Hunt Tasks with their Scouts', () => {
+    renderGame({
+      nation: nationView({
+        scouts: 4,
+        idleScouts: 0,
+        tasks: [
+          { id: 1, kind: 'WATCH', target: null, scouts: 1 },
+          { id: 2, kind: 'HUNT', target: null, scouts: 3 },
+        ],
+      }),
+    })
+    fireEvent.click(tab('Spies & Scouts'))
+
+    const spies = screen.getByRole('region', { name: 'Spies & Scouts' })
+    expect(rowNamed(spies, 'Watching for Warparties').closest('li')).toHaveTextContent('1 Scout')
+    expect(rowNamed(spies, 'Hunting Travelling Spies').closest('li')).toHaveTextContent('3 Scouts')
+  })
+
+  it('sets exactly one Idle Scout to Watch for Warparties', () => {
+    const onSetTask = vi.fn()
+    renderGame({ nation: locating(['Carthage', 'Persia', 'Egypt'], { scouts: 3, idleScouts: 3 }), onSetTask })
+    fireEvent.click(tab('Spies & Scouts'))
+
+    const spies = screen.getByRole('region', { name: 'Spies & Scouts' })
+    fireEvent.change(within(spies).getByRole('combobox', { name: 'Task' }), { target: { value: 'WATCH' } })
+    expect(within(spies).queryByRole('combobox', { name: 'Locate' })).not.toBeInTheDocument()
+    expect(within(spies).queryByRole('slider', { name: 'How many Scouts to set to the Task' })).not.toBeInTheDocument()
+    fireEvent.click(within(spies).getByRole('button', { name: 'Set Task' }))
+
+    expect(onSetTask).toHaveBeenCalledWith('WATCH', null, 1)
+  })
+
+  it('sets any number of Idle Scouts to Hunt Travelling Spies', () => {
+    const onSetTask = vi.fn()
+    renderGame({ nation: locating(['Carthage', 'Persia', 'Egypt'], { scouts: 3, idleScouts: 3 }), onSetTask })
+    fireEvent.click(tab('Spies & Scouts'))
+
+    const spies = screen.getByRole('region', { name: 'Spies & Scouts' })
+    const task = within(spies).getByRole('combobox', { name: 'Task' })
+    expect(options(task)).toEqual(['Watch for Warparties', 'Hunt Travelling Spies'])
+    fireEvent.change(task, { target: { value: 'HUNT' } })
+    const count = within(spies).getByRole('slider', { name: 'How many Scouts to set to the Task' })
+    expect(count).toHaveAttribute('max', '3')
+    fireEvent.change(count, { target: { value: '2' } })
+    fireEvent.click(within(spies).getByRole('button', { name: 'Set Task' }))
+
+    expect(onSetTask).toHaveBeenCalledWith('HUNT', null, 2)
+  })
+
   it('offers no Task without Idle Scouts', () => {
     renderGame({
       nation: locating([], { scouts: 1, idleScouts: 0, tasks: [{ id: 1, kind: 'LOCATE', target: 'Persia', scouts: 1 }] }),
@@ -168,7 +217,7 @@ describe('SpiesPanel', () => {
     fireEvent.click(tab('Spies & Scouts'))
     const spies = screen.getByRole('region', { name: 'Spies & Scouts' })
     expect(within(spies).getByText('Idle Scouts ×3')).toBeInTheDocument()
-    expect(within(spies).getByText(/discover Warparties abroad/)).toBeInTheDocument()
+    expect(within(spies).getByText(/Idle Scouts do nothing/)).toBeInTheDocument()
 
     fireEvent.click(tab('Army'))
     const army = screen.getByRole('region', { name: 'Army & Warparties' })

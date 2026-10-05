@@ -158,6 +158,7 @@ class UnmaskingTest {
 	@Test
 	void aFleeingSpyCanBeCaughtWhileTravelling() {
 		armyOf("Carthage", "Scout", 1);
+		assertThat(game.act("Carthage", new Action.SetTask("HUNT", null, 1))).isEqualTo(ActionResult.ACCEPTED);
 		spiesArriveAtCarthage(1);
 		inciteUnrestUntilItsLastTurn();
 		luck.then(0.99, 0, 0.5);

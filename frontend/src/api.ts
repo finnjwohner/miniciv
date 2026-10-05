@@ -237,10 +237,17 @@ export type Mission = {
   steals: Haul['resource'] | null
   text: string | null
 }
-/** A kind of Task Scouts can be set to: `LOCATE` searches for a Nation not yet Located until it is Located. */
-export type TaskKind = 'LOCATE'
-/** What some of the Nation's Scouts are set to do, told apart by `id`; `target` is the Nation it is about. */
-export type Task = { id: number; kind: TaskKind; target: string; scouts: number }
+/**
+ * A kind of Task Scouts can be set to: `LOCATE` searches for a Nation not yet Located until it is Located;
+ * `WATCH` watches for Warparties abroad with exactly one Scout, and `HUNT` hunts other Nations' travelling Spies,
+ * both until cancelled.
+ */
+export type TaskKind = 'LOCATE' | 'WATCH' | 'HUNT'
+/**
+ * What some of the Nation's Scouts are set to do, told apart by `id`; `target` is the Nation a Locate Task is
+ * about, and null for the others.
+ */
+export type Task = { id: number; kind: TaskKind; target: string | null; scouts: number }
 /**
  * One choice a Dilemma offers; `worst` is the one that applies if the Player does not choose before the Turn ends.
  * What it leads to is partly luck, and neither its outcomes nor their odds are shown.
