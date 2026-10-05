@@ -488,7 +488,7 @@ public class Game {
 		}
 		takeHauls(gains, reports);
 		rollEvents(reports, witnessed);
-		scout(reports);
+		watchForWarparties(reports);
 		catchSpies(reports, witnessed);
 		escape(reports, witnessed);
 		workOnMissions(reports, witnessed);
@@ -528,8 +528,8 @@ public class Game {
 	 * Gives a Nation its income for the Turn, applies its Lasting Event, lets
 	 * the Units it cannot pay for desert, then pays the rest's upkeep.
 	 *
-	 * @param luck where Scouts that desert are picked from among the Nation's
-	 *        Scouts draws from (see {@link Nation#desertUntilUpkeepIsAffordable})
+	 * @param luck the random source that picks which of the Nation's Scouts
+	 *        desert (see {@link Nation#desertUntilUpkeepIsAffordable})
 	 */
 	private IncomeAndUpkeep earnAndPayUpkeep(Nation nation, RandomGenerator luck) {
 		Optional<LastingEvent> lasting = nation.passLastingTurn(turn);
@@ -1043,9 +1043,9 @@ public class Game {
 	 * Report; a Warparty that has arrived at the Nation watching was
 	 * announced already, and is not looked for.
 	 */
-	private void scout(Map<String, TurnReport.Draft> reports) {
+	private void watchForWarparties(Map<String, TurnReport.Draft> reports) {
 		for (Nation scouting : remaining()) {
-			int watching = scouting.watching();
+			int watching = scouting.watchTasks();
 			if (watching == 0) {
 				continue;
 			}
@@ -1486,13 +1486,13 @@ public class Game {
 	 * Spies: with its Spies at home, those in place at it, each Spy on a
 	 * hostile Mission {@value #HOSTILE_CATCH_MULTIPLIER} times as likely to be
 	 * caught as any other; then with its Scouts Hunting Travelling Spies, and
-	 * then with each of its
-	 * travelling Warparties in the order sent, those still travelling
-	 * anywhere. No one tries to catch an Escaping Spy. Each try takes the other
-	 * Nations in order and each one's Spies in the order sent, drawing once
-	 * from the seeded random source for each Spy not yet caught; a Spy caught
-	 * draws once more for what becomes of it. See {@link #caught}. The Haul a
-	 * travelling Spy caught carried is seized; see {@link #seize}.
+	 * then with each of its travelling Warparties in the order sent, those
+	 * still travelling anywhere. No one tries to catch an Escaping Spy. Each
+	 * try takes the other Nations in order and each one's Spies in the order
+	 * sent, drawing once from the seeded random source for each Spy not yet
+	 * caught; a Spy caught draws once more for what becomes of it. See
+	 * {@link #caught}. The Haul a travelling Spy caught carried is seized; see
+	 * {@link #seize}.
 	 */
 	private void catchSpies(Map<String, TurnReport.Draft> reports, List<Witnessed> witnessed) {
 		for (Nation catching : remaining()) {
@@ -1514,7 +1514,7 @@ public class Game {
 					}
 				}
 			}
-			int hunting = catching.hunting();
+			int hunting = catching.huntingScouts();
 			if (hunting > 0) {
 				double chance = 1 - Math.pow(1 - CATCH_CHANCE_PER_SCOUT, hunting);
 				for (Nation other : others(catching)) {
