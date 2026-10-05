@@ -177,6 +177,7 @@ class StealTest {
 	@Test
 	void anEscapingSpyCannotBeCaughtByScouts() {
 		armyOf("Carthage", "Scout", 3);
+		assertThat(game.act("Carthage", new Action.SetTask("HUNT", null, 3))).isEqualTo(ActionResult.ACCEPTED);
 		spyArrivesAtCarthage();
 		succeedAt("Steal Gold");
 

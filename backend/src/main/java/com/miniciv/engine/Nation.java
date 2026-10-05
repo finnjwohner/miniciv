@@ -1414,6 +1414,7 @@ class Nation {
 	 * types in the reverse of the order first trained, and each Scout from
 	 * among all of them, Idle or on Tasks, as {@link #fitTasksToScouts} picks.
 	 *
+	 * @param random the random source that picks which Scouts are lost
 	 * @return how many of each Scout type were lost
 	 */
 	Map<String, Integer> loseScouts(int count, RandomGenerator random) {
@@ -1540,16 +1541,17 @@ class Nation {
 	}
 
 	/**
-	 * How many Tasks the Nation has set to Watch for Warparties.
+	 * How many Watch for Warparties Tasks the Nation has set; each has
+	 * exactly one Scout.
 	 */
-	int watching() {
+	int watchTasks() {
 		return (int) tasks.stream().filter(task -> task.kind() == Task.Kind.WATCH).count();
 	}
 
 	/**
 	 * How many of the Nation's Scouts are set to Hunt Travelling Spies.
 	 */
-	int hunting() {
+	int huntingScouts() {
 		return tasks.stream().filter(task -> task.kind() == Task.Kind.HUNT).mapToInt(Task::scouts).sum();
 	}
 
@@ -1806,6 +1808,7 @@ class Nation {
 	 * Warparty left with no Units disappears. Scouts that desert are taken
 	 * from among all Scouts as {@link #loseScouts} takes them.
 	 *
+	 * @param random the random source that picks which Scouts desert
 	 * @return the desertions from the Scouts first, then from the Army, then
 	 * from each Warparty in the order sent, then of each Spy in the order sent
 	 */
