@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react'
-import type { NationView, TaskKind } from '../api'
+import type { Message, NationView, TaskKind } from '../api'
 import { Icon, type IconName } from '../ui/Icon'
 import { NationName } from '../ui/NationName'
 import type { ReceivedRoom } from '../useRoom'
@@ -7,6 +7,7 @@ import { ArmyPanel, MapPanel, SpiesPanel } from './AbroadPanels'
 import { ActionTabs, type ActionTab } from './ActionTabs'
 import { DecisionsPanel } from './DecisionsPanel'
 import { formatCountdown } from './format'
+import { MessagesDrawer } from './MessagesDrawer'
 import { BuildPanel, ResourcesPanel, TechTreePanel, TrainPanel } from './NationPanels'
 import { TurnPanel, TurnReportPanel } from './TurnPanel'
 import { useTurnStartCues } from './turnStart'
@@ -32,13 +33,14 @@ function Banner({ tone, icon, children }: { tone: 'accent' | 'bad' | 'muted'; ic
 }
 
 /** The panels an action can be taken in, so a rejection is shown where its action was. */
-type Area = 'decisions' | ActionTab
+type Area = 'decisions' | 'messages' | ActionTab
 
 /**
  * One Turn of the Game as this Player sees it, as a dashboard. On a wide screen it fits without page
  * scroll in three columns: the Map; the Turn timer and End Turn, Resources, this Turn's decisions and the
  * Turn Report; and the action panels in tabs, which a Player out of the Game has none of. Narrower
- * screens stack the panels, the Turn panel first. Each new Turn arrives with its cues.
+ * screens stack the panels, the Turn panel first. Each new Turn arrives with its cues. The Player's
+ * private Messages open in a drawer from the top bar.
  */
 function GameScreen({
   room,
@@ -63,6 +65,8 @@ function GameScreen({
   onAnswerTribute,
   onAnswerEncounter,
   onDone,
+  messages,
+  onSendMessage,
 }: {
   room: ReceivedRoom
   nation: NationView | null
@@ -86,6 +90,8 @@ function GameScreen({
   onAnswerTribute: (warparty: number, accept: boolean) => void
   onAnswerEncounter: (warparty: number, fight: boolean) => void
   onDone: (turn: number) => void
+  messages: Message[]
+  onSendMessage: (to: string, text: string) => void
 }) {
   const now = useNow()
   useTurnStartCues(nation)
@@ -117,6 +123,15 @@ function GameScreen({
 
   return (
     <div className="game">
+      <MessagesDrawer
+        code={room.code}
+        players={room.players}
+        playerId={playerId}
+        removed={game.removed}
+        messages={messages}
+        rejection={rejectionIn('messages')}
+        onSend={from('messages', onSendMessage)}
+      />
       {game.winner && (
         <Banner tone="accent" icon="trophy">
           <strong>

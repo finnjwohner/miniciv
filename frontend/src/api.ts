@@ -34,6 +34,20 @@ export type GameView = {
   waitingFor: Waiting[]
 }
 /**
+ * Private text one Player sent another during the Game, by their Nations' names. Ids rise in the order
+ * Messages were sent in the Room.
+ */
+export type Message = {
+  id: number
+  from: string
+  to: string
+  text: string
+}
+
+/** The longest a Message may be, in characters. */
+export const MAX_MESSAGE_LENGTH = 280
+
+/**
  * Room-wide state; `version` rises with every change. `colours` and `emblems` are what a Player may
  * pick for their Nation; emblems are pixel icon names.
  */

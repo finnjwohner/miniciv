@@ -6,6 +6,7 @@ import type {
   Facts,
   GameView,
   MapNation,
+  Message,
   NationView,
   PlayerView,
   ReportAmount,
@@ -255,6 +256,8 @@ export function renderGame(props: Partial<ComponentProps<typeof GameScreen>> = {
       onAnswerTribute={noop}
       onAnswerEncounter={noop}
       onDone={noop}
+      messages={[]}
+      onSendMessage={noop}
       {...overrides}
     />
   )
@@ -270,6 +273,11 @@ export function renderGame(props: Partial<ComponentProps<typeof GameScreen>> = {
     ...result,
     rerenderGame: (overrides: Partial<ComponentProps<typeof GameScreen>>) => result.rerender(gameScreen(overrides)),
   }
+}
+
+/** A private Message between Rome and Egypt, from Egypt unless told otherwise. */
+export function message(id: number, text: string, overrides: Partial<Message> = {}): Message {
+  return { id, from: 'Egypt', to: 'Rome', text, ...overrides }
 }
 
 /** Another Nation on the Map, still in the Game unless told otherwise, with nothing learned of it. */

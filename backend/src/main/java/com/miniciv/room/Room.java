@@ -72,6 +72,30 @@ public class Room {
 	}
 
 	/**
+	 * Private text one Player sent to another during the Game, by their
+	 * Nations' names. Ids rise in the order Messages were sent in the Room.
+	 */
+	public record Message(int id, String from, String to, String text) {
+	}
+
+	/**
+	 * The Messages a Player has sent and received, in the order they were sent.
+	 */
+	public record MessageHistory(List<Message> messages) {
+	}
+
+	/**
+	 * Whether a Message was sent, and if so, which Players it goes to, by id.
+	 */
+	record Sending(ActionResult result, Message message, List<String> playerIds) {
+
+		static Sending rejected(String reason) {
+			return new Sending(ActionResult.rejected(reason), null, List.of());
+		}
+
+	}
+
+	/**
 	 * What a joining Player's browser keeps: its public id and secret token.
 	 */
 	public record Joined(String playerId, String token) {
@@ -92,6 +116,8 @@ public class Room {
 			"tree", "fish", "feather", "key");
 
 	private static final int MAX_RULER_LENGTH = 20;
+
+	private static final int MAX_MESSAGE_LENGTH = 280;
 
 	private static final int MIN_PLAYERS = 2;
 
@@ -127,6 +153,12 @@ public class Room {
 	private final Supplier<RandomGenerator> luck;
 
 	private Game game;
+
+	/**
+	 * Every Message sent in the Game, in the order sent; never part of the
+	 * Game itself.
+	 */
+	private final List<Message> messages = new ArrayList<>();
 
 	private Instant turnEndsAt;
 
@@ -402,6 +434,51 @@ public class Room {
 					+ (waitingFor.size() == 1 ? " reconnects." : " reconnect."));
 		}
 		return game.act(player.nationName(), action);
+	}
+
+	/**
+	 * Sends a private Message from a Player to another Player's Nation, at any
+	 * time once the Game has started, even while it is paused or once it is
+	 * won. Knocked-out Players can still send and receive Messages; Removed
+	 * Players can do neither.
+	 */
+	synchronized Sending message(String token, String to, String text) {
+		Player sender = player(token);
+		String stripped = text == null ? "" : text.strip();
+		if (game == null) {
+			return Sending.rejected("Messages can only be sent once the Game has started.");
+		}
+		if (game.removed().contains(sender.nationName())) {
+			return Sending.rejected("Your Nation was removed from the Game, so you can no longer send Messages.");
+		}
+		if (sender.nationName().equals(to)) {
+			return Sending.rejected("Send your Message to another Nation.");
+		}
+		Optional<Player> recipient = playerWhere(p -> p.nationName().equals(to));
+		if (recipient.isEmpty()) {
+			return Sending.rejected("There is no Nation " + to + " in this Game.");
+		}
+		if (game.removed().contains(to)) {
+			return Sending.rejected(to + " was removed from the Game, so it can no longer receive Messages.");
+		}
+		if (stripped.isEmpty()) {
+			return Sending.rejected("Write something to send.");
+		}
+		if (stripped.length() > MAX_MESSAGE_LENGTH) {
+			return Sending.rejected("A Message can be at most " + MAX_MESSAGE_LENGTH + " characters.");
+		}
+		Message message = new Message(messages.size() + 1, sender.nationName(), to, stripped);
+		messages.add(message);
+		return new Sending(ActionResult.ACCEPTED, message, List.of(sender.id(), recipient.get().id()));
+	}
+
+	/**
+	 * The Messages the Player with the given id has sent and received.
+	 */
+	synchronized MessageHistory messagesOf(String playerId) {
+		String nation = playerWithId(playerId).nationName();
+		return new MessageHistory(
+				messages.stream().filter(m -> m.from().equals(nation) || m.to().equals(nation)).toList());
 	}
 
 	/**

@@ -1,17 +1,26 @@
 import { Client } from '@stomp/stompjs'
 import { useEffect, useRef, useState } from 'react'
-import type { NationView, RoomView, TaskKind } from './api'
+import type { Message, NationView, RoomView, TaskKind } from './api'
 
 /** A Room view and when this browser received it, to count down the Turn from. */
 export type ReceivedRoom = RoomView & { receivedAt: number }
 
+/** Adds Messages to those already received, each once, in the order they were sent. */
+function withMessages(current: Message[], received: Message[]): Message[] {
+  const byId = new Map(current.map((m) => [m.id, m]))
+  received.forEach((m) => byId.set(m.id, m))
+  return [...byId.values()].sort((a, b) => a.id - b.id)
+}
+
 /**
  * Follows a Room live over STOMP as the Player holding the token: the Room's public state,
- * and once the Game starts, this Player's own Nation, which only they receive.
+ * and once the Game starts, this Player's own Nation and the Messages they sent and received,
+ * which only they receive.
  */
 export function useRoom(code: string, token: string) {
   const [room, setRoom] = useState<ReceivedRoom | null>(null)
   const [nation, setNation] = useState<NationView | null>(null)
+  const [messages, setMessages] = useState<Message[]>([])
   const [rejection, setRejection] = useState<string | null>(null)
   const client = useRef<Client | null>(null)
 
@@ -37,6 +46,11 @@ export function useRoom(code: string, token: string) {
       }
       stomp.subscribe('/user/queue/game', updateNation)
       stomp.subscribe(`/app/rooms/${code}/nation`, updateNation)
+      // The history and new Messages can arrive in either order, and the history again on reconnecting.
+      stomp.subscribe('/user/queue/messages', (message) => setMessages((current) => withMessages(current, [JSON.parse(message.body)])))
+      stomp.subscribe(`/app/rooms/${code}/messages`, (message) =>
+        setMessages((current) => withMessages(current, JSON.parse(message.body).messages)),
+      )
       stomp.subscribe('/user/queue/rejections', (message) => setRejection(JSON.parse(message.body).reason))
     }
     stomp.activate()
@@ -230,6 +244,15 @@ export function useRoom(code: string, token: string) {
     })
   }
 
+  /** Sends a private Message to another Nation's Player; a rejection's reason arrives in `rejection`. */
+  const sendMessage = (to: string, text: string) => {
+    setRejection(null)
+    client.current?.publish({
+      destination: `/app/rooms/${code}/messages`,
+      body: JSON.stringify({ token, to, text }),
+    })
+  }
+
   /** Marks the Player done with the given Turn; ignored if that Turn has already ended. */
   const markDone = (turn: number) =>
     client.current?.publish({
@@ -240,6 +263,7 @@ export function useRoom(code: string, token: string) {
   return {
     room,
     nation,
+    messages,
     rejection,
     setReady,
     setIdentity,
@@ -260,6 +284,7 @@ export function useRoom(code: string, token: string) {
     offerTribute,
     answerTribute,
     answerEncounter,
+    sendMessage,
     markDone,
   }
 }
