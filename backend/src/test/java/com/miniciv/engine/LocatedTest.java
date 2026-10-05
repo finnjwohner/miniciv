@@ -236,23 +236,6 @@ class LocatedTest {
 	}
 
 	@Test
-	void scoutsLostComeFromIdleScoutsFirstThenFromTheLatestTaskWhichEndsIfLeftWithNone() {
-		UnitType costly = new UnitType("Scout", 0, 0, 1, 13, 0, List.of(), true);
-		game = new Game(new Ruleset(List.of(costly), List.of(), List.of()), Identities.of("Rome", "Carthage", "Egypt"), luck);
-		armyOf("Rome", "Scout", 4);
-		// The 8 Gold left after the first upkeep, and 12 more earned, pay for
-		// one Scout's upkeep; the other three desert.
-		locate("Rome", "Carthage", 1);
-		locate("Rome", "Egypt", 2);
-
-		game.endTurn();
-
-		assertThat(game.viewOf("Rome").scouts()).isEqualTo(1);
-		assertThat(game.viewOf("Rome").idleScouts()).isZero();
-		assertThat(game.viewOf("Rome").tasks()).containsExactly(new Task(1, Task.Kind.LOCATE, "Carthage", 1));
-	}
-
-	@Test
 	void theDefenderLocatesEveryAttackerInABattle() {
 		game = Locating.in(RULESET, Identities.of("Rome", "Carthage", "Egypt"), GameTest.EVEN_LUCK)
 			.locate("Rome", "Carthage")

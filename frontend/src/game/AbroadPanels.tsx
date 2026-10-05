@@ -262,17 +262,37 @@ function NoneLocated() {
   )
 }
 
-/** Such as "Locating Carthage". */
+/** Such as "Locating Carthage" or "Watching for Warparties". */
 function describeTask(task: Task) {
   switch (task.kind) {
     case 'LOCATE':
       return `Locating ${task.target}`
+    case 'WATCH':
+      return 'Watching for Warparties'
+    case 'HUNT':
+      return 'Hunting Travelling Spies'
   }
 }
 
+/** What each kind of Task is called when choosing one, and what it does. */
+const TASK_KINDS: { kind: TaskKind; name: string; about: string }[] = [
+  { kind: 'LOCATE', name: 'Locate a Nation', about: 'Each Scout gives a 15% chance each Turn of Locating the Nation.' },
+  {
+    kind: 'WATCH',
+    name: 'Watch for Warparties',
+    about: 'Takes 1 Scout. Each Watch Task gives a chance each Turn of discovering each Warparty abroad.',
+  },
+  {
+    kind: 'HUNT',
+    name: 'Hunt Travelling Spies',
+    about: "Each Scout gives a chance each Turn of catching other Nations' Spies still travelling.",
+  },
+]
+
 /**
  * The Nation's Idle Scouts, its Tasks each with a button to cancel it, and a form to set Idle Scouts to a
- * new Task: Locate offers only the Nations still in the Game neither Located nor being Located.
+ * new Task: Locate, offered only while some Nation still in the Game is neither Located nor being Located,
+ * offers only those; Watch for Warparties takes exactly 1 Scout; Hunt Travelling Spies any number.
  */
 function ScoutTasks({
   nation,
@@ -280,14 +300,18 @@ function ScoutTasks({
   onCancelTask,
 }: {
   nation: NationView
-  onSetTask: (kind: TaskKind, target: string, scouts: number) => void
+  onSetTask: (kind: TaskKind, target: string | null, scouts: number) => void
   onCancelTask: (task: number) => void
 }) {
   const targets = locatableNations(nation)
+  const kinds = TASK_KINDS.filter((k) => k.kind !== 'LOCATE' || targets.length > 0)
+  const [chosenKind, setKind] = useState<TaskKind>(kinds[0].kind)
+  const kind = kinds.find((k) => k.kind === chosenKind) ?? kinds[0]
   const [chosenTarget, setTarget] = useState(targets[0] ?? '')
   const target = currentTarget(targets, chosenTarget)
   const [chosenCount, setCount] = useState(1)
-  const count = Math.max(1, Math.min(chosenCount, nation.idleScouts))
+  const most = kind.kind === 'WATCH' ? 1 : nation.idleScouts
+  const count = Math.max(1, Math.min(chosenCount, most))
   if (nation.scouts === 0) return <p className="muted">No Scouts yet. Train some to roam the wilds.</p>
   return (
     <>
@@ -305,28 +329,42 @@ function ScoutTasks({
           </li>
         ))}
       </ul>
-      {nation.idleScouts > 0 && targets.length > 0 && (
+      {nation.idleScouts > 0 && (
         <div className="stack stack--tight">
           <div className="field__row field__row--end">
-            <TargetSelect targets={targets} value={target} label="Locate" onChange={setTarget} />
-            <CountSlider
-              value={count}
-              min={1}
-              max={nation.idleScouts}
-              label="How many Scouts to set to the Task"
-              onChange={setCount}
-            />
-            <button onClick={() => onSetTask('LOCATE', target, count)} disabled={!target}>
+            <label className="field">
+              <span className="field__label">Task</span>
+              <select value={kind.kind} onChange={(e) => setKind(e.target.value as TaskKind)}>
+                {kinds.map((k) => (
+                  <option key={k.kind} value={k.kind}>
+                    {k.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {kind.kind === 'LOCATE' && (
+              <TargetSelect targets={targets} value={target} label="Locate" onChange={setTarget} />
+            )}
+            {most > 1 && (
+              <CountSlider
+                value={count}
+                min={1}
+                max={most}
+                label="How many Scouts to set to the Task"
+                onChange={setCount}
+              />
+            )}
+            <button
+              onClick={() => onSetTask(kind.kind, kind.kind === 'LOCATE' ? target : null, count)}
+              disabled={kind.kind === 'LOCATE' && !target}
+            >
               Set Task
             </button>
           </div>
-          <p className="muted">Each Scout gives a 15% chance each Turn of Locating the Nation.</p>
+          <p className="muted">{kind.about}</p>
         </div>
       )}
-      <p className="muted">
-        Your Scouts give your Nation a chance each Turn to discover Warparties abroad and catch other Nations'
-        Spies still travelling, better the more Scouts you have.
-      </p>
+      <p className="muted">Idle Scouts do nothing; set them to Tasks to find, watch and hunt.</p>
     </>
   )
 }
@@ -349,7 +387,7 @@ export function SpiesPanel({
   rejection: string | null
   onSend: (target: string) => void
   onSetMission: (spy: number, mission: string) => void
-  onSetTask: (kind: TaskKind, target: string, scouts: number) => void
+  onSetTask: (kind: TaskKind, target: string | null, scouts: number) => void
   onCancelTask: (task: number) => void
 }) {
   const targets = locatedNations(nation)

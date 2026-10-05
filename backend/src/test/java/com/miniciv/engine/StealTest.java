@@ -252,6 +252,7 @@ class StealTest {
 	@Test
 	void aThiefCaughtOnTheWayHomeLosesItsHaul() {
 		armyOf("Carthage", "Scout", 1);
+		assertThat(game.act("Carthage", new Action.SetTask("HUNT", null, 1))).isEqualTo(ActionResult.ACCEPTED);
 		spyArrivesAtCarthage();
 		succeedAt("Steal Gold");
 		luck.then(0.5, 0.99);

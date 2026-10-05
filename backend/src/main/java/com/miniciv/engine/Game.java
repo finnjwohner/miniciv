@@ -82,10 +82,15 @@ public class Game {
 	private static final double CONQUEST_SHARE = 0.75;
 
 	/**
-	 * The chance each Scout gives its Nation, each Turn, of
+	 * The chance each Watch Task gives its Nation, each Turn, of
 	 * discovering each other Nation's Warparty abroad.
 	 */
-	private static final double DISCOVERY_CHANCE_PER_SCOUT = 0.2;
+	private static final double DISCOVERY_CHANCE_PER_WATCH = 0.2;
+
+	/**
+	 * Luck for forecasting a Nation's Gold, where nothing drawn changes it.
+	 */
+	private static final RandomGenerator FORECAST_LUCK = () -> 0;
 
 	/**
 	 * The chance each Scout on a Locate Task gives it, each Turn, of Locating
@@ -128,8 +133,8 @@ public class Game {
 	private static final double MIN_HAUL_SHARE = 0.2;
 
 	/**
-	 * The chance each Scout gives its Nation, each Turn, of catching
-	 * each other Nation's Spy still travelling.
+	 * The chance each Scout Hunting Travelling Spies gives its Nation, each
+	 * Turn, of catching each other Nation's Spy still travelling.
 	 */
 	private static final double CATCH_CHANCE_PER_SCOUT = 0.1;
 
@@ -421,7 +426,7 @@ public class Game {
 			TurnReport.Draft report = reports.get(nation.name());
 			int goldBefore = nation.gold();
 			int researchBefore = nation.research();
-			IncomeAndUpkeep earnings = earnAndPayUpkeep(nation);
+			IncomeAndUpkeep earnings = earnAndPayUpkeep(nation, random);
 			gains.put(nation.name(),
 					new Nation.Change(nation.gold() - goldBefore, 0, nation.research() - researchBefore));
 			List<Line> grown = new ArrayList<>();
@@ -508,8 +513,11 @@ public class Game {
 	/**
 	 * Gives a Nation its income for the Turn, applies its Lasting Event, lets
 	 * the Units it cannot pay for desert, then pays the rest's upkeep.
+	 *
+	 * @param luck where Scouts that desert are picked from among the Nation's
+	 *        Scouts draws from (see {@link Nation#desertUntilUpkeepIsAffordable})
 	 */
-	private IncomeAndUpkeep earnAndPayUpkeep(Nation nation) {
+	private IncomeAndUpkeep earnAndPayUpkeep(Nation nation, RandomGenerator luck) {
 		Optional<LastingEvent> lasting = nation.passLastingTurn(turn);
 		boolean grows = lasting.map(applying -> !applying.noGrowth()).orElse(true);
 		int populationGrowth = grows ? POPULATION_PER_TURN : 0;
@@ -522,7 +530,7 @@ public class Game {
 		Nation.Change lastingChange = lasting
 			.map(applying -> nation.change(applying.gold(), applying.population(), applying.research()))
 			.orElse(new Nation.Change(0, 0, 0));
-		List<Nation.Desertion> desertions = nation.desertUntilUpkeepIsAffordable(ruleset);
+		List<Nation.Desertion> desertions = nation.desertUntilUpkeepIsAffordable(ruleset, luck);
 		return new IncomeAndUpkeep(populationGold, populationGrowth, buildingGold, buildingPopulation, buildingResearch,
 				lasting.orElse(null), lastingChange, desertions, nation.payUpkeep(ruleset));
 	}
@@ -533,12 +541,13 @@ public class Game {
 	 * Dilemmas, Battles, Plunder, Tribute and Events would change, though not
 	 * what its active Lasting Event will. Warparties and Spies coming home
 	 * change no Gold but Plunder, and leave its Units' upkeep the same, so
-	 * they are left out too.
+	 * they are left out too. It never draws from the seeded random source:
+	 * which of its Scouts would desert changes no Gold.
 	 */
 	private GoldForecast goldForecast(Nation nation) {
 		Nation next = nation.copy();
 		next.progressWork(turn + 1, ruleset);
-		IncomeAndUpkeep earnings = earnAndPayUpkeep(next);
+		IncomeAndUpkeep earnings = earnAndPayUpkeep(next, FORECAST_LUCK);
 		return new GoldForecast(earnings.populationGold() + earnings.buildingGold(), earnings.upkeep(),
 				earnings.lastingChange().gold());
 	}
@@ -1012,21 +1021,21 @@ public class Game {
 	}
 
 	/**
-	 * Has each Nation still in the Game in order, if it has Scouts,
-	 * watch for every other Nation's Warparty abroad, taking the Nations in
-	 * order and each one's Warparties in the order sent, drawing once from the
-	 * seeded random source for each. Each Scout gives an equal chance, of its
-	 * own, of discovering a Warparty. One discovered is announced in the Turn
+	 * Has each Nation still in the Game in order, if it has set Scouts to
+	 * Watch for Warparties, watch for every other Nation's Warparty abroad,
+	 * taking the Nations in order and each one's Warparties in the order sent,
+	 * drawing once from the seeded random source for each. Each Watch Task
+	 * gives an equal chance, of its own, of discovering a Warparty. One discovered is announced in the Turn
 	 * Report; a Warparty that has arrived at the Nation watching was
 	 * announced already, and is not looked for.
 	 */
 	private void scout(Map<String, TurnReport.Draft> reports) {
 		for (Nation scouting : remaining()) {
-			int scouts = scouting.scouts();
-			if (scouts == 0) {
+			int watching = scouting.watching();
+			if (watching == 0) {
 				continue;
 			}
-			double chance = 1 - Math.pow(1 - DISCOVERY_CHANCE_PER_SCOUT, scouts);
+			double chance = 1 - Math.pow(1 - DISCOVERY_CHANCE_PER_WATCH, watching);
 			for (Nation other : remaining()) {
 				if (other == scouting) {
 					continue;
@@ -1462,7 +1471,8 @@ public class Game {
 	 * Has each Nation still in the Game in order try to catch other Nations'
 	 * Spies: with its Spies at home, those in place at it, each Spy on a
 	 * hostile Mission {@value #HOSTILE_CATCH_MULTIPLIER} times as likely to be
-	 * caught as any other; then with its Scouts, and then with each of its
+	 * caught as any other; then with its Scouts Hunting Travelling Spies, and
+	 * then with each of its
 	 * travelling Warparties in the order sent, those still travelling
 	 * anywhere. No one tries to catch an Escaping Spy. Each try takes the other
 	 * Nations in order and each one's Spies in the order sent, drawing once
@@ -1489,9 +1499,9 @@ public class Game {
 					}
 				}
 			}
-			int scouts = catching.scouts();
-			if (scouts > 0) {
-				double chance = 1 - Math.pow(1 - CATCH_CHANCE_PER_SCOUT, scouts);
+			int hunting = catching.hunting();
+			if (hunting > 0) {
+				double chance = 1 - Math.pow(1 - CATCH_CHANCE_PER_SCOUT, hunting);
 				for (Nation other : others(catching)) {
 					for (Spy spy : other.spiesTravelling()) {
 						if (random.nextDouble() < chance) {
@@ -1695,7 +1705,8 @@ public class Game {
 
 	/**
 	 * Applies an Event's or a Dilemma outcome's effects to a Nation, as luck
-	 * varies them. Each non-defensive Building it Damages, then work it stalls
+	 * varies them. Each non-defensive Building it Damages, then each Scout it
+	 * loses (see {@link Nation#loseScouts}), then work it stalls
 	 * or speeds up, then a Spy it catches are each picked by one draw from the
 	 * seeded random source, after the draws that vary its effects, each
 	 * Building from those still undamaged (see
@@ -1730,7 +1741,7 @@ public class Game {
 			changes.addAll(unitsChanged(nation.changeArmy(effects.units()), "your Army"));
 		}
 		if (effects.scoutsLost() > 0) {
-			Map<String, Integer> scoutsLost = nation.loseScouts(effects.scoutsLost());
+			Map<String, Integer> scoutsLost = nation.loseScouts(effects.scoutsLost(), random);
 			if (!scoutsLost.isEmpty()) {
 				int count = scoutsLost.values().stream().mapToInt(Integer::intValue).sum();
 				changes.add(Line.of(scoutsCounted(scoutsLost) + (count == 1 ? " was" : " were") + " lost in the wilds"));
@@ -2010,7 +2021,8 @@ public class Game {
 	/**
 	 * Sets some of a Nation's Idle Scouts to a Task. A Locate Task must be
 	 * about another Nation still in the Game that the Nation has neither
-	 * Located nor set another Task to Locate.
+	 * Located nor set another Task to Locate. A Watch Task takes exactly one
+	 * Scout. Watch and Hunt Tasks are about no one Nation.
 	 */
 	private ActionResult setTask(Nation nation, Action.SetTask set) {
 		Optional<Task.Kind> kind = Arrays.stream(Task.Kind.values())
@@ -2018,6 +2030,12 @@ public class Game {
 			.findFirst();
 		if (kind.isEmpty()) {
 			return ActionResult.rejected("There is no Task called " + set.kind() + ".");
+		}
+		if (kind.get() == Task.Kind.WATCH && set.scouts() != 1) {
+			return ActionResult.rejected("Watching for Warparties takes exactly 1 Scout.");
+		}
+		if (kind.get() != Task.Kind.LOCATE) {
+			return nation.setTask(kind.get(), null, set.scouts());
 		}
 		String target = set.target();
 		if (target.equals(nation.name())) {

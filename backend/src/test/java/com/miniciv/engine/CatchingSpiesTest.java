@@ -209,6 +209,7 @@ class CatchingSpiesTest {
 	void scoutsCatchAnyOtherNationsTravellingSpy() {
 		play(CAUGHT_AND_DIES, "Rome", "Carthage", "Egypt");
 		armyOf("Egypt", "Scout", 1);
+		assertThat(game.act("Egypt", new Action.SetTask("HUNT", null, 1))).isEqualTo(ActionResult.ACCEPTED);
 		armyOf("Rome", "Spy", 1);
 		sendSpy("Rome", "Carthage");
 
@@ -222,13 +223,16 @@ class CatchingSpiesTest {
 
 	@Test
 	void scoutsCatchASpyHeadingHome() {
-		play(CAUGHT_AND_SILENT, "Rome", "Carthage", "Egypt");
+		Rigged luck = new Rigged();
+		play(luck, "Rome", "Carthage", "Egypt");
+		armyOf("Egypt", "Scout", 1);
+		assertThat(game.act("Egypt", new Action.SetTask("HUNT", null, 1))).isEqualTo(ActionResult.ACCEPTED);
 		armyOf("Rome", "Spy", 1);
 		sendSpy("Rome", "Carthage");
 		game.endTurn();
 		game.endTurn();
 		game.remove("Carthage");
-		game.act("Egypt", new Action.TrainUnits("Scout", 1));
+		luck.then(0, 0.5);
 
 		game.endTurn();
 
@@ -242,9 +246,11 @@ class CatchingSpiesTest {
 		Rigged luck = new Rigged();
 		play(luck, "Rome", "Carthage");
 		armyOf("Rome", "Scout", 1);
+		assertThat(game.act("Rome", new Action.SetTask("HUNT", null, 1))).isEqualTo(ActionResult.ACCEPTED);
 		armyOf("Rome", "Spy", 1);
 		spyArrivesAtCarthage();
 		armyOf("Carthage", "Scout", 1);
+		assertThat(game.act("Carthage", new Action.SetTask("HUNT", null, 1))).isEqualTo(ActionResult.ACCEPTED);
 		luck.always(0);
 
 		game.endTurn();
@@ -265,9 +271,8 @@ class CatchingSpiesTest {
 		armyOf("Rome", "Spy", 1);
 		game.act("Carthage", new Action.SendWarparty("Egypt", Map.of("Warrior", 1)));
 		sendSpy("Rome", "Egypt");
-		// Neither Rome's Pathfinders discover the Warparty nor Carthage's
-		// catch the Spy; the Warparty catches it, and it confesses.
-		luck.then(0.99, 0.99, 0, 0.9);
+		// The Warparty catches the Spy, and it confesses.
+		luck.then(0, 0.9);
 
 		game.endTurn();
 
@@ -285,6 +290,7 @@ class CatchingSpiesTest {
 		armyOf("Rome", "Spy", 2);
 		sendSpy("Rome", "Egypt");
 		armyOf("Egypt", "Scout", 1);
+		assertThat(game.act("Egypt", new Action.SetTask("HUNT", null, 1))).isEqualTo(ActionResult.ACCEPTED);
 		game.endTurn();
 		game.endTurn();
 		assertThat(game.viewOf("Rome").spies()).first().matches(Spy::inPlace);

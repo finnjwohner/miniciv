@@ -138,7 +138,7 @@ export function useRoom(code: string, token: string) {
   }
 
   /** Sets some of the Nation's Idle Scouts to a Task; a rejection's reason arrives in `rejection`. */
-  const setTask = (kind: TaskKind, target: string, scouts: number) => {
+  const setTask = (kind: TaskKind, target: string | null, scouts: number) => {
     setRejection(null)
     client.current?.publish({
       destination: `/app/rooms/${code}/tasks`,
