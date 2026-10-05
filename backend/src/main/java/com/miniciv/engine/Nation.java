@@ -131,6 +131,17 @@ class Nation {
 	private final List<FacedDilemma> dilemmas = new ArrayList<>();
 
 	/**
+	 * The Hauls seized from caught Spies to keep or send back as this Turn
+	 * ends, in the order seized.
+	 */
+	private final List<HaulDecision> hauls = new ArrayList<>();
+
+	/**
+	 * The number the next Haul decision will be told apart by.
+	 */
+	private int nextHaulId = 1;
+
+	/**
 	 * The names of every Dilemma the Nation has faced this Game.
 	 */
 	private final Set<String> everFaced = new LinkedHashSet<>();
@@ -231,7 +242,7 @@ class Nation {
 				Collections.unmodifiableMap(new LinkedHashMap<>(army)), scouts(), idleScouts(), tasks, List.copyOf(located), training, warparties, spies, ruleset.missions(), TravelBracket.ALL, Spy.TRAVEL_TURNS, upkeep(ruleset),
 				goldForecast, lastingEvent,
 				arrivals, tributes, encounters, techTree(ruleset), turnReport, awaitingChoice(winner),
-				conqueredBy, winner);
+				haulsAwaiting(winner), conqueredBy, winner);
 	}
 
 	/**
@@ -252,7 +263,8 @@ class Nation {
 
 	/**
 	 * Takes the Nation out of the Game without it being conquered; its
-	 * Warparties, Spies abroad, Scouts and their Tasks are gone.
+	 * Warparties, Spies abroad, Scouts and their Tasks, and the Hauls it was
+	 * to decide on are gone.
 	 */
 	void remove() {
 		removed = true;
@@ -260,6 +272,7 @@ class Nation {
 		spies.clear();
 		scouts.clear();
 		tasks.clear();
+		hauls.clear();
 	}
 
 	/**
@@ -306,7 +319,7 @@ class Nation {
 
 	/**
 	 * Takes the Nation out of the Game: its Warparties, Spies abroad, Scouts
-	 * and their Tasks disappear, and its conquerors seize a share of its Gold and Research,
+	 * and their Tasks, and the Hauls it was to decide on disappear, and its conquerors seize a share of its Gold and Research,
 	 * rounded down.
 	 *
 	 * @param conquerors the Nation or Nations that conquered it, such as "Rome
@@ -319,6 +332,7 @@ class Nation {
 		spies.clear();
 		scouts.clear();
 		tasks.clear();
+		hauls.clear();
 		return plundered((int) Math.floor(gold * share), (int) Math.floor(research * share));
 	}
 
@@ -642,6 +656,14 @@ class Nation {
 	}
 
 	/**
+	 * The Haul decisions the Player sees: none once the Nation is out of the
+	 * Game or the Game is won.
+	 */
+	private List<HaulDecision> haulsAwaiting(String winner) {
+		return inGame() && winner == null ? List.copyOf(hauls) : List.of();
+	}
+
+	/**
 	 * The Dilemma of the given name the Nation faces this Turn, if any.
 	 */
 	Optional<FacedDilemma> dilemma(String name) {
@@ -665,6 +687,44 @@ class Nation {
 	List<FacedDilemma> settleDilemmas() {
 		List<FacedDilemma> settled = List.copyOf(dilemmas);
 		dilemmas.clear();
+		return settled;
+	}
+
+	/**
+	 * Has the Nation decide, by the end of the Turn, whether to keep a Haul it
+	 * seized from a caught Spy or send it back.
+	 */
+	void faceHaul(String stolenFrom, Haul haul) {
+		hauls.add(new HaulDecision(nextHaulId++, stolenFrom, haul, HaulDecision.Choice.NONE));
+		version++;
+	}
+
+	/**
+	 * Records the Player's choice to keep a Haul or send it back, to apply as
+	 * the Turn ends.
+	 */
+	ActionResult answerHaul(int id, boolean keep) {
+		for (int at = 0; at < hauls.size(); at++) {
+			if (hauls.get(at).id() == id) {
+				hauls.set(at, hauls.get(at).chosen(keep ? HaulDecision.Choice.KEEP : HaulDecision.Choice.RETURN));
+				version++;
+				return ActionResult.ACCEPTED;
+			}
+		}
+		return ActionResult.rejected("You have no such Haul to decide on.");
+	}
+
+	/**
+	 * Stops deciding on every Haul, as the Turn ends.
+	 *
+	 * @return the Haul decisions, in the order seized
+	 */
+	List<HaulDecision> settleHauls() {
+		List<HaulDecision> settled = List.copyOf(hauls);
+		if (!hauls.isEmpty()) {
+			hauls.clear();
+			version++;
+		}
 		return settled;
 	}
 

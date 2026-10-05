@@ -136,6 +136,16 @@ public sealed interface Action {
 	}
 
 	/**
+	 * Chooses whether to keep a Haul seized from a caught Spy or send it back
+	 * to the Nation it was stolen from, which applies as the Turn ends.
+	 *
+	 * @param haul the Haul decision's id
+	 * @param keep whether to keep it
+	 */
+	record AnswerHaul(int haul, boolean keep) implements Action {
+	}
+
+	/**
 	 * Pays a Technology's Research now and unlocks it, once its prerequisites
 	 * are unlocked.
 	 */

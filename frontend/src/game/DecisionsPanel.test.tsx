@@ -100,4 +100,52 @@ describe('DecisionsPanel', () => {
 
     expect(onAnswerEncounter).toHaveBeenCalledWith(1, false)
   })
+
+  it('shows a Haul seized from a caught Spy, keeping it unless the Player sends it back', () => {
+    const onAnswerHaul = vi.fn()
+    renderGame({
+      nation: nationView({
+        dilemmas: [],
+        hauls: [{ id: 2, stolenFrom: 'Egypt', haul: { resource: 'GOLD', amount: 12 }, choice: 'NONE' }],
+      }),
+      onAnswerHaul,
+    })
+
+    const decisions = screen.getByRole('region', { name: 'Decisions' })
+    expect(within(decisions).getByText(/carried 12 Gold stolen from/)).toHaveTextContent(
+      'The Spy you caught carried 12 Gold stolen from Egypt.',
+    )
+    expect(within(decisions).getByText(/Unanswered as the Turn ends, you keep it/)).toBeInTheDocument()
+    expect(within(decisions).getByText('1 open')).toBeInTheDocument()
+    fireEvent.click(within(decisions).getByRole('button', { name: 'Send it back' }))
+    expect(onAnswerHaul).toHaveBeenCalledWith(2, false)
+    fireEvent.click(within(decisions).getByRole('button', { name: 'Keep it' }))
+    expect(onAnswerHaul).toHaveBeenCalledWith(2, true)
+  })
+
+  it('highlights the Haul choice made, which can still be changed', () => {
+    renderGame({
+      nation: nationView({
+        dilemmas: [],
+        hauls: [{ id: 2, stolenFrom: 'Egypt', haul: { resource: 'RESEARCH', amount: 5 }, choice: 'RETURN' }],
+      }),
+    })
+
+    const decisions = screen.getByRole('region', { name: 'Decisions' })
+    expect(within(decisions).getByRole('button', { name: 'Send it back' })).toHaveClass('button--chosen')
+    expect(within(decisions).getByRole('button', { name: 'Keep it' })).not.toHaveClass('button--chosen')
+    expect(within(decisions).getByText(/You chose to send it back/)).toBeInTheDocument()
+    expect(within(decisions).queryByText(/open/)).not.toBeInTheDocument()
+  })
+
+  it('shows a Haul decision alongside a Dilemma', () => {
+    renderGame({
+      nation: nationView({
+        hauls: [{ id: 1, stolenFrom: 'Egypt', haul: { resource: 'GOLD', amount: 12 }, choice: 'NONE' }],
+      }),
+    })
+
+    expect(choiceButtons()).toHaveLength(2)
+    expect(screen.getByRole('button', { name: 'Keep it' })).toBeInTheDocument()
+  })
 })

@@ -57,6 +57,7 @@ function GameScreen({
   onSetTask,
   onCancelTask,
   onAnswerDilemma,
+  onAnswerHaul,
   onUnlockTechnology,
   onOfferTribute,
   onAnswerTribute,
@@ -79,6 +80,7 @@ function GameScreen({
   onSetTask: (kind: TaskKind, target: string | null, scouts: number) => void
   onCancelTask: (task: number) => void
   onAnswerDilemma: (dilemma: string, choice: string) => void
+  onAnswerHaul: (haul: number, keep: boolean) => void
   onUnlockTechnology: (technology: string) => void
   onOfferTribute: (nation: string, warparty: number, gold: number, population: number) => void
   onAnswerTribute: (warparty: number, accept: boolean) => void
@@ -179,6 +181,7 @@ function GameScreen({
                 nation={nation}
                 rejection={rejectionIn('decisions')}
                 onAnswerDilemma={from('decisions', onAnswerDilemma)}
+                onAnswerHaul={from('decisions', onAnswerHaul)}
                 onAnswerEncounter={from('decisions', onAnswerEncounter)}
                 onOfferTribute={from('decisions', onOfferTribute)}
                 onAnswerTribute={from('decisions', onAnswerTribute)}

@@ -306,6 +306,7 @@ class TurnsTest {
 		view.put("techTree", List.of());
 		view.put("turnReport", turnReport);
 		view.put("dilemmas", List.of());
+		view.put("hauls", List.of());
 		view.put("conqueredBy", null);
 		view.put("winner", null);
 		return view;
