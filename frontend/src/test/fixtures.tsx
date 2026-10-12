@@ -290,9 +290,9 @@ export function onMap(name: string, standing: MapNation['standing'] = 'IN_GAME')
   return { name, ruler: 'Ruler', colour: '#7bc96f', emblem: 'star', standing, facts: noFacts() }
 }
 
-/** A Barbarian Camp the Player has heard of, standing and not yet Located unless told otherwise. */
+/** A Barbarian Camp the Player has heard of, not yet Located unless told otherwise. */
 export function camp(name: string, overrides: Partial<MapCamp> = {}): MapCamp {
-  return { name, ruler: 'Grak', colour: '#8b1e1e', emblem: 'skull', destroyed: false, located: null, ...overrides }
+  return { name, ruler: 'Grak', colour: '#8b1e1e', emblem: 'skull', located: null, ...overrides }
 }
 
 /** Rome's Warparty of two Warriors travelling to Egypt, a Turn from arriving. */

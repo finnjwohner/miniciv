@@ -3069,7 +3069,8 @@ public class Game {
 		List<MapCamp> heardOf = own.campsHeardOf()
 			.stream()
 			.map(name -> camp(name).orElseThrow())
-			.map(camp -> new MapCamp(camp.identity(), camp.destroyed(), own.campLocated(camp.name())))
+			.filter(camp -> !camp.destroyed())
+			.map(camp -> new MapCamp(camp.identity(), own.campLocated(camp.name())))
 			.toList();
 		return own.view(turn, map, heardOf, arrivals, involved, met, ruleset, goldForecast(own), winner);
 	}

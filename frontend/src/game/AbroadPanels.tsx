@@ -566,7 +566,6 @@ function CampCards({ camps }: { camps: MapCamp[] }) {
               {camp.name}
               <span className="nation-card__ruler">Ruled by {camp.ruler}</span>
             </span>
-            {camp.destroyed && <span className="tag tag--muted">destroyed</span>}
             {camp.located && <span className="tag">located</span>}
           </h4>
           <CampFactList located={camp.located} />

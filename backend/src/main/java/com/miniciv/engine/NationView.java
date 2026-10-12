@@ -15,8 +15,8 @@ import java.util.Map;
  * @param map every Nation that took part in the Game, in the order they
  *        joined, by name and whether it is still in the Game, was conquered
  *        or was removed, with the facts this Nation's Spies reported of it
- * @param camps the Barbarian Camps this Nation has heard of, in the order
- *        heard of, with what Locating each showed
+ * @param camps the Barbarian Camps still standing that this Nation has heard
+ *        of, in the order heard of, with what Locating each showed
  * @param availableBuildings the Buildings the Nation may start
  * @param buildings how many of each Building the Nation has completed
  * @param construction the Buildings under construction, in the order started

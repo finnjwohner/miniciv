@@ -146,7 +146,7 @@ class BarbarianCampsTest {
 		romeLocatesTheCamp();
 
 		assertThat(game.viewOf("Rome").camps()).containsExactly(new MapCamp(CAMP, "Grak", Camp.COLOUR, Camp.EMBLEM,
-				false, new CampFacts(Map.of("Horseman", 5), Map.of("Spike Pit", 2), 8, List.of("Rome", "Carthage", "Egypt"),
+				new CampFacts(Map.of("Horseman", 5), Map.of("Spike Pit", 2), 8, List.of("Rome", "Carthage", "Egypt"),
 						9)));
 		assertThat(report("Rome")).contains("Your Scouts Located " + CAMP + ", so you can now send Warparties there:"
 				+ " its Army is Horseman ×5, its Defense is 8, and it raids Rome, Carthage and Egypt.");
@@ -187,7 +187,7 @@ class BarbarianCampsTest {
 		assertThat(report("Rome")).contains(GRAK
 				+ "'s Warparty arrived at your Nation; the Battle will be fought as this Turn ends.");
 		assertThat(game.viewOf("Rome").camps())
-			.containsExactly(new MapCamp(CAMP, "Grak", Camp.COLOUR, Camp.EMBLEM, false, null));
+			.containsExactly(new MapCamp(CAMP, "Grak", Camp.COLOUR, Camp.EMBLEM, null));
 		assertThat(game.viewOf("Rome").arrivals()).isEmpty();
 		assertThat(game.act("Rome", new Action.OfferTribute(CAMP, 1, 10, 0)))
 			.isEqualTo(ActionResult.rejected("Barbarian Camps accept no Tribute."));
@@ -231,7 +231,7 @@ class BarbarianCampsTest {
 						+ " lost Horseman ×5.",
 				"Your Warparty wore " + CAMP + "'s Defense down by 8, destroying Spike Pit ×2.",
 				"Your Warparty destroyed " + CAMP + ", taking 48 Gold as a Bounty, and is heading home.");
-		assertThat(game.viewOf("Rome").camps()).extracting(MapCamp::destroyed).containsExactly(true);
+		assertThat(game.viewOf("Rome").camps()).isEmpty();
 		assertThat(game.viewOf("Rome").warparties()).extracting(Warparty::plunder).containsExactly(new Plunder(48, 0));
 		assertThat(game.act("Rome", new Action.SendWarparty(CAMP, Map.of("Warrior", 1))))
 			.isEqualTo(ActionResult.rejected(CAMP + " has been destroyed."));
@@ -274,8 +274,75 @@ class BarbarianCampsTest {
 				"Your Warparty is heading home from " + CAMP + ", whose Defense of 36 still stands, so it was not"
 						+ " destroyed.");
 		assertThat(report("Rome")).noneMatch(line -> line.contains("Bounty"));
-		assertThat(game.viewOf("Rome").camps()).extracting(MapCamp::destroyed).containsExactly(false);
+		assertThat(game.viewOf("Rome").camps()).extracting(MapCamp::name).containsExactly(CAMP);
 		assertThat(game.viewOf("Rome").warparties()).extracting(Warparty::plunder).containsExactly(Plunder.NONE);
+	}
+
+	@Test
+	void watchTasksSeeCampWarpartiesWithoutNamingACampNotHeardOf() {
+		campAppears();
+		accepted("Rome", new Action.SetTask("WATCH", null, 1));
+		campRaids(0.4);
+		// Rome's Scouts discover the Camp's Warparty.
+		luck.then(0);
+
+		game.endTurn();
+
+		assertThat(report("Rome"))
+			.contains("Your Scouts discovered a Barbarian Camp's Warparty of Horseman ×3 heading to Carthage.");
+		assertThat(game.viewOf("Rome").camps()).isEmpty();
+	}
+
+	@Test
+	void rumoursSpreadOfACampsWarpartyApproaching() {
+		Event rumours = new Event("Rumours of war", Event.Subject.NATION, 1,
+				new Event.Conditions(null, null, 3, null, null, null, null), null,
+				"Rumours spread of a large army marching on your Nation");
+		game = Locating.everyone(new Ruleset(RULESET.units(), RULESET.buildings(), List.of(), List.of(rumours), List.of(),
+				BARBARIANS), Identities.of("Rome", "Carthage", "Egypt"), luck);
+		campAppears();
+		campRaids(0.4);
+
+		game.endTurn();
+
+		assertThat(report("Carthage")).contains("Rumours spread of a large army marching on your Nation.");
+		assertThat(report("Rome")).noneMatch(line -> line.startsWith("Rumours"));
+	}
+
+	@Test
+	void plunderTakenBackFromACampsWarpartyComesHomeWithItsCaptivesAsPopulation() {
+		untilTurn(Game.FIRST_CAMP_TURN);
+		// The Camp appears with Warrior ×5, every Nation as its Target.
+		luck.then(0, 0.99, 0.99, 0.99, 0.99, 0.99, 0.99, 0.99, 0, 0, 0, 0, 0);
+		game.endTurn();
+		// It grows a Horseman and sends Warrior ×3 at Rome, which arrives as
+		// Turn 12 resolves.
+		campRaids(0);
+		accepted("Rome", new Action.TrainUnits("Archer", 4));
+		untilTurn(12);
+		accepted("Rome", new Action.SendWarparty("Egypt", Map.of("Archer", 4)));
+		untilTurn(13);
+		// The Battle at Rome; the Camp neither grows nor has another appear;
+		// Rome's Warparty meets the Camp's heading home.
+		luck.then(0.99, 0.99, 0.99, 0.99, 0);
+		game.endTurn();
+
+		assertThat(report("Rome")).contains(GRAK + "'s Warparty took 27 Gold and 4 Population as Captives from you and"
+				+ " is heading home.");
+
+		accepted("Rome", new Action.AnswerEncounter(1, true));
+		game.endTurn();
+
+		assertThat(report("Rome")).contains("Your Warparty took " + CAMP + "'s Plunder of 27 Gold and 4 Population, taken"
+				+ " from your Nation; it will be back in 3 Turns.");
+		assertThat(game.viewOf("Rome").hauls()).isEmpty();
+		int population = game.viewOf("Rome").population();
+
+		untilTurn(18);
+
+		assertThat(report("Rome")).contains("The 27 Gold stolen from your Nation came back.",
+				"The 4 Population stolen from your Nation came back.");
+		assertThat(game.viewOf("Rome").population()).isEqualTo(population + 3 * 2 + 4);
 	}
 
 	@Test
