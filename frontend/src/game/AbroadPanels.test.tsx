@@ -27,7 +27,7 @@ describe('ArmyPanel', () => {
     expect(options(within(army).getByRole('combobox', { name: 'To' }))).toEqual(['Egypt', 'Persia'])
   })
 
-  it('offers Located Barbarian Camps still standing as Warparty targets too', () => {
+  it('offers Located Barbarian Camps as Warparty targets too', () => {
     const facts = { army: {}, buildings: {}, defense: 0, targets: ['Rome'], turn: 2 }
     renderGame({
       nation: {
@@ -35,7 +35,6 @@ describe('ArmyPanel', () => {
         camps: [
           camp('Black Marsh Barbarian Camp', { located: facts }),
           camp('Ashen Hills Barbarian Camp'),
-          camp('Wolf Hollow Barbarian Camp', { located: facts, destroyed: true }),
         ],
       },
     })
@@ -178,7 +177,7 @@ describe('SpiesPanel', () => {
     renderGame({
       nation: {
         ...locating(['Carthage', 'Persia', 'Egypt'], { scouts: 2, idleScouts: 2 }),
-        camps: [camp('Black Marsh Barbarian Camp'), camp('Ashen Hills Barbarian Camp', { destroyed: true })],
+        camps: [camp('Black Marsh Barbarian Camp')],
       },
       onSetTask,
     })
@@ -518,7 +517,7 @@ describe('MapPanel', () => {
           camp('Black Marsh Barbarian Camp', {
             located: { army: { Horseman: 5 }, buildings: { 'Spike Pit': 2 }, defense: 8, targets: ['Rome', 'Egypt'], turn: 6 },
           }),
-          camp('Ashen Hills Barbarian Camp', { destroyed: true }),
+          camp('Ashen Hills Barbarian Camp'),
         ],
       }),
     })
@@ -535,7 +534,7 @@ describe('MapPanel', () => {
         ['Targets', 'Rome, Egypt · Turn 6'],
       ]),
     )
-    expect(within(camps).getByRole('heading', { name: /Ashen Hills/ })).toHaveTextContent('destroyed')
+    expect(within(camps).getByRole('heading', { name: /Ashen Hills/ })).not.toHaveTextContent('located')
     expect(within(camps).getByText('Not Located yet.')).toBeInTheDocument()
   })
 

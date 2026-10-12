@@ -382,15 +382,14 @@ export type CampFacts = {
   turn: number
 }
 /**
- * A Barbarian Camp this Nation has heard of: its name, Ruler, colour and emblem, whether it was destroyed, and
- * what Locating it showed, or null while it is not Located.
+ * A Barbarian Camp still standing that this Nation has heard of: its name, Ruler, colour and emblem, and what
+ * Locating it showed, or null while it is not Located. A destroyed Camp vanishes from the Map.
  */
 export type MapCamp = {
   name: string
   ruler: string
   colour: string
   emblem: string
-  destroyed: boolean
   located: CampFacts | null
 }
 /** A Nation or Barbarian Camp as the Map names it: in its colour, with its emblem. */
@@ -409,7 +408,7 @@ export type NationView = {
   research: number
   /** Every Nation that took part in the Game, this one included, in the order they joined. */
   map: MapNation[]
-  /** The Barbarian Camps the Nation has heard of, in the order heard of. */
+  /** The Barbarian Camps still standing that the Nation has heard of, in the order heard of. */
   camps: MapCamp[]
   /** The Building types the Nation may start: those needing no Technology, or one it has unlocked. */
   availableBuildings: BuildingType[]
@@ -488,17 +487,15 @@ export function locatableNations(nation: NationView): string[] {
   return otherNations(nation).filter((n) => !nation.located.includes(n) && !locating.includes(n))
 }
 
-/** The Barbarian Camps still standing that the Nation has Located, and so may send Warparties to. */
+/** The Barbarian Camps the Nation has Located, and so may send Warparties to. */
 export function locatedCamps(nation: NationView): string[] {
-  return nation.camps.filter((c) => !c.destroyed && c.located !== null).map((c) => c.name)
+  return nation.camps.filter((c) => c.located !== null).map((c) => c.name)
 }
 
-/** The Barbarian Camps still standing that the Nation has heard of but neither Located nor set Scouts to Locate. */
+/** The Barbarian Camps the Nation has heard of but neither Located nor set Scouts to Locate. */
 export function locatableCamps(nation: NationView): string[] {
   const locating = nation.tasks.filter((t) => t.kind === 'LOCATE').map((t) => t.target)
-  return nation.camps
-    .filter((c) => !c.destroyed && c.located === null && !locating.includes(c.name))
-    .map((c) => c.name)
+  return nation.camps.filter((c) => c.located === null && !locating.includes(c.name)).map((c) => c.name)
 }
 
 /** Whether the Nation's Scouts are searching the wilds for Barbarian Camps. */
