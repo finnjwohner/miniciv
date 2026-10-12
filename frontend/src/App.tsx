@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { storedMembership, type Membership } from './api'
+import { forgetMembership, storedMembership, type Membership } from './api'
 import GameScreen from './game/GameScreen'
 import Home from './Home'
 import JoinRoom from './JoinRoom'
@@ -38,7 +38,7 @@ function App() {
       </header>
       <main>
         {roomCode ? (
-          <Room key={roomCode} code={decodeURIComponent(roomCode).trim().toLowerCase().replace(/\s+/g, '-')} />
+          <Room key={roomCode} code={decodeURIComponent(roomCode).trim().toLowerCase().replace(/\s+/g, '-')} onLeft={() => navigate('/')} />
         ) : (
           <Home onJoined={(code) => navigate(`/rooms/${code}`)} />
         )}
@@ -47,13 +47,13 @@ function App() {
   )
 }
 
-function Room({ code }: { code: string }) {
+function Room({ code, onLeft }: { code: string; onLeft: () => void }) {
   const [membership, setMembership] = useState(() => storedMembership(code))
   if (!membership) return <JoinRoom code={code} onJoined={setMembership} />
-  return <JoinedRoom code={code} membership={membership} />
+  return <JoinedRoom code={code} membership={membership} onLeft={onLeft} />
 }
 
-function JoinedRoom({ code, membership }: { code: string; membership: Membership }) {
+function JoinedRoom({ code, membership, onLeft }: { code: string; membership: Membership; onLeft: () => void }) {
   const {
     room,
     nation,
@@ -80,6 +80,7 @@ function JoinedRoom({ code, membership }: { code: string; membership: Membership
     answerEncounter,
     sendMessage,
     markDone,
+    leaveGame,
   } = useRoom(code, membership.token)
   if (!room)
     return (
@@ -115,6 +116,11 @@ function JoinedRoom({ code, membership }: { code: string; membership: Membership
           onDone={markDone}
           messages={messages}
           onSendMessage={sendMessage}
+          onLeave={() => {
+            leaveGame()
+            forgetMembership(code)
+            onLeft()
+          }}
         />
       </div>
     )

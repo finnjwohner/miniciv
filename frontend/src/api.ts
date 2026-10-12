@@ -498,3 +498,13 @@ export function inviteLink(code: string): string {
 function storageKey(code: string) {
   return `miniciv.room.${code}`
 }
+
+/** Forgets this browser's membership of a Room, as when the Player leaves its Game for good. */
+export function forgetMembership(code: string) {
+  memberships.delete(code)
+  try {
+    localStorage.removeItem(storageKey(code))
+  } catch {
+    // Nothing stored that could be rejoined with.
+  }
+}

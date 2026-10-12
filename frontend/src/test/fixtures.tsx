@@ -258,6 +258,7 @@ export function renderGame(props: Partial<ComponentProps<typeof GameScreen>> = {
       onDone={noop}
       messages={[]}
       onSendMessage={noop}
+      onLeave={noop}
       {...overrides}
     />
   )

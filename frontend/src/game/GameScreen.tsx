@@ -7,6 +7,7 @@ import { ArmyPanel, MapPanel, SpiesPanel } from './AbroadPanels'
 import { ActionTabs, type ActionTab } from './ActionTabs'
 import { DecisionsPanel } from './DecisionsPanel'
 import { formatCountdown } from './format'
+import { LeaveGame } from './LeaveGame'
 import { MessagesDrawer } from './MessagesDrawer'
 import { BuildPanel, ResourcesPanel, TechTreePanel, TrainPanel } from './NationPanels'
 import { TurnPanel, TurnReportPanel } from './TurnPanel'
@@ -67,6 +68,7 @@ function GameScreen({
   onDone,
   messages,
   onSendMessage,
+  onLeave,
 }: {
   room: ReceivedRoom
   nation: NationView | null
@@ -92,6 +94,7 @@ function GameScreen({
   onDone: (turn: number) => void
   messages: Message[]
   onSendMessage: (to: string, text: string) => void
+  onLeave: () => void
 }) {
   const now = useNow()
   useTurnStartCues(nation)
@@ -123,6 +126,7 @@ function GameScreen({
 
   return (
     <div className="game">
+      <LeaveGame onLeave={onLeave} />
       <MessagesDrawer
         code={room.code}
         players={room.players}

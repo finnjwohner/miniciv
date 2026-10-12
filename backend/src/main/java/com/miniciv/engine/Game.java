@@ -287,6 +287,18 @@ public class Game {
 	 * Game, or once the Game is won.
 	 */
 	public void remove(String name) {
+		takeOut(name, "was removed from the Game, as its Player was disconnected for too long.");
+	}
+
+	/**
+	 * Takes a Nation out of the Game at once, its Player having left it, as
+	 * {@link #remove} does.
+	 */
+	public void leave(String name) {
+		takeOut(name, "left the Game, so it was removed.");
+	}
+
+	private void takeOut(String name, String told) {
 		Nation nation = nation(name);
 		if (winner != null || !nation.inGame()) {
 			return;
@@ -298,7 +310,7 @@ public class Game {
 		List<Nation> left = remaining();
 		for (Nation other : left) {
 			TurnReport.Draft report = pendingReport(other);
-			report.add(DECISIONS_AND_ALERTS, name + " was removed from the Game, as its Player was disconnected for too long.");
+			report.add(DECISIONS_AND_ALERTS, name + " " + told);
 			for (Warparty back : other.turnBackFrom(name)) {
 				report.add(WARFARE, "Your Warparty of " + listed(back.units()) + " heading to " + name
 						+ " turned back home, as " + name + " was removed from the Game.");

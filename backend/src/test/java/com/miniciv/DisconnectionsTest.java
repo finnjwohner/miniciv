@@ -293,6 +293,39 @@ class DisconnectionsTest {
 		assertThat(carthage.privately().next().get("winner")).isEqualTo("Carthage");
 	}
 
+	void leave(Connected player) {
+		player.stomp().send("/app/rooms/" + code + "/leave", Map.of("token", player.token()));
+	}
+
+	@Test
+	void aPlayerWhoLeavesTheGameHasTheirNationRemovedAtOnceWithoutPausingIt() throws Exception {
+		startGame("Rome", "Carthage", "Egypt");
+
+		leave(rome);
+		rome.stomp().close();
+
+		Map<?, ?> game = awaitGame(g -> !((List<?>) g.get("removed")).isEmpty());
+		assertThat(game.get("removed")).isEqualTo(List.of("Rome"));
+		assertThat(game.get("waitingFor")).isEqualTo(List.of());
+		assertThat(game.get("winner")).isNull();
+		done(carthage, 1);
+		done(egypt, 1);
+		while (!Integer.valueOf(2).equals(carthage.privately().next().get("turn"))) {
+			// Skips the view the removal changed.
+		}
+		assertThat(waitingFor(currentGame())).isEmpty();
+	}
+
+	@Test
+	void whenALeavingPlayerLeavesOneNationItWinsTheGame() throws Exception {
+		startGame("Rome", "Carthage");
+
+		leave(rome);
+
+		Map<?, ?> game = awaitGame(g -> g.get("winner") != null);
+		assertThat(game.get("winner")).isEqualTo("Carthage");
+	}
+
 	@Test
 	void anInvalidTokenCannotConnectOrResumeTheGame() throws Exception {
 		startGame("Rome", "Carthage");

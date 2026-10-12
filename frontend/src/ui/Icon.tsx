@@ -39,6 +39,7 @@ import {
   Star,
   Sun,
   Sword,
+  Logout,
   Target,
   Tree,
   Trophy,
@@ -93,6 +94,7 @@ const icons = {
   tree: Tree,
   trophy: Trophy,
   users: Users,
+  logout: Logout,
   warning: WarningDiamond,
   zap: Zap,
 } satisfies Record<string, (props: SVGProps<SVGSVGElement>) => unknown>
