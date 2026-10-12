@@ -108,15 +108,16 @@ class BarbarianCampsTest {
 	}
 
 	@Test
-	void campsNeverOutnumberTheNationsLeftLessOne() {
+	void campsNeverOutnumberTwiceTheNationsLeft() {
 		game = Locating.everyone(new Ruleset(RULESET.units(), RULESET.buildings(), List.of(), List.of(), List.of(),
-				new Barbarians(List.of("A", "B", "C"), List.of("Grak"), List.of())), Identities.of("Rome", "Carthage"),
-				luck);
+				new Barbarians(List.of("A", "B", "C", "D", "E", "F"), List.of("Grak"), List.of())),
+				Identities.of("Rome", "Carthage"), luck);
 		luck.always(0);
 
-		untilTurn(30);
+		untilTurn(40);
 
-		assertThat(game.camps()).containsExactly("A Barbarian Camp");
+		assertThat(game.camps()).containsExactly("A Barbarian Camp", "B Barbarian Camp", "C Barbarian Camp",
+				"D Barbarian Camp");
 	}
 
 	@Test
