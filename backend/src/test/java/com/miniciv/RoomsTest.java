@@ -69,8 +69,19 @@ class RoomsTest {
 		Map<?, ?> room = rest().post().uri("/api/rooms").retrieve().body(Map.class);
 
 		String code = (String) room.get("code");
-		assertThat(code).matches("[A-Z0-9]{6}");
+		assertThat(code).matches("[a-z]+-[a-z]+-[a-z]+");
 		assertThat(room.get("inviteLink")).isEqualTo("http://localhost:" + port + "/rooms/" + code);
+	}
+
+	@Test
+	void aTypedCodeIgnoresCaseAndSeparators() {
+		String code = createRoom();
+
+		for (String typed : List.of(code.toUpperCase(), code.replace("-", " "), code.replace("-", ""),
+				" " + code.replace("-", "  ").toUpperCase() + " ")) {
+			Map<?, ?> joined = join(typed, "Nation " + typed.hashCode());
+			assertThat(joined.get("roomCode")).isEqualTo(code);
+		}
 	}
 
 	@Test

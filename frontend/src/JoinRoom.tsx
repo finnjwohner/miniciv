@@ -14,7 +14,7 @@ function JoinRoom({ code, onJoined }: { code: string; onJoined: (membership: Mem
     setBusy(true)
     setError(null)
     try {
-      onJoined(await joinRoom(code, nationName))
+      onJoined((await joinRoom(code, nationName)).membership)
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
       setBusy(false)

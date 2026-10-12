@@ -34,10 +34,6 @@ import com.miniciv.engine.Ruleset;
 @Service
 public class Rooms {
 
-	private static final String CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-
-	private static final int CODE_LENGTH = 6;
-
 	private final SecureRandom random = new SecureRandom();
 
 	private final Map<String, Room> rooms = new ConcurrentHashMap<>();
@@ -60,14 +56,14 @@ public class Rooms {
 	public Room create() {
 		while (true) {
 			Room room = new Room(newCode(), clock, ruleset, luck);
-			if (rooms.putIfAbsent(room.code(), room) == null) {
+			if (rooms.putIfAbsent(RoomCodes.key(room.code()), room) == null) {
 				return room;
 			}
 		}
 	}
 
 	public Optional<Room> find(String code) {
-		return Optional.ofNullable(rooms.get(code));
+		return Optional.ofNullable(rooms.get(RoomCodes.key(code)));
 	}
 
 	/**
@@ -84,7 +80,7 @@ public class Rooms {
 	public Room.Joined join(String code, String nationName) {
 		Room room = find(code).orElseThrow(() -> noSuchRoom(code));
 		return change(room, r -> {
-			if (rooms.get(code) != r) {
+			if (rooms.get(RoomCodes.key(code)) != r) {
 				throw noSuchRoom(code);
 			}
 			return r.join(nationName);
@@ -199,7 +195,7 @@ public class Rooms {
 			// Holds the Room so that no Player joins it while it is removed.
 			synchronized (room) {
 				if (room.abandoned()) {
-					rooms.remove(room.code(), room);
+					rooms.remove(RoomCodes.key(room.code()), room);
 				}
 			}
 		}
@@ -245,11 +241,7 @@ public class Rooms {
 	}
 
 	private String newCode() {
-		StringBuilder code = new StringBuilder(CODE_LENGTH);
-		for (int i = 0; i < CODE_LENGTH; i++) {
-			code.append(CODE_ALPHABET.charAt(random.nextInt(CODE_ALPHABET.length())));
-		}
-		return code.toString();
+		return RoomCodes.random(random);
 	}
 
 }

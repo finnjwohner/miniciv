@@ -23,18 +23,12 @@ function Home({ onJoined }: { onJoined: (code: string) => void }) {
 
   const join = (e: FormEvent) => {
     e.preventDefault()
-    const roomCode = code.trim().toUpperCase()
-    void run(async () => {
-      await joinRoom(roomCode, nationName)
-      return roomCode
-    })
+    void run(async () => (await joinRoom(code, nationName)).roomCode)
   }
 
   const create = () =>
     run(async () => {
-      const roomCode = await createRoom()
-      await joinRoom(roomCode, nationName)
-      return roomCode
+      return (await joinRoom(await createRoom(), nationName)).roomCode
     })
 
   return (
