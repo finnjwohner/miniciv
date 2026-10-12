@@ -5,11 +5,11 @@ A turn-based, player-vs-player strategy game in the browser where each player le
 ## Game structure
 
 **Game**:
-One match of miniciv for 2–4 Players, from start until one Nation is left standing.
+One match of miniciv for 2–4 Players, from start until one Nation is left standing; Barbarian Camps do not count.
 _Avoid_: Match, session, round
 
 **Room**:
-The place Players gather before a Game starts, joined by a room code or invite link; the Game starts once 2–4 Players are all ready, and no one can join after that. A Room none of whose Players has been connected for 60 seconds is removed, and its room code no longer resolves.
+The place Players gather before a Game starts, joined by a room code of three words or an invite link; the Game starts once 2–4 Players are all ready, and no one can join after that. Once a Game ends, each Player who chooses to play again returns to the Room, keeping their Nation's name, Ruler, colour and emblem, and others may join again for the next Game. A Room none of whose Players has been connected for 60 seconds is removed, and its room code no longer resolves.
 _Avoid_: Lobby, server
 
 **Player**:
@@ -21,7 +21,7 @@ The state of a Game while any Player whose Nation is still in it is disconnected
 _Avoid_: Frozen, suspended, on hold
 
 **Removed**:
-A Nation taken out of the Game because its Player was disconnected for more than five minutes in total; unlike Conquest, nobody seizes anything from it, and Warparties heading to it turn back home.
+A Nation taken out of the Game because its Player left the Game or was disconnected for more than five minutes in total; unlike Conquest, nobody seizes anything from it, and Warparties heading to it turn back home.
 _Avoid_: Kicked, dropped, forfeited
 
 **Turn**:
@@ -75,7 +75,7 @@ Something a Nation constructs over one or more Turns by paying Gold upfront.
 _Avoid_: Structure, improvement
 
 **Defense**:
-A Nation's protection against attack, raised by defensive Buildings, which must be worn down to 0 before an attack can reduce Population.
+A Nation's or Barbarian Camp's protection against attack, raised by defensive Buildings, which must be worn down to 0 before an attack can reduce Population.
 _Avoid_: Walls, fortification, armour
 
 **Damaged**:
@@ -105,7 +105,7 @@ _Avoid_: Demolish, scrap, refund
 ## Warfare
 
 **Located**:
-Another Nation a Nation has found, through a Scout Task, a Battle that Nation's Warparty fought against it, or a caught Spy of that Nation confessing; only a Located Nation can be sent Spies or Warparties. Locating is one-way and lasts the whole Game.
+Another Nation or a Barbarian Camp a Nation has found: a Nation through a Scout Task, a Battle that Nation's Warparty fought against it, or a caught Spy of that Nation confessing; a Camp only through a Scout Task, which can search for a Camp the Nation has heard the name of or for any in the wilds. Only a Located Nation can be sent Spies or Warparties, and only a Located Camp Warparties; Locating a Camp shows its Army, Buildings and Targets as they were at the time. Locating is one-way and lasts the whole Game.
 _Avoid_: Found, discovered, known
 
 **Unit**:
@@ -117,11 +117,11 @@ How much a Unit contributes in a Battle, multiplied when it fights a Unit type i
 _Avoid_: Power, attack, damage
 
 **Army**:
-The Units a Nation has at home in its own land; Units away in a Warparty, Spies abroad and Scouts are not part of it.
+The Units a Nation or Barbarian Camp has at home; Units away in a Warparty, Spies abroad and Scouts are not part of it.
 _Avoid_: Garrison, defenders
 
 **Warparty**:
-A group of Units a Player sends from their Army toward another Nation; it travels for some Turns before arriving, more the greater its Strength, and on the way home more still the more Plunder it carries.
+A group of Units a Player sends from their Army toward another Nation or a Barbarian Camp, or a Camp sends toward one of its Targets; it travels for some Turns before arriving, more the greater its Strength, and on the way home more still the more Plunder it carries.
 _Avoid_: Attack, expedition, army
 
 **Scout**:
@@ -169,20 +169,38 @@ Gold or Population a defending Nation offers an attacker, mid-Turn, in return fo
 _Avoid_: Bribe, ransom, payment
 
 **Encounter**:
-Two Warparties from different Nations meeting by chance while abroad, each seeing the other's Units; if either Player chooses to fight, they fight each other. Each Player may change their choice until the Turn ends.
+Two Warparties from different Nations or Barbarian Camps meeting by chance while abroad, each seeing the other's Units; if either side chooses to fight, they fight each other, and a Warparty that wipes out the other takes any Plunder it carried. Plunder taken from a third Nation this way may be kept or sent back to that Nation, as with a Haul. Each Player may change their choice until the Turn ends; a Barbarian Camp's Warparty chooses to fight only when its Strength is at least the other's, and never meets another Camp's.
 _Avoid_: Skirmish, ambush
 
 **Battle**:
-The fight that happens when Warparties arrive at a Nation; Warparties arriving on the same Turn fight as one. Its outcome is reported the following Turn, and surviving attackers head home.
+The fight that happens when Warparties arrive at a Nation or Barbarian Camp; Warparties arriving on the same Turn fight as one. Its outcome is reported the following Turn, and surviving attackers head home.
 _Avoid_: Fight, combat, clash
 
 **Plunder**:
-The Gold and Research a Warparty's surviving Units take from the Nation they fought, scaled by their remaining Strength and carried home to their own Nation. Warparties fighting a Battle as one split it in proportion to their remaining Strength.
+The Gold and Research a Warparty's surviving Units take from the Nation they fought, or the Gold and Captives for a Barbarian Camp's Warparty, scaled by their remaining Strength and carried home. Warparties fighting a Battle as one split it in proportion to their remaining Strength.
 _Avoid_: Loot, spoils, booty
+
+**Captives**:
+Population a Barbarian Camp's Warparty carries off from the Nation it fought, as part of its Plunder; lost to that Nation as Population killed in the Battle would be.
+_Avoid_: Prisoners, slaves, hostages
 
 **Conquest**:
 Taking a Nation by bringing both its Population and its Army to 0 in a Battle that some of the attacking Units survive; a Nation is only conquered when attacked, and a Warparty wiped out in the Battle conquers nothing. The conquering Nation seizes a large share of its Gold and Research, split like Plunder when several Warparties conquer it together, and the conquered Player is knocked out.
 _Avoid_: Domination, elimination
+
+## Barbarians
+
+**Barbarian Camp**:
+A hostile band no Player leads, not a Nation, which appears in the wilds partway through a Game, named for its place (e.g. "Mountain Passage Barbarian Camp"), with a Ruler of its own and the same dark red colour and barbarian emblem as every other Camp. It has no Gold, Population or Research, only an Army, which grows by itself, and barbarian defensive Buildings, which raise Defense only and which it starts with and can neither build nor Repair. A Nation knows only a Camp's name once attacked by or Encountering its Warparties, and nothing at all before that, until it Locates the Camp. It sends Warparties only at its Targets, never Conquers, always leaving a Nation some Population, accepts no Tribute, and cannot be sent Spies; what its Warparties carry home is lost for good once they arrive. A Battle that brings its Army to 0 with some attackers surviving destroys it, and they take a Bounty in place of Plunder; its Warparties still abroad finish their trip and then disband with whatever they carry.
+_Avoid_: Barbarians, raiders, NPC, tribe
+
+**Bounty**:
+The Gold the surviving attackers take for destroying a Barbarian Camp: a fixed sum give or take a little luck, split like Plunder when several Warparties destroy it together.
+_Avoid_: Reward, prize, payout
+
+**Target**:
+A Nation a Barbarian Camp may send Warparties at: some or all of the Nations in the Game, chosen when the Camp appears, plus any Nation that fights a Battle at it or chooses to fight one of its Warparties in an Encounter. Locating a Camp reveals its Army and its Targets. A Camp that loses a Battle at a Target does not attack that Target again until its Army has outgrown the Warparty it lost.
+_Avoid_: Victim, enemy, prey
 
 ## Events
 
