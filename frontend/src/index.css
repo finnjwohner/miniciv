@@ -554,6 +554,11 @@ input[type='range'] {
   gap: var(--space);
 }
 
+.picker--emblems {
+  display: grid;
+  grid-template-columns: repeat(7, 2.5rem);
+}
+
 .picker__choice {
   width: 2.5rem;
   height: 2.5rem;

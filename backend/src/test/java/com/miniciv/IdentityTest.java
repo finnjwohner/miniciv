@@ -24,7 +24,8 @@ class IdentityTest {
 			"#a678de", "#e07bb5");
 
 	static final List<String> EMBLEMS = List.of("crown", "moon", "sun", "heart", "star", "fire", "zap", "anchor",
-			"tree", "fish", "feather", "key");
+			"tree", "fish", "feather", "key", "gem", "dog", "compass", "chess", "snake", "snowflake", "ship", "bell",
+			"target");
 
 	@LocalServerPort
 	int port;
