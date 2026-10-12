@@ -42,6 +42,9 @@ class RoomController {
 	record LeaveRequest(String token) {
 	}
 
+	record PlayAgainRequest(String token) {
+	}
+
 	record DoneRequest(String token, int turn) {
 	}
 
@@ -430,6 +433,18 @@ class RoomController {
 	@MessageMapping("/rooms/{code}/leave")
 	void leave(@DestinationVariable String code, LeaveRequest request) {
 		rooms.leave(code, request.token());
+	}
+
+	/**
+	 * Returns the Player to the Room after the Game ended; the changed Room
+	 * arrives on {@code /topic/rooms/{code}}, or the reason it was rejected on
+	 * {@code /user/queue/rejections}.
+	 */
+	@MessageMapping("/rooms/{code}/play-again")
+	@SendToUser(destinations = "/queue/rejections", broadcast = false)
+	Rejection playAgain(@DestinationVariable String code, PlayAgainRequest request) {
+		ActionResult result = rooms.playAgain(code, request.token());
+		return result.accepted() ? null : new Rejection(result.reason());
 	}
 
 	@MessageMapping("/rooms/{code}/done")

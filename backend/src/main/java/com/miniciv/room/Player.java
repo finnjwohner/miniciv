@@ -34,6 +34,11 @@ class Player {
 	private boolean done;
 
 	/**
+	 * Whether the Player has left the Room once its Game was over.
+	 */
+	private boolean left;
+
+	/**
 	 * The ids of the Player's open connections.
 	 */
 	private final Set<String> connections = new HashSet<>();
@@ -113,6 +118,31 @@ class Player {
 
 	void done(boolean done) {
 		this.done = done;
+	}
+
+	boolean left() {
+		return left;
+	}
+
+	void left(boolean left) {
+		this.left = left;
+	}
+
+	/**
+	 * Takes the Player back to the start, keeping who their Nation is: not
+	 * ready, not done, and with no disconnection counted against them.
+	 */
+	void reset() {
+		ready = false;
+		done = false;
+		left = false;
+		disconnectedBefore = Duration.ZERO;
+		disconnectedSince = null;
+	}
+
+	void changeIdentity(String colour, String emblem) {
+		this.colour = colour;
+		this.emblem = emblem;
 	}
 
 	/**

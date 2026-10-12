@@ -17,7 +17,7 @@ function withMessages(current: Message[], received: Message[]): Message[] {
  * and once the Game starts, this Player's own Nation and the Messages they sent and received,
  * which only they receive.
  */
-export function useRoom(code: string, token: string) {
+export function useRoom(code: string, token: string, playerId: string) {
   const [room, setRoom] = useState<ReceivedRoom | null>(null)
   const [nation, setNation] = useState<NationView | null>(null)
   const [messages, setMessages] = useState<Message[]>([])
@@ -36,7 +36,15 @@ export function useRoom(code: string, token: string) {
       // Current-state replies and later updates can arrive in either order; keep the newest.
       const updateRoom = (message: { body: string }) => {
         const next: RoomView = JSON.parse(message.body)
-        setRoom((current) => (current && current.version >= next.version ? current : { ...next, receivedAt: Date.now() }))
+        setRoom((current) => {
+          if (current && current.version >= next.version) return current
+          // Back in the Room's pre-game screen, so the ended Game's Nation and Messages are done with.
+          if (!next.game && next.players.some((p) => p.id === playerId)) {
+            setNation(null)
+            setMessages([])
+          }
+          return { ...next, receivedAt: Date.now() }
+        })
       }
       stomp.subscribe(`/topic/rooms/${code}`, updateRoom)
       stomp.subscribe(`/app/rooms/${code}`, updateRoom)
@@ -59,7 +67,7 @@ export function useRoom(code: string, token: string) {
       client.current = null
       void stomp.deactivate()
     }
-  }, [code, token])
+  }, [code, token, playerId])
 
   /** Marks the Player ready or not; a rejection's reason arrives in `rejection`. */
   const setReady = (ready: boolean) => {
@@ -253,6 +261,13 @@ export function useRoom(code: string, token: string) {
     })
   }
 
+  /** Returns to the Room after the Game ended, keeping the Nation, not ready. */
+  const playAgain = () =>
+    client.current?.publish({
+      destination: `/app/rooms/${code}/play-again`,
+      body: JSON.stringify({ token }),
+    })
+
   /** Leaves the Game: the Player's Nation is removed at once, if it is still in it. */
   const leaveGame = () =>
     client.current?.publish({
@@ -294,5 +309,6 @@ export function useRoom(code: string, token: string) {
     sendMessage,
     markDone,
     leaveGame,
+    playAgain,
   }
 }

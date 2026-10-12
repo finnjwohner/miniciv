@@ -81,18 +81,41 @@ function JoinedRoom({ code, membership, onLeft }: { code: string; membership: Me
     sendMessage,
     markDone,
     leaveGame,
-  } = useRoom(code, membership.token)
+    playAgain,
+  } = useRoom(code, membership.token, membership.playerId)
   if (!room)
     return (
       <div className="screen screen--narrow">
         <p className="muted">Connecting to Room {code}…</p>
       </div>
     )
-  if (room.game)
+  // A Player who has not pressed Play again still sees the Game that ended, while others are back in the Room.
+  const previous = room.previous
+  const gameRoom =
+    !room.game && previous?.players.some((p) => p.id === membership.playerId)
+      ? { ...room, game: previous.game, players: [...previous.players, ...room.players] }
+      : room
+  // A Player who never pressed Play again is left behind once the next Game starts without them.
+  if (gameRoom.game && !gameRoom.players.some((p) => p.id === membership.playerId))
+    return (
+      <div className="screen screen--narrow">
+        <p className="muted">This Room has moved on to a new Game without you.</p>
+        <button
+          className="button--primary"
+          onClick={() => {
+            forgetMembership(code)
+            onLeft()
+          }}
+        >
+          Back to the menu
+        </button>
+      </div>
+    )
+  if (gameRoom.game)
     return (
       <div className="screen screen--wide">
         <GameScreen
-          room={room}
+          room={gameRoom}
           nation={nation}
           playerId={membership.playerId}
           rejection={rejection}
@@ -116,6 +139,7 @@ function JoinedRoom({ code, membership, onLeft }: { code: string; membership: Me
           onDone={markDone}
           messages={messages}
           onSendMessage={sendMessage}
+          onPlayAgain={playAgain}
           onLeave={() => {
             leaveGame()
             forgetMembership(code)
