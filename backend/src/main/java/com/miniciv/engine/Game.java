@@ -905,8 +905,8 @@ public class Game {
 	 * Battle there, from the Nations in order and each one's in the order
 	 * sent, fights its Army as one, and the Warparties' surviving Strength,
 	 * rounded down, wears its Defense down. Every attacking Nation becomes one
-	 * of its Targets. A Battle that leaves it with no Army, some of the
-	 * Warparties surviving, destroys it: one draw from the seeded random
+	 * of its Targets. A Battle that leaves it with no Army and its Defense
+	 * worn down to 0, some of the Warparties surviving, destroys it: one draw from the seeded random
 	 * source sets the Bounty, from {@value #LEAST_BOUNTY} to
 	 * {@value #MOST_BOUNTY} Gold, split between the survivors as plunder is;
 	 * every other Warparty heading to it turns back home, and every Task
@@ -923,7 +923,7 @@ public class Game {
 			.toList();
 		int wholeStrength = (int) Math.floor(strengths.stream().mapToDouble(Double::doubleValue).sum());
 		Nation.DefenseWorn defenseWorn = camp.wearDefense(wholeStrength, ruleset.barbarians());
-		boolean destroyed = battle.anyWarpartySurvived() && camp.army().isEmpty();
+		boolean destroyed = battle.anyWarpartySurvived() && camp.army().isEmpty() && defenseWorn.after() == 0;
 		Plunder bounty = destroyed
 				? new Plunder(LEAST_BOUNTY + (int) (random.nextDouble() * (MOST_BOUNTY - LEAST_BOUNTY + 1)), 0)
 				: Plunder.NONE;
@@ -998,6 +998,10 @@ public class Game {
 			if (fought.destroyed()) {
 				report.add(WARFARE, Line.of("Your Warparty destroyed " + camp + ", taking ",
 						gain(GOLD, fought.bounties().get(i).gold()), " as a Bounty" + share + ", and is heading home."));
+			}
+			else if (fought.camp().army().isEmpty()) {
+				report.add(WARFARE, "Your Warparty is heading home from " + camp + ", whose Defense of "
+						+ defenseWorn.after() + " still stands, so it was not destroyed.");
 			}
 			else {
 				report.add(WARFARE, "Your Warparty is heading home from " + camp + ".");
