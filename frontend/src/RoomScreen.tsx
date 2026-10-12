@@ -100,7 +100,7 @@ function YourNation({
         </div>
         <div className="field">
           <span className="field__label">Emblem</span>
-          <div className="picker">
+          <div className="picker picker--emblems">
             {room.emblems.map((emblem) => {
               const taken = others.find((p) => p.emblem === emblem)
               return (

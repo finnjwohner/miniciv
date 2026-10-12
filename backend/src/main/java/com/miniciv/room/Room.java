@@ -113,7 +113,8 @@ public class Room {
 	 * unique among the Players in a Room.
 	 */
 	static final List<String> EMBLEMS = List.of("crown", "moon", "sun", "heart", "star", "fire", "zap", "anchor",
-			"tree", "fish", "feather", "key");
+			"tree", "fish", "feather", "key", "gem", "dog", "compass", "chess", "snake", "snowflake", "ship", "bell",
+			"target");
 
 	private static final int MAX_RULER_LENGTH = 20;
 
