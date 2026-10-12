@@ -1559,7 +1559,7 @@ public class Game {
 	 * Has a Barbarian Camp appear in the wilds, by chance, if the ruleset has
 	 * any and one may: none before Turn {@value #FIRST_CAMP_TURN}, none for
 	 * {@value #TURNS_BETWEEN_CAMPS} Turns after the last, never more standing
-	 * at once than one fewer than the Nations still in the Game, and each
+	 * at once than twice the Nations still in the Game, and each
 	 * named for a place no other Camp has been. If one may, one draw from the
 	 * seeded random source says whether it does, {@value #CAMP_CHANCE} likely;
 	 * then one each picks its place and its Ruler, one how many Targets it
@@ -1580,7 +1580,7 @@ public class Game {
 			.toList();
 		long standing = camps.stream().filter(camp -> !camp.destroyed()).count();
 		if (places.isEmpty() || turn < FIRST_CAMP_TURN || lastCampOn > 0 && turn - lastCampOn < TURNS_BETWEEN_CAMPS
-				|| standing >= inGame.size() - 1 || random.nextDouble() >= CAMP_CHANCE) {
+				|| standing >= inGame.size() * 2 || random.nextDouble() >= CAMP_CHANCE) {
 			return;
 		}
 		String place = picked(places);
