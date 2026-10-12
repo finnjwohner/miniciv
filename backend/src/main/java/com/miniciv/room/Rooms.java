@@ -106,6 +106,10 @@ public class Rooms {
 		});
 	}
 
+	public ActionResult playAgain(String code, String token) {
+		return change(find(code).orElseThrow(), room -> room.playAgain(token));
+	}
+
 	public void leave(String code, String token) {
 		change(find(code).orElseThrow(), room -> {
 			room.leave(token);

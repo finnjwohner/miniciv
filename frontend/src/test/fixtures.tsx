@@ -77,6 +77,7 @@ export function roomView(overrides: Partial<ReceivedRoom> = {}): ReceivedRoom {
     emblems: [ROME.emblem, EGYPT.emblem, 'crown', 'tree'],
     players: playerViews(),
     game: gameView(),
+    previous: null,
     receivedAt: Date.now(),
     ...overrides,
   }
@@ -259,6 +260,7 @@ export function renderGame(props: Partial<ComponentProps<typeof GameScreen>> = {
       messages={[]}
       onSendMessage={noop}
       onLeave={noop}
+      onPlayAgain={noop}
       {...overrides}
     />
   )

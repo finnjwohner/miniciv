@@ -34,7 +34,7 @@ function Banner({ tone, icon, children }: { tone: 'accent' | 'bad' | 'muted'; ic
 }
 
 /** The panels an action can be taken in, so a rejection is shown where its action was. */
-type Area = 'decisions' | 'messages' | ActionTab
+type Area = 'decisions' | 'messages' | 'play-again' | ActionTab
 
 /**
  * One Turn of the Game as this Player sees it, as a dashboard. On a wide screen it fits without page
@@ -69,6 +69,7 @@ function GameScreen({
   messages,
   onSendMessage,
   onLeave,
+  onPlayAgain,
 }: {
   room: ReceivedRoom
   nation: NationView | null
@@ -95,6 +96,7 @@ function GameScreen({
   messages: Message[]
   onSendMessage: (to: string, text: string) => void
   onLeave: () => void
+  onPlayAgain: () => void
 }) {
   const now = useNow()
   useTurnStartCues(nation)
@@ -141,6 +143,10 @@ function GameScreen({
           <strong>
             {game.winner === me?.nationName ? 'You have won the Game!' : <>{named(game.winner)} has won the Game.</>}
           </strong>
+          <button className="button--primary" onClick={from('play-again', onPlayAgain)}>
+            Play again
+          </button>
+          {rejectionIn('play-again') && <p>{rejectionIn('play-again')}</p>}
         </Banner>
       )}
       {knockedOut && (

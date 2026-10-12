@@ -58,6 +58,11 @@ export type RoomView = {
   emblems: string[]
   players: PlayerView[]
   game: GameView | null
+  /**
+   * The ended Game kept for the Players who have not yet pressed Play again, once another has reopened
+   * the Room; null otherwise.
+   */
+  previous: { game: GameView; players: PlayerView[] } | null
 }
 
 /** The kinds of section a Turn Report is grouped into. */

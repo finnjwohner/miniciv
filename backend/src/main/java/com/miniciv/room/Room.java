@@ -11,6 +11,8 @@ import java.util.Optional;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import java.util.random.RandomGenerator;
 
 import com.miniciv.engine.Action;
@@ -35,7 +37,16 @@ public class Room {
 	 *        icon names
 	 */
 	public record View(String code, int version, List<String> colours, List<String> emblems,
-			List<PlayerView> players, GameView game) {
+			List<PlayerView> players, GameView game, Previous previous) {
+	}
+
+	/**
+	 * The ended Game kept for the Players who have not yet pressed Play again,
+	 * while the Room is open to joining for the next one.
+	 *
+	 * @param players the Players of the ended Game still to press Play again
+	 */
+	public record Previous(GameView game, List<PlayerView> players) {
 	}
 
 	/**
@@ -93,6 +104,13 @@ public class Room {
 			return new Sending(ActionResult.rejected(reason), null, List.of());
 		}
 
+	}
+
+	/**
+	 * A Game that ended and its reopened Room, with the Players yet to press
+	 * Play again and the Messages sent in it.
+	 */
+	private record Finished(Game game, List<Player> players, List<Message> messages) {
 	}
 
 	/**
@@ -161,6 +179,13 @@ public class Room {
 	 */
 	private final List<Message> messages = new ArrayList<>();
 
+	/**
+	 * The ended Game and what went with it, kept until every Player of it has
+	 * pressed Play again or left, or the next Game starts; null while no Player
+	 * has pressed Play again.
+	 */
+	private Finished finished;
+
 	private Instant turnEndsAt;
 
 	/**
@@ -197,7 +222,7 @@ public class Room {
 		if (name.isEmpty()) {
 			throw new JoinRefused(JoinRefused.Reason.NO_NATION_NAME, "Choose a name for your Nation.");
 		}
-		if (players.stream().anyMatch(p -> p.nationName().equalsIgnoreCase(name))) {
+		if (everyPlayer().anyMatch(p -> p.nationName().equalsIgnoreCase(name))) {
 			throw new JoinRefused(JoinRefused.Reason.NATION_NAME_TAKEN,
 					"A Nation called " + name + " is already in this Room.");
 		}
@@ -228,6 +253,9 @@ public class Room {
 	public synchronized ActionResult identify(String token, String ruler, String colour, String emblem) {
 		Player player = player(token);
 		String name = ruler == null ? "" : ruler.strip();
+		if (!seated(player)) {
+			return ActionResult.rejected("Press Play again to return to the Room first.");
+		}
 		if (game != null) {
 			return ActionResult.rejected("The Game has started, so your Ruler, colour and emblem can no longer change.");
 		}
@@ -261,6 +289,9 @@ public class Room {
 	 */
 	public synchronized ActionResult ready(String token, boolean ready) {
 		Player player = player(token);
+		if (!seated(player)) {
+			return ActionResult.rejected("Press Play again to return to the Room first.");
+		}
 		if (game != null) {
 			return ActionResult.ACCEPTED;
 		}
@@ -271,10 +302,84 @@ public class Room {
 		version++;
 		if (players.size() >= MIN_PLAYERS && players.stream().allMatch(Player::ready)) {
 			game = new Game(ruleset, players.stream().map(Player::identity).toList(), luck.get());
+			finished = null;
 			turnEndsAt = clock.instant().plus(TURN_LENGTH);
 			settle();
 		}
 		return ActionResult.ACCEPTED;
+	}
+
+	/**
+	 * Seats a Player of the ended Game back in the Room, keeping their Nation's
+	 * name, Ruler, colour and emblem, and not ready. The first to press reopens
+	 * the Room to joining; Players who have not pressed are not seated, and
+	 * still see the ended Game. A colour or emblem another Player took in the
+	 * meantime is swapped for a free one.
+	 */
+	public synchronized ActionResult playAgain(String token) {
+		Player player = player(token);
+		boolean reopening = seated(player) && game != null;
+		if (seated(player) && !reopening) {
+			return ActionResult.ACCEPTED;
+		}
+		if (reopening && game.winner().isEmpty()) {
+			return ActionResult.rejected("The Game is not over yet.");
+		}
+		if (!reopening && players.size() == MAX_PLAYERS) {
+			return ActionResult.rejected("This Room already has " + MAX_PLAYERS + " Players.");
+		}
+		if (!reopening && players.stream().anyMatch(p -> p.nationName().equalsIgnoreCase(player.nationName()))) {
+			return ActionResult.rejected("A Nation called " + player.nationName() + " has joined the Room meanwhile.");
+		}
+		if (reopening) {
+			finished = new Finished(game, players.stream().filter(p -> !p.left()).collect(Collectors.toList()),
+					List.copyOf(messages));
+			players.clear();
+			messages.clear();
+			game = null;
+			turnEndsAt = null;
+			pausedSince = null;
+		}
+		dropFromFinished(player);
+		player.reset();
+		String colour = players.stream().noneMatch(p -> p.colour().equals(player.colour())) ? player.colour()
+				: firstFree(COLOURS, Player::colour);
+		String emblem = players.stream().noneMatch(p -> p.emblem().equals(player.emblem())) ? player.emblem()
+				: firstFree(EMBLEMS, Player::emblem);
+		player.changeIdentity(colour, emblem);
+		players.add(player);
+		version++;
+		return ActionResult.ACCEPTED;
+	}
+
+	/**
+	 * Stops waiting for a Player to press Play again, discarding the ended Game
+	 * once no one is left to; whether they were being waited for.
+	 */
+	private boolean dropFromFinished(Player player) {
+		if (finished == null || !finished.players().remove(player)) {
+			return false;
+		}
+		if (finished.players().isEmpty()) {
+			finished = null;
+		}
+		return true;
+	}
+
+	/**
+	 * Whether a Player is seated in the Room, rather than yet to press Play
+	 * again for the Game that ended.
+	 */
+	private boolean seated(Player player) {
+		return players.contains(player);
+	}
+
+	/**
+	 * Every Player the Room holds: those seated, then those yet to press Play
+	 * again.
+	 */
+	private Stream<Player> everyPlayer() {
+		return Stream.concat(players.stream(), finished == null ? Stream.empty() : finished.players().stream());
 	}
 
 	/**
@@ -286,7 +391,7 @@ public class Room {
 	 */
 	public synchronized void done(String token, int turn) {
 		Player player = player(token);
-		if (!playing() || game.turn() != turn || player.done() || !inGame(player)) {
+		if (!seated(player) || !playing() || game.turn() != turn || player.done() || !inGame(player)) {
 			return;
 		}
 		player.done(true);
@@ -359,7 +464,7 @@ public class Room {
 	synchronized void disconnected(String playerId, String connection) {
 		List<Player> waitingFor = waitingFor();
 		playerWithId(playerId).disconnected(connection);
-		if (emptySince == null && players.stream().noneMatch(Player::connected)) {
+		if (emptySince == null && everyPlayer().noneMatch(Player::connected)) {
 			emptySince = clock.instant();
 		}
 		presenceChanged(waitingFor);
@@ -426,7 +531,15 @@ public class Room {
 	 */
 	synchronized void leave(String token) {
 		Player player = player(token);
-		if (game == null || !inGame(player)) {
+		if (dropFromFinished(player)) {
+			version++;
+			return;
+		}
+		if (seated(player) && game != null && game.winner().isPresent()) {
+			player.left(true);
+			return;
+		}
+		if (game == null || !seated(player) || !inGame(player)) {
 			return;
 		}
 		game.leave(player.nationName());
@@ -440,6 +553,9 @@ public class Room {
 	 */
 	public synchronized ActionResult act(String token, Action action) {
 		Player player = player(token);
+		if (!seated(player)) {
+			return ActionResult.rejected("The Game is over.");
+		}
 		if (game == null) {
 			return ActionResult.rejected("The Game has not started yet.");
 		}
@@ -461,6 +577,9 @@ public class Room {
 	synchronized Sending message(String token, String to, String text) {
 		Player sender = player(token);
 		String stripped = text == null ? "" : text.strip();
+		if (!seated(sender)) {
+			return Sending.rejected("The Game is over, so you can no longer send Messages.");
+		}
 		if (game == null) {
 			return Sending.rejected("Messages can only be sent once the Game has started.");
 		}
@@ -493,8 +612,10 @@ public class Room {
 	 */
 	synchronized MessageHistory messagesOf(String playerId) {
 		String nation = playerWithId(playerId).nationName();
+		List<Message> history = finished != null && finished.players().stream().anyMatch(p -> p.id().equals(playerId))
+				? finished.messages() : messages;
 		return new MessageHistory(
-				messages.stream().filter(m -> m.from().equals(nation) || m.to().equals(nation)).toList());
+				history.stream().filter(m -> m.from().equals(nation) || m.to().equals(nation)).toList());
 	}
 
 	/**
@@ -532,21 +653,25 @@ public class Room {
 		return players.stream().filter(condition).findFirst();
 	}
 
+	private Optional<Player> everyPlayerWhere(Predicate<Player> condition) {
+		return everyPlayer().filter(condition).findFirst();
+	}
+
 	private Player player(String token) {
-		return playerWhere(p -> p.token().equals(token))
+		return everyPlayerWhere(p -> p.token().equals(token))
 			.orElseThrow(() -> new IllegalArgumentException("No Player in Room " + code + " has that token"));
 	}
 
 	synchronized Optional<String> playerIdFor(String token) {
-		return playerWhere(p -> p.token().equals(token)).map(Player::id);
+		return everyPlayerWhere(p -> p.token().equals(token)).map(Player::id);
 	}
 
 	synchronized boolean hasPlayerWithId(String playerId) {
-		return playerWhere(p -> p.id().equals(playerId)).isPresent();
+		return everyPlayerWhere(p -> p.id().equals(playerId)).isPresent();
 	}
 
 	private Player playerWithId(String playerId) {
-		return playerWhere(p -> p.id().equals(playerId))
+		return everyPlayerWhere(p -> p.id().equals(playerId))
 			.orElseThrow(() -> new IllegalArgumentException("No Player in Room " + code + " has that id"));
 	}
 
@@ -561,10 +686,9 @@ public class Room {
 	 * What a Player may see of their own Nation, or null before the Game starts.
 	 */
 	synchronized NationView nationViewOf(String playerId) {
-		if (game == null) {
-			return null;
-		}
-		return game.viewOf(playerWithId(playerId).nationName());
+		Player player = playerWithId(playerId);
+		Game gameOf = gameOf(player);
+		return gameOf == null ? null : gameOf.viewOf(player.nationName());
 	}
 
 	/**
@@ -573,13 +697,25 @@ public class Room {
 	 */
 	synchronized Map<String, NationView> nationViews() {
 		Map<String, NationView> views = new LinkedHashMap<>();
-		if (game == null) {
-			return views;
-		}
 		for (Player player : players) {
-			views.put(player.id(), game.viewOf(player.nationName()));
+			if (game != null) {
+				views.put(player.id(), game.viewOf(player.nationName()));
+			}
+		}
+		if (finished != null) {
+			for (Player player : finished.players()) {
+				views.put(player.id(), finished.game().viewOf(player.nationName()));
+			}
 		}
 		return views;
+	}
+
+	/**
+	 * The Game a Player belongs to: the current one if they are seated, or the
+	 * ended one if they have yet to press Play again.
+	 */
+	private Game gameOf(Player player) {
+		return seated(player) ? game : finished == null ? null : finished.game();
 	}
 
 	synchronized int version() {
@@ -587,23 +723,28 @@ public class Room {
 	}
 
 	public synchronized View view() {
-		List<PlayerView> playerViews = players.stream()
-			.map(p -> new PlayerView(p.id(), p.nationName(), p.ruler(), p.colour(), p.emblem(), p.ready(), p.done()))
+		Instant now = clock.instant();
+		GameView gameView = game == null ? null : gameView(game, now);
+		Previous previous = finished == null ? null
+				: new Previous(gameView(finished.game(), now), finished.players().stream().map(this::playerView).toList());
+		return new View(code, version, COLOURS, EMBLEMS, players.stream().map(this::playerView).toList(), gameView,
+				previous);
+	}
+
+	private PlayerView playerView(Player p) {
+		return new PlayerView(p.id(), p.nationName(), p.ruler(), p.colour(), p.emblem(), p.ready(), p.done());
+	}
+
+	private GameView gameView(Game game, Instant now) {
+		Instant timerAt = pausedSince == null ? now : pausedSince;
+		long millisLeft = game.winner().isPresent() ? 0
+				: Math.max(0, Duration.between(timerAt, turnEndsAt).toMillis());
+		List<Waiting> waiting = waitingFor().stream()
+			.map(p -> new Waiting(p.nationName(),
+					Math.max(0, DISCONNECTION_ALLOWANCE.minus(p.disconnectedFor(now)).toMillis())))
 			.toList();
-		GameView gameView = null;
-		if (game != null) {
-			Instant now = clock.instant();
-			Instant timerAt = pausedSince == null ? now : pausedSince;
-			long millisLeft = game.winner().isPresent() ? 0
-					: Math.max(0, Duration.between(timerAt, turnEndsAt).toMillis());
-			List<Waiting> waiting = waitingFor().stream()
-				.map(p -> new Waiting(p.nationName(),
-						Math.max(0, DISCONNECTION_ALLOWANCE.minus(p.disconnectedFor(now)).toMillis())))
-				.toList();
-			gameView = new GameView(game.turn(), game.nations(), millisLeft, game.conquered(), game.removed(),
-					game.winner().orElse(null), waiting);
-		}
-		return new View(code, version, COLOURS, EMBLEMS, playerViews, gameView);
+		return new GameView(game.turn(), game.nations(), millisLeft, game.conquered(), game.removed(),
+				game.winner().orElse(null), waiting);
 	}
 
 }
