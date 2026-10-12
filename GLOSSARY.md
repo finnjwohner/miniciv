@@ -75,7 +75,7 @@ Something a Nation constructs over one or more Turns by paying Gold upfront.
 _Avoid_: Structure, improvement
 
 **Defense**:
-A Nation's or Barbarian Camp's protection against attack, raised by defensive Buildings, which must be worn down to 0 before an attack can reduce Population.
+A Nation's or Barbarian Camp's protection against attack, raised by defensive Buildings, which must be worn down to 0 before an attack can reduce a Nation's Population or destroy a Camp.
 _Avoid_: Walls, fortification, armour
 
 **Damaged**:
@@ -191,7 +191,7 @@ _Avoid_: Domination, elimination
 ## Barbarians
 
 **Barbarian Camp**:
-A hostile band no Player leads, not a Nation, which appears in the wilds partway through a Game, named for its place (e.g. "Mountain Passage Barbarian Camp"), with a Ruler of its own and the same dark red colour and barbarian emblem as every other Camp. It has no Gold, Population or Research, only an Army, which grows by itself, and barbarian defensive Buildings, which raise Defense only and which it starts with and can neither build nor Repair. A Nation knows only a Camp's name once attacked by or Encountering its Warparties, and nothing at all before that, until it Locates the Camp. It sends Warparties only at its Targets, never Conquers, always leaving a Nation some Population, accepts no Tribute, and cannot be sent Spies; what its Warparties carry home is lost for good once they arrive. A Battle that brings its Army to 0 with some attackers surviving destroys it, and they take a Bounty in place of Plunder; its Warparties still abroad finish their trip and then disband with whatever they carry.
+A hostile band no Player leads, not a Nation, which appears in the wilds partway through a Game, named for its place (e.g. "Mountain Passage Barbarian Camp"), with a Ruler of its own and the same dark red colour and barbarian emblem as every other Camp. It has no Gold, Population or Research, only an Army, which grows by itself, and barbarian defensive Buildings, which raise Defense only and which it starts with and can neither build nor Repair. A Nation knows only a Camp's name once attacked by or Encountering its Warparties, and nothing at all before that, until it Locates the Camp. It sends Warparties only at its Targets, never Conquers, always leaving a Nation some Population, accepts no Tribute, and cannot be sent Spies; what its Warparties carry home is lost for good once they arrive. A Battle that brings both its Army and its Defense to 0 with some attackers surviving destroys it, and they take a Bounty in place of Plunder; its Warparties still abroad finish their trip and then disband with whatever they carry.
 _Avoid_: Barbarians, raiders, NPC, tribe
 
 **Bounty**:

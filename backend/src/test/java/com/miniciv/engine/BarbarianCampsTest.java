@@ -259,6 +259,26 @@ class BarbarianCampsTest {
 	}
 
 	@Test
+	void aCampWhoseDefenseStillStandsIsNotDestroyedThoughItsArmyIsWipedOut() {
+		game = Locating.everyone(new Ruleset(RULESET.units(), RULESET.buildings(), List.of(), List.of(), List.of(),
+				new Barbarians(BARBARIANS.places(), BARBARIANS.rulers(), List.of(new Barbarians.Building("Spike Pit", 30)))),
+				Identities.of("Rome", "Carthage", "Egypt"), luck);
+		campAppears();
+		romeLocatesTheCamp();
+		armyOf("Rome", "Warrior", 9);
+		accepted("Rome", new Action.SendWarparty(CAMP, Map.of("Warrior", 9)));
+		untilTurn(17);
+
+		assertThat(report("Rome")).contains(
+				"Your Warparty wore " + CAMP + "'s Defense down by 24, damaging Spike Pit.",
+				"Your Warparty is heading home from " + CAMP + ", whose Defense of 36 still stands, so it was not"
+						+ " destroyed.");
+		assertThat(report("Rome")).noneMatch(line -> line.contains("Bounty"));
+		assertThat(game.viewOf("Rome").camps()).extracting(MapCamp::destroyed).containsExactly(false);
+		assertThat(game.viewOf("Rome").warparties()).extracting(Warparty::plunder).containsExactly(Plunder.NONE);
+	}
+
+	@Test
 	void campsNeverCountTowardsTheLastNationStanding() {
 		campAppears();
 
