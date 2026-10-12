@@ -54,7 +54,7 @@ public record TravelBracket(int strength, int turns) {
 	 * carries, whether plundered or seized in a Conquest.
 	 */
 	static int turnsHome(double strength, Plunder haul) {
-		int carried = haul.gold() + haul.research();
+		int carried = haul.gold() + haul.research() + haul.captives();
 		int extra = carried >= HEAVIEST_HAUL ? 2 : carried >= HEAVY_HAUL ? 1 : 0;
 		return Math.min(MOST_TURNS_HOME, turnsOut(strength) + extra);
 	}

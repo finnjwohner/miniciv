@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from 'react'
-import type { Dilemma, Encounter, HaulDecision, MapNation, NationView, Tribute } from '../api'
+import { named } from '../api'
+import type { Dilemma, Encounter, HaulDecision, MapNation, Named, NationView, Tribute } from '../api'
 import { Panel } from '../ui/Panel'
 import { CountSlider } from './controls'
 import { listCounts } from './format'
@@ -84,12 +85,14 @@ function DilemmaDecision({
 
 /** Such as "12 Gold" or "5 Research". */
 function describeHaul(decision: HaulDecision) {
-  return `${decision.haul.amount} ${decision.haul.resource === 'GOLD' ? 'Gold' : 'Research'}`
+  const resource = { GOLD: 'Gold', RESEARCH: 'Research', POPULATION: 'Population' }[decision.haul.resource]
+  return `${decision.haul.amount} ${resource}`
 }
 
 /**
- * A Haul seized from a caught Spy, to keep or send back to the Nation it was stolen from; the Player may
- * change their choice until the Turn ends, and unanswered it is kept.
+ * A Haul seized from a caught Spy, or Plunder taken from a Warparty wiped out in an Encounter, to keep or send
+ * back to the Nation it was stolen from; the Player may change their choice until the Turn ends, and unanswered
+ * it is kept.
  */
 function HaulChoice({
   decision,
@@ -105,7 +108,15 @@ function HaulChoice({
   return (
     <Decision kind="Haul" open={decision.choice === 'NONE'} answeredTag="chosen">
       <p>
-        The Spy you caught carried {describeHaul(decision)} stolen from {victim}.
+        {decision.plunder ? (
+          <>
+            Your Warparty took {describeHaul(decision)} from the Warparty it wiped out, plundered from {victim}.
+          </>
+        ) : (
+          <>
+            The Spy you caught carried {describeHaul(decision)} stolen from {victim}.
+          </>
+        )}
       </p>
       <div className="button-row">
         <button
@@ -132,8 +143,8 @@ function HaulChoice({
 }
 
 /**
- * One of the Nation's Warparties met another Nation's; either Player choosing to fight makes them fight.
- * The Player may change their choice until the Turn ends.
+ * One of the Nation's Warparties met another Nation's, or a Barbarian Camp's, which has chosen already; either
+ * side choosing to fight makes them fight. The Player may change their choice until the Turn ends.
  */
 function EncounterDecision({
   encounter,
@@ -143,7 +154,7 @@ function EncounterDecision({
 }: {
   encounter: Encounter
   nation: string
-  map: MapNation[]
+  map: Named[]
   onAnswer: (warparty: number, fight: boolean) => void
 }) {
   const [own, other] = sides(encounter, nation)
@@ -286,7 +297,7 @@ export function DecisionsPanel({
             key={sides(e, nation.nation)[0].warparty}
             encounter={e}
             nation={nation.nation}
-            map={nation.map}
+            map={named(nation)}
             onAnswer={onAnswerEncounter}
           />
         ))}

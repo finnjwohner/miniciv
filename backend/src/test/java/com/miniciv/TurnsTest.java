@@ -263,6 +263,7 @@ class TurnsTest {
 		view.put("population", population);
 		view.put("research", research);
 		view.put("map", List.of(onMap("Rome", 0, "IN_GAME"), onMap("Carthage", 1, "IN_GAME")));
+		view.put("camps", List.of());
 		view.put("availableBuildings", List.of(Map.of("name", "Farm", "gold", 30, "turns", 2, "populationPerTurn", 1,
 				"goldPerTurn", 0, "goldPerPopulation", 0.0, "researchPerTurn", 0, "defense", 0)));
 		view.put("buildings", Map.of());
@@ -538,7 +539,7 @@ class TurnsTest {
 		assertThat(view.get("army")).isEqualTo(Map.of());
 		assertThat(view.get("warparties")).isEqualTo(List.of(
 				Map.of("id", 1, "target", "Carthage", "units", Map.of("Warrior", 2), "strength", 6.0, "homeward", false, "turnsLeft", 3,
-						"turnsTravelled", 0, "plunder", Map.of("gold", 0, "research", 0), "strengthSent", 6.0)));
+						"turnsTravelled", 0, "plunder", Map.of("gold", 0, "research", 0, "captives", 0), "strengthSent", 6.0)));
 		carthage.privately().expectNone();
 	}
 
@@ -563,7 +564,7 @@ class TurnsTest {
 		Map<?, ?> view = rome.privately().next();
 		assertThat(view.get("warparties")).isEqualTo(List.of(
 				Map.of("id", 1, "target", "Carthage", "units", Map.of("Warrior", 2), "strength", 6.0, "homeward", true, "turnsLeft", 1,
-						"turnsTravelled", 0, "plunder", Map.of("gold", 0, "research", 0), "strengthSent", 6.0)));
+						"turnsTravelled", 0, "plunder", Map.of("gold", 0, "research", 0, "captives", 0), "strengthSent", 6.0)));
 		carthage.privately().expectNone();
 
 		recallWarparty(rome, 1);

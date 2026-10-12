@@ -88,7 +88,7 @@ final class Locating {
 		units.add(PATHFINDER);
 		Opening opening = new Opening(luck);
 		Game game = new Game(new Ruleset(units, ruleset.buildings(), ruleset.technologies(), ruleset.events(),
-				ruleset.missions()), nations,
+				ruleset.missions(), ruleset.barbarians()), nations,
 				opening);
 		locating.forEach((nation, targets) -> accepted(game.act(nation, new Action.TrainUnits("Pathfinder", targets.size()))));
 		game.endTurn();

@@ -8,6 +8,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.ToIntFunction;
@@ -18,7 +19,7 @@ import java.util.stream.Collectors;
 /**
  * A Nation's state inside the engine.
  */
-class Nation {
+class Nation implements Sender {
 
 	/**
 	 * How many Turns after a Lasting Event ends no other can begin; the
@@ -96,6 +97,17 @@ class Nation {
 	 * The Nations this one has Located, in the order Located.
 	 */
 	private final Set<String> located = new LinkedHashSet<>();
+
+	/**
+	 * The Barbarian Camps this Nation has heard the names of, in the order
+	 * heard of.
+	 */
+	private final Set<String> campsHeardOf = new LinkedHashSet<>();
+
+	/**
+	 * What Locating each Barbarian Camp it has Located showed, by Camp.
+	 */
+	private final Map<String, CampFacts> campsLocated = new LinkedHashMap<>();
 
 	/**
 	 * The Nation's Warparties abroad, in the order sent.
@@ -207,7 +219,8 @@ class Nation {
 		return copy;
 	}
 
-	String name() {
+	@Override
+	public String name() {
 		return identity.name();
 	}
 
@@ -215,8 +228,14 @@ class Nation {
 	 * The Nation named by its Ruler, such as "Caesar of Rome", for what it
 	 * directly did to another Nation.
 	 */
-	String ruled() {
+	@Override
+	public String ruled() {
 		return identity.ruled();
+	}
+
+	@Override
+	public boolean camp() {
+		return false;
 	}
 
 	/**
@@ -227,7 +246,7 @@ class Nation {
 		version++;
 	}
 
-	NationView view(int turn, List<MapNation> map, List<ArrivedWarparty> arrivals,
+	NationView view(int turn, List<MapNation> map, List<MapCamp> camps, List<ArrivedWarparty> arrivals,
 			List<Tribute> tributes, List<Encounter> encounters, Ruleset ruleset, GoldForecast goldForecast,
 			String winner) {
 		List<BuildingType> availableBuildings = ruleset.buildings()
@@ -235,7 +254,7 @@ class Nation {
 			.filter(building -> hasAccessTo(building.name(), ruleset))
 			.toList();
 		List<UnitType> availableUnits = ruleset.units().stream().filter(unit -> hasAccessTo(unit.name(), ruleset)).toList();
-		return new NationView(version, turn, name(), gold, population, research, map, availableBuildings,
+		return new NationView(version, turn, name(), gold, population, research, map, camps, availableBuildings,
 				Collections.unmodifiableMap(new LinkedHashMap<>(buildings)), construction, repairs, defense(ruleset), damage(ruleset),
 				sellValues(ruleset),
 				availableUnits,
@@ -464,14 +483,16 @@ class Nation {
 	/**
 	 * The Nation's Warparties abroad, in the order sent.
 	 */
-	List<Warparty> warparties() {
+	@Override
+	public List<Warparty> warparties() {
 		return List.copyOf(warparties);
 	}
 
 	/**
 	 * The Nation's Warparty abroad with the given number, if any.
 	 */
-	Optional<Warparty> warparty(int id) {
+	@Override
+	public Optional<Warparty> warparty(int id) {
 		return warparties.stream().filter(warparty -> warparty.id() == id).findFirst();
 	}
 
@@ -692,10 +713,13 @@ class Nation {
 
 	/**
 	 * Has the Nation decide, by the end of the Turn, whether to keep a Haul it
-	 * seized from a caught Spy or send it back.
+	 * seized from a caught Spy, or Plunder taken in an Encounter, or send it
+	 * back.
+	 *
+	 * @param plunder whether it is Plunder taken in an Encounter
 	 */
-	void faceHaul(String stolenFrom, Haul haul) {
-		hauls.add(new HaulDecision(nextHaulId++, stolenFrom, haul, HaulDecision.Choice.NONE));
+	void faceHaul(String stolenFrom, Haul haul, boolean plunder) {
+		hauls.add(new HaulDecision(nextHaulId++, stolenFrom, haul, HaulDecision.Choice.NONE, plunder));
 		version++;
 	}
 
@@ -797,7 +821,8 @@ class Nation {
 	 * Adds a Haul to what the Nation owns.
 	 */
 	void gain(Haul haul) {
-		gain(haul.resource() == Resource.GOLD ? haul.amount() : 0, 0,
+		gain(haul.resource() == Resource.GOLD ? haul.amount() : 0,
+				haul.resource() == Resource.POPULATION ? haul.amount() : 0,
 				haul.resource() == Resource.RESEARCH ? haul.amount() : 0);
 	}
 
@@ -1306,6 +1331,7 @@ class Nation {
 				current.units().forEach((unit, count) -> army.merge(unit, count, Integer::sum));
 				gold += current.plunder().gold();
 				research += current.plunder().research();
+				population += current.plunder().captives();
 				returned.add(current);
 			}
 		}
@@ -1352,7 +1378,8 @@ class Nation {
 	 * The Warparties that have arrived at their target and await the Battle,
 	 * in the order sent.
 	 */
-	List<Warparty> awaitingBattle() {
+	@Override
+	public List<Warparty> awaitingBattle() {
 		return warparties.stream().filter(Warparty::awaitingBattle).toList();
 	}
 
@@ -1364,7 +1391,8 @@ class Nation {
 	 * @param haul what it carries home, whether plundered or seized in a
 	 *        Conquest
 	 */
-	void foughtBattle(Warparty warparty, Map<String, Integer> survivors, Plunder plunder, Plunder haul,
+	@Override
+	public void foughtBattle(Warparty warparty, Map<String, Integer> survivors, Plunder plunder, Plunder haul,
 			Ruleset ruleset) {
 		for (var it = warparties.listIterator(); it.hasNext();) {
 			if (it.next() == warparty) {
@@ -1387,7 +1415,8 @@ class Nation {
 	 *
 	 * @param warparty the Warparty, as {@link #warparty(int)} gave it
 	 */
-	void foughtEncounter(Warparty warparty, Map<String, Integer> survivors, Ruleset ruleset) {
+	@Override
+	public void foughtEncounter(Warparty warparty, Map<String, Integer> survivors, Ruleset ruleset) {
 		int at = warparties.indexOf(warparty);
 		if (survivors.isEmpty()) {
 			warparties.remove(at);
@@ -1563,10 +1592,12 @@ class Nation {
 	}
 
 	/**
-	 * Whether the Nation has set Scouts to Locate another.
+	 * Whether the Nation has set Scouts to Locate another Nation or a
+	 * Barbarian Camp, or to search the wilds if null.
 	 */
-	boolean isLocating(String nation) {
-		return tasks.stream().anyMatch(task -> task.kind() == Task.Kind.LOCATE && task.target().equals(nation));
+	boolean isLocating(String target) {
+		return tasks.stream()
+			.anyMatch(task -> task.kind() == Task.Kind.LOCATE && Objects.equals(task.target(), target));
 	}
 
 	/**
@@ -1577,11 +1608,61 @@ class Nation {
 	 */
 	boolean locate(String nation) {
 		boolean newlyLocated = located.add(nation);
-		tasks.removeIf(task -> task.kind() == Task.Kind.LOCATE && task.target().equals(nation));
+		tasks.removeIf(task -> task.kind() == Task.Kind.LOCATE && nation.equals(task.target()));
 		if (newlyLocated) {
 			version++;
 		}
 		return newlyLocated;
+	}
+
+	/**
+	 * Hears the name of a Barbarian Camp, for good.
+	 *
+	 * @return whether it had not heard of it before
+	 */
+	boolean hearOf(String camp) {
+		boolean heard = campsHeardOf.add(camp);
+		if (heard) {
+			version++;
+		}
+		return heard;
+	}
+
+	/**
+	 * Whether the Nation has heard the name of a Barbarian Camp.
+	 */
+	boolean hasHeardOf(String camp) {
+		return campsHeardOf.contains(camp);
+	}
+
+	/**
+	 * The Barbarian Camps the Nation has heard of, in the order heard of.
+	 */
+	List<String> campsHeardOf() {
+		return List.copyOf(campsHeardOf);
+	}
+
+	/**
+	 * Locates a Barbarian Camp, for good, hearing of it if it had not, and
+	 * ends the Task that found it, its Scouts going Idle, and any other
+	 * Locating it.
+	 *
+	 * @param facts what Locating it showed
+	 * @param task the Task that found it
+	 */
+	void locateCamp(String camp, CampFacts facts, Task task) {
+		hearOf(camp);
+		campsLocated.put(camp, facts);
+		tasks.removeIf(set -> set.id() == task.id() || set.kind() == Task.Kind.LOCATE && camp.equals(set.target()));
+		version++;
+	}
+
+	/**
+	 * What Locating a Barbarian Camp showed, or null if the Nation has not
+	 * Located it.
+	 */
+	CampFacts campLocated(String camp) {
+		return campsLocated.get(camp);
 	}
 
 	/**

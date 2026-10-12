@@ -1,6 +1,15 @@
 import { useState } from 'react'
-import { locatableNations, locatedNations, recallTurns, travelTurns } from '../api'
-import type { Fact, MapNation, Mission, NationView, Spy, Task, TaskKind, Warparty } from '../api'
+import {
+  locatableCamps,
+  locatableNations,
+  locatedCamps,
+  locatedNations,
+  named,
+  recallTurns,
+  searchingTheWilds,
+  travelTurns,
+} from '../api'
+import type { CampFacts, Fact, MapCamp, MapNation, Mission, Named, NationView, Spy, Task, TaskKind, Warparty } from '../api'
 import { NationEmblem } from '../ui/NationName'
 import { Panel } from '../ui/Panel'
 import { TypeCounts, TypeName } from '../ui/TypeIcon'
@@ -9,7 +18,7 @@ import { currentTarget, formatAmount, listCounts, mergeAlike, plural } from './f
 import { MapName } from './MapName'
 import { rowClass, useFreshRows } from './turnStart'
 
-function describeWarparty(warparty: Warparty, map: MapNation[]) {
+function describeWarparty(warparty: Warparty, map: Named[]) {
   const target = <MapName name={warparty.target} map={map} />
   if (!warparty.homeward && warparty.turnsLeft === 0) {
     return <>at {target}, fighting the Battle as this Turn ends</>
@@ -32,7 +41,7 @@ function describeWarparty(warparty: Warparty, map: MapNation[]) {
 }
 
 /**
- * A form to send Units from the Army to another Nation previewing the Warparty's Strength and travel
+ * A form to send Units from the Army to another Nation or a Barbarian Camp previewing the Warparty's Strength and travel
  * Turns, then the Army at home and its total Strength, and the Nation's Warparties abroad with their
  * Strength, destination and Turns left, each not yet heading home with a button to Recall it. A Unit
  * type new to the Army flashes.
@@ -48,7 +57,7 @@ export function ArmyPanel({
   onSend: (target: string, units: Record<string, number>) => void
   onRecall: (warparty: number) => void
 }) {
-  const targets = locatedNations(nation)
+  const targets = [...locatedNations(nation), ...locatedCamps(nation)]
   const [chosenTarget, setTarget] = useState(targets[0] ?? '')
   const target = currentTarget(targets, chosenTarget)
   const [chosen, setChosen] = useState<Record<string, number>>({})
@@ -146,7 +155,7 @@ export function ArmyPanel({
                 <TypeCounts counts={w.units} kind="unit" size={24} />
               </span>
               <span className="tag">Strength {formatAmount(w.strength)}</span>
-              <span className="row__meta">{describeWarparty(w, nation.map)}</span>
+              <span className="row__meta">{describeWarparty(w, named(nation))}</span>
               {!w.homeward && (
                 <button onClick={() => onRecall(w.id)}>
                   Recall (home in {plural(recallTurns(nation.travelBrackets, w), 'Turn')})
@@ -262,11 +271,11 @@ function NoneLocated() {
   )
 }
 
-/** Such as "Locating Carthage" or "Watching for Warparties". */
+/** Such as "Locating Carthage", "Searching the wilds" or "Watching for Warparties". */
 function describeTask(task: Task) {
   switch (task.kind) {
     case 'LOCATE':
-      return `Locating ${task.target}`
+      return task.target === null ? 'Searching the wilds' : `Locating ${task.target}`
     case 'WATCH':
       return 'Watching for Warparties'
     case 'HUNT':
@@ -276,7 +285,12 @@ function describeTask(task: Task) {
 
 /** What each kind of Task is called when choosing one, and what it does. */
 const TASK_KINDS: { kind: TaskKind; name: string; about: string }[] = [
-  { kind: 'LOCATE', name: 'Locate a Nation', about: 'Each Scout gives a 15% chance each Turn of Locating the Nation.' },
+  {
+    kind: 'LOCATE',
+    name: 'Locate',
+    about:
+      'Each Scout gives a 15% chance each Turn of Locating what it seeks. Searching the wilds finds any Barbarian Camp you have not Located.',
+  },
   {
     kind: 'WATCH',
     name: 'Watch for Warparties',
@@ -289,10 +303,14 @@ const TASK_KINDS: { kind: TaskKind; name: string; about: string }[] = [
   },
 ]
 
+/** The Locate option that searches the wilds for any Barbarian Camp, rather than one Nation or Camp. */
+const WILDS = ''
+
 /**
  * The Nation's Idle Scouts, its Tasks each with a button to cancel it, and a form to set Idle Scouts to a
- * new Task: Locate, offered only while some Nation still in the Game is neither Located nor being Located,
- * offers only those; Watch for Warparties takes exactly 1 Scout; Hunt Travelling Spies any number.
+ * new Task: Locate offers the Nations still in the Game and the Barbarian Camps still standing that the Nation
+ * has heard of, that are neither Located nor being Located, and the wilds while no Scouts are searching them;
+ * Watch for Warparties takes exactly 1 Scout; Hunt Travelling Spies any number.
  */
 function ScoutTasks({
   nation,
@@ -303,12 +321,12 @@ function ScoutTasks({
   onSetTask: (kind: TaskKind, target: string | null, scouts: number) => void
   onCancelTask: (task: number) => void
 }) {
-  const targets = locatableNations(nation)
+  const targets = [...locatableNations(nation), ...locatableCamps(nation), ...(searchingTheWilds(nation) ? [] : [WILDS])]
   const kinds = TASK_KINDS.filter((k) => k.kind !== 'LOCATE' || targets.length > 0)
   const [chosenKind, setKind] = useState<TaskKind>(kinds[0].kind)
   const kind = kinds.find((k) => k.kind === chosenKind) ?? kinds[0]
-  const [chosenTarget, setTarget] = useState(targets[0] ?? '')
-  const target = currentTarget(targets, chosenTarget)
+  const [chosenTarget, setTarget] = useState(targets[0] ?? WILDS)
+  const target = targets.includes(chosenTarget) ? chosenTarget : (targets[0] ?? WILDS)
   const [chosenCount, setCount] = useState(1)
   const most = kind.kind === 'WATCH' ? 1 : nation.idleScouts
   const count = Math.max(1, Math.min(chosenCount, most))
@@ -343,7 +361,16 @@ function ScoutTasks({
               </select>
             </label>
             {kind.kind === 'LOCATE' && (
-              <TargetSelect targets={targets} value={target} label="Locate" onChange={setTarget} />
+              <label className="field">
+                <span className="field__label">Locate</span>
+                <select value={target} onChange={(e) => setTarget(e.target.value)}>
+                  {targets.map((n) => (
+                    <option key={n} value={n}>
+                      {n === WILDS ? 'The wilds' : n}
+                    </option>
+                  ))}
+                </select>
+              </label>
             )}
             {most > 1 && (
               <CountSlider
@@ -355,8 +382,7 @@ function ScoutTasks({
               />
             )}
             <button
-              onClick={() => onSetTask(kind.kind, kind.kind === 'LOCATE' ? target : null, count)}
-              disabled={kind.kind === 'LOCATE' && !target}
+              onClick={() => onSetTask(kind.kind, kind.kind === 'LOCATE' && target !== WILDS ? target : null, count)}
             >
               Set Task
             </button>
@@ -512,10 +538,49 @@ function KnownFacts({ facts }: { facts: MapNation['facts'] }) {
   )
 }
 
+/** What Locating a Barbarian Camp showed, each with the Turn it was Located, or that it is not Located yet. */
+function CampFactList({ located }: { located: CampFacts | null }) {
+  if (located === null) return <p className="muted">Not Located yet.</p>
+  const learned = (value: string) => `${value} · Turn ${located.turn}`
+  return (
+    <FactList
+      entries={[
+        ['Defense', learned(String(located.defense))],
+        ['Army', learned(listCounts(located.army) || 'none')],
+        ['Buildings', learned(listCounts(located.buildings) || 'none')],
+        ['Targets', learned(located.targets.join(', ') || 'none')],
+      ]}
+    />
+  )
+}
+
+/** The Barbarian Camps the Player has heard of, each in its colour with its emblem and Ruler. */
+function CampCards({ camps }: { camps: MapCamp[] }) {
+  return (
+    <ul className="nations" aria-label="Barbarian Camps">
+      {camps.map((camp) => (
+        <li key={camp.name} className="nation-card" style={{ borderLeftColor: camp.colour }}>
+          <h4 className="nation-card__name">
+            <NationEmblem colour={camp.colour} emblem={camp.emblem} />
+            <span className="nation-card__title">
+              {camp.name}
+              <span className="nation-card__ruler">Ruled by {camp.ruler}</span>
+            </span>
+            {camp.destroyed && <span className="tag tag--muted">destroyed</span>}
+            {camp.located && <span className="tag">located</span>}
+          </h4>
+          <CampFactList located={camp.located} />
+        </li>
+      ))}
+    </ul>
+  )
+}
+
 /**
  * A read-only placeholder Map of every Nation in the Game, drawn from this Player's view alone: every
  * Nation in its colour with its emblem and Ruler, their own Nation in full, every other Nation with the
- * Facts known of it, and which have been knocked out or Removed.
+ * Facts known of it, and which have been knocked out or Removed. Then the Barbarian Camps the Player has heard
+ * of, with what Locating each showed.
  */
 export function MapPanel({ nation }: { nation: NationView }) {
   return (
@@ -559,6 +624,12 @@ export function MapPanel({ nation }: { nation: NationView }) {
           )
         })}
       </ul>
+      {nation.camps.length > 0 && (
+        <>
+          <h3>Barbarian Camps</h3>
+          <CampCards camps={nation.camps} />
+        </>
+      )}
     </Panel>
   )
 }

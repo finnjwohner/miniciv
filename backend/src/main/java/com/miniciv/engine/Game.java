@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.IntPredicate;
 import java.util.function.Supplier;
 import java.util.random.RandomGenerator;
 import java.util.stream.IntStream;
@@ -157,6 +158,39 @@ public class Game {
 	private static final double ENCOUNTER_CHANCE = 0.15;
 
 	/**
+	 * The first Turn as which a Barbarian Camp may appear as it resolves.
+	 */
+	static final int FIRST_CAMP_TURN = 8;
+
+	/**
+	 * The chance, as each Turn resolves on which one may, of a Barbarian Camp
+	 * appearing.
+	 */
+	static final double CAMP_CHANCE = 0.15;
+
+	/**
+	 * How many Turns must resolve after a Barbarian Camp appears before
+	 * another may.
+	 */
+	static final int TURNS_BETWEEN_CAMPS = 4;
+
+	/**
+	 * How much Population a Barbarian Camp's Warparty's surviving Strength
+	 * lets it carry off as Captives.
+	 */
+	private static final double CAPTIVES_PER_STRENGTH = 0.5;
+
+	/**
+	 * The least Gold destroying a Barbarian Camp pays as its Bounty.
+	 */
+	static final int LEAST_BOUNTY = 32;
+
+	/**
+	 * The most Gold destroying a Barbarian Camp pays as its Bounty.
+	 */
+	static final int MOST_BOUNTY = 48;
+
+	/**
 	 * What becomes of a caught Spy, each as likely as the others.
 	 */
 	private enum Captured {
@@ -230,6 +264,17 @@ public class Game {
 	private final List<Encounter> encounters = new ArrayList<>();
 
 	/**
+	 * The Barbarian Camps that have appeared, destroyed or not, in the order
+	 * they appeared.
+	 */
+	private final List<Camp> camps = new ArrayList<>();
+
+	/**
+	 * The Turn the last Barbarian Camp appeared as, or 0 if none has.
+	 */
+	private int lastCampOn;
+
+	/**
 	 * The last Nation standing, or null while the Game goes on.
 	 */
 	private String winner;
@@ -271,6 +316,14 @@ public class Game {
 	}
 
 	/**
+	 * The Barbarian Camps that have appeared so far, destroyed or not, in the
+	 * order they appeared; no Nation knows of one until it hears of it.
+	 */
+	public List<String> camps() {
+		return camps.stream().map(Camp::name).toList();
+	}
+
+	/**
 	 * Whether a Nation is still in the Game, neither conquered nor removed.
 	 */
 	public boolean inGame(String nation) {
@@ -305,6 +358,7 @@ public class Game {
 		}
 		nation.remove();
 		removed.add(name);
+		camps.forEach(camp -> camp.forget(name));
 		tributes.removeIf(tribute -> tribute.involves(name));
 		encounters.removeIf(encounter -> encounter.involves(name));
 		List<Nation> left = remaining();
@@ -352,6 +406,30 @@ public class Game {
 	}
 
 	/**
+	 * The Nations still in the Game, then every Barbarian Camp, each in order:
+	 * every one whose Warparties may still be abroad.
+	 */
+	private List<Sender> senders() {
+		List<Sender> senders = new ArrayList<>(remaining());
+		senders.addAll(camps);
+		return senders;
+	}
+
+	/**
+	 * The Barbarian Camp of the given name, if one has appeared.
+	 */
+	private Optional<Camp> camp(String name) {
+		return camps.stream().filter(camp -> camp.name().equals(name)).findFirst();
+	}
+
+	/**
+	 * The Nation or Barbarian Camp of the given name.
+	 */
+	private Sender sender(String name) {
+		return camp(name).<Sender>map(camp -> camp).orElseGet(() -> nation(name));
+	}
+
+	/**
 	 * Resolves the Turn for every Nation still in the Game at once, then starts
 	 * the next Turn. Once the Game is won, nothing happens any more.
 	 */
@@ -379,7 +457,7 @@ public class Game {
 		}
 		tributes.clear();
 		searchForNations(reports);
-		settleEncounters(reports);
+		List<Runnable> plunderTaken = settleEncounters(reports);
 		List<Witnessed> witnessed = new ArrayList<>();
 		for (Nation nation : inPlay) {
 			TurnReport.Draft report = reports.get(nation.name());
@@ -427,21 +505,39 @@ public class Game {
 									" and joined your Spies at home."));
 			}
 		}
+		camps.forEach(Camp::travelHome);
 		deliverHauls(reports);
 		settleHauls(reports);
+		plunderTaken.forEach(Runnable::run);
 		// A Nation conquered earlier in this Turn no longer fights, and its
 		// Warparties are gone.
 		for (Optional<String> target = nextBattle(); target.isPresent(); target = nextBattle()) {
-			reportBattle(fight(nation(target.get())), reports);
+			Optional<Camp> camp = camp(target.get());
+			if (camp.isPresent()) {
+				reportBattle(fightAt(camp.get()), reports);
+			}
+			else {
+				reportBattle(fight(nation(target.get())), reports);
+			}
+		}
+		for (Camp camp : camps) {
+			for (Warparty arrived : camp.travelOut()) {
+				nation(arrived.target()).hearOf(camp.name());
+				reports.get(arrived.target())
+					.add(DECISIONS_AND_ALERTS, camp.ruled()
+							+ "'s Warparty arrived at your Nation; the Battle will be fought as this Turn ends.");
+			}
 		}
 		for (Nation nation : remaining()) {
 			for (Warparty arrived : nation.travelOut()) {
 				reports.get(nation.name())
 					.add(WARFARE, "Your Warparty of " + listed(arrived.units()) + " arrived at " + arrived.target()
 							+ "; the Battle will be fought as this Turn ends.");
-				reports.get(arrived.target())
-					.add(DECISIONS_AND_ALERTS, nation.ruled()
-							+ "'s Warparty arrived at your Nation; the Battle will be fought as this Turn ends.");
+				if (camp(arrived.target()).isEmpty()) {
+					reports.get(arrived.target())
+						.add(DECISIONS_AND_ALERTS, nation.ruled()
+								+ "'s Warparty arrived at your Nation; the Battle will be fought as this Turn ends.");
+				}
 			}
 			for (Spy arrived : nation.spiesTravelOut()) {
 				reports.get(nation.name()).add(SPIES_AND_SCOUTS, "Your Spy arrived at " + arrived.target() + ".");
@@ -505,6 +601,7 @@ public class Game {
 		escape(reports, witnessed);
 		workOnMissions(reports, witnessed);
 		tellWitnesses(reports, witnessed);
+		barbarians();
 		meet(reports);
 		List<Nation> left = remaining();
 		if (left.size() == 1) {
@@ -579,21 +676,31 @@ public class Game {
 	}
 
 	/**
-	 * The Nation the next Battle is fought at: the target of the first
-	 * Warparty awaiting a Battle, taking the Nations in order and each one's
-	 * Warparties in the order sent.
+	 * The Nation or Barbarian Camp the next Battle is fought at: the target of
+	 * the first Warparty awaiting a Battle, taking the Nations in order, then
+	 * the Camps in order, and each one's Warparties in the order sent.
 	 */
 	private Optional<String> nextBattle() {
-		return remaining().stream()
-			.flatMap(nation -> nation.awaitingBattle().stream())
+		return senders().stream()
+			.flatMap(sender -> sender.awaitingBattle().stream())
 			.map(Warparty::target)
 			.findFirst();
 	}
 
 	/**
-	 * A Warparty that arrived at a Nation, and the Nation that sent it.
+	 * A Warparty that arrived at a Nation or Barbarian Camp, and the Nation or
+	 * Camp that sent it.
 	 */
-	private record Arrival(Nation attacker, Warparty warparty) {
+	private record Arrival(Sender attacker, Warparty warparty) {
+
+		String name() {
+			return attacker.name();
+		}
+
+		boolean camp() {
+			return attacker.camp();
+		}
+
 	}
 
 	/**
@@ -633,37 +740,54 @@ public class Game {
 	}
 
 	/**
+	 * The Warparties awaiting a Battle at a Nation or Barbarian Camp, from the
+	 * Nations in order, then the Camps in order, and each one's in the order
+	 * sent.
+	 */
+	private List<Arrival> arrivalsAt(String target) {
+		List<Arrival> arrivals = new ArrayList<>();
+		for (Sender attacker : senders()) {
+			attacker.awaitingBattle()
+				.stream()
+				.filter(warparty -> warparty.target().equals(target))
+				.forEach(warparty -> arrivals.add(new Arrival(attacker, warparty)));
+		}
+		return arrivals;
+	}
+
+	/**
 	 * Fights the Battle at a Nation: every Warparty awaiting a Battle there,
-	 * from the Nations in order and each one's in the order sent, fights its
-	 * Army as one. The Warparties' surviving Strength, rounded down, wears the
-	 * Nation's Defense down, and what is left once Defense is 0 reduces its
-	 * Population, more so if its Army was wiped out or it had neither Army nor
-	 * Defense. If the Nation is then Breached, half of what is left, rounded
-	 * down, Damages one of its undamaged non-defensive Buildings for every
+	 * from the Nations in order, then the Barbarian Camps in order, and each
+	 * one's in the order sent, fights its Army as one. The Warparties'
+	 * surviving Strength, rounded down, wears the Nation's Defense down, and
+	 * what is left once Defense is 0 reduces its Population, more so if its
+	 * Army was wiped out or it had neither Army nor Defense. If the Nation is
+	 * then Breached, half of what is left, rounded down, Damages one of its
+	 * undamaged non-defensive Buildings for every
 	 * {@value #STRENGTH_PER_BUILDING_DAMAGED} Strength (see
 	 * {@link #damageBuildings}), and whatever of that half cannot be used
 	 * reduces its Population with the rest. A Nation left with neither
-	 * Population nor Army is conquered, unless the Warparties were all wiped
-	 * out too; otherwise the survivors take plunder scaled by their remaining
-	 * Strength, rounded down. What is plundered or seized is split between the
-	 * Warparties in proportion to their surviving Strength, so one wiped out
-	 * gets none of it. The Nation Locates every attacking Nation.
+	 * Population nor Army is conquered, unless the Nations' Warparties were
+	 * all wiped out: Camps never conquer, and unless some of the Nations'
+	 * Warparties survive, the Battle always leaves it some Population. Otherwise the survivors take plunder scaled by their
+	 * remaining Strength, rounded down: Gold for all of them, Research for
+	 * the Nations' and Captives for the Camps', which never take the last of
+	 * its Population. What is plundered or seized is split between the
+	 * Warparties taking it in proportion to their surviving Strength, so one
+	 * wiped out gets none of it. The Nation Locates every attacking Nation and
+	 * hears of every attacking Camp.
 	 */
 	private BattleFought fight(Nation defender) {
-		List<Arrival> arrivals = new ArrayList<>();
-		for (Nation attacker : remaining()) {
-			attacker.awaitingBattle()
-				.stream()
-				.filter(warparty -> warparty.target().equals(defender.name()))
-				.forEach(warparty -> arrivals.add(new Arrival(attacker, warparty)));
-		}
+		List<Arrival> arrivals = arrivalsAt(defender.name());
 		Battle battle = Battle.fight(arrivals.stream().map(arrival -> arrival.warparty().units()).toList(),
 				defender.army(), ruleset, random);
 		List<String> located = arrivals.stream()
-			.map(arrival -> arrival.attacker().name())
+			.filter(arrival -> !arrival.camp())
+			.map(Arrival::name)
 			.distinct()
 			.filter(defender::locate)
 			.toList();
+		arrivals.stream().filter(Arrival::camp).forEach(arrival -> defender.hearOf(arrival.name()));
 		defender.lose(battle.armyLost());
 		List<Double> strengths = IntStream.range(0, arrivals.size())
 			.mapToObj(arrival -> battle.warpartySurvivingStrength(arrival, ruleset))
@@ -681,38 +805,220 @@ public class Game {
 		}
 		Exposure exposure = Exposure.of(battle, defenseWorn);
 		int multiplier = exposure == Exposure.DEFENDED ? 1 : EXPOSED_POPULATION_MULTIPLIER;
-		int populationLost = defender.losePopulation(strengthLeft * POPULATION_PER_STRENGTH * multiplier);
-		// Survivors with no Strength at all still take an equal share of what
-		// is seized.
-		List<Double> weights = strength > 0 ? strengths
-				: IntStream.range(0, arrivals.size())
-					.mapToObj(arrival -> battle.warpartySurvivors(arrival).isEmpty() ? 0.0 : 1.0)
-					.toList();
-		boolean conquered = battle.anyWarpartySurvived() && defender.hasNeitherPopulationNorArmy();
+		int killing = strengthLeft * POPULATION_PER_STRENGTH * multiplier;
+		IntPredicate nationSurvived = arrival -> !arrivals.get(arrival).camp()
+				&& !battle.warpartySurvivors(arrival).isEmpty();
+		boolean mayConquer = IntStream.range(0, arrivals.size()).anyMatch(nationSurvived);
+		int populationLost = defender.losePopulation(mayConquer ? killing : Math.min(killing, spared(defender)));
+		boolean conquered = mayConquer && defender.hasNeitherPopulationNorArmy();
+		List<Plunder> shares;
 		Plunder taken;
 		if (conquered) {
 			List<String> conquerors = IntStream.range(0, arrivals.size())
-				.filter(arrival -> !battle.warpartySurvivors(arrival).isEmpty())
-				.mapToObj(arrival -> arrivals.get(arrival).attacker().name())
+				.filter(nationSurvived)
+				.mapToObj(arrival -> arrivals.get(arrival).name())
 				.distinct()
 				.toList();
 			taken = defender.conquer(joined(conquerors), CONQUEST_SHARE);
+			shares = shared(taken, weights(battle, strengths, arrival -> !arrivals.get(arrival).camp()));
 		}
 		else {
-			taken = defender.plundered((int) Math.floor(strength * PLUNDER_GOLD_PER_STRENGTH),
-					(int) Math.floor(strength * PLUNDER_RESEARCH_PER_STRENGTH));
+			double campStrength = IntStream.range(0, arrivals.size())
+				.filter(arrival -> arrivals.get(arrival).camp())
+				.mapToDouble(strengths::get)
+				.sum();
+			Plunder plundered = defender.plundered((int) Math.floor(strength * PLUNDER_GOLD_PER_STRENGTH),
+					(int) Math.floor((strength - campStrength) * PLUNDER_RESEARCH_PER_STRENGTH));
+			int captives = defender.losePopulation(
+					Math.min((int) Math.floor(campStrength * CAPTIVES_PER_STRENGTH), spared(defender)));
+			taken = new Plunder(plundered.gold(), plundered.research(), captives);
+			List<Integer> gold = apportioned(taken.gold(), weights(battle, strengths, arrival -> true));
+			List<Integer> research = apportioned(taken.research(),
+					weights(battle, strengths, arrival -> !arrivals.get(arrival).camp()));
+			List<Integer> carried = apportioned(taken.captives(),
+					weights(battle, strengths, arrival -> arrivals.get(arrival).camp()));
+			shares = IntStream.range(0, arrivals.size())
+				.mapToObj(arrival -> new Plunder(gold.get(arrival), research.get(arrival), carried.get(arrival)))
+				.toList();
 		}
-		List<Plunder> shares = shared(taken, weights);
 		for (int i = 0; i < arrivals.size(); i++) {
-			Nation attacker = arrivals.get(i).attacker();
-			if (conquered) {
-				attacker.seize(shares.get(i));
+			Sender attacker = arrivals.get(i).attacker();
+			if (conquered && attacker instanceof Nation conqueror) {
+				conqueror.seize(shares.get(i));
 			}
 			attacker.foughtBattle(arrivals.get(i).warparty(), battle.warpartySurvivors(i),
 					conquered ? Plunder.NONE : shares.get(i), shares.get(i), ruleset);
 		}
 		return new BattleFought(defender, arrivals, battle, located, shares, defenseWorn, buildingsDamaged, populationLost,
 				exposure, conquered ? turnBackFrom(defender, taken) : null);
+	}
+
+	/**
+	 * How much of a Nation's Population a Barbarian Camp may take: all but
+	 * the last of it.
+	 */
+	private static int spared(Nation nation) {
+		return Math.max(0, nation.population() - 1);
+	}
+
+	/**
+	 * The weights the attacking Warparties taking part in a share of a
+	 * Battle's plunder, seizure or Bounty take it in: each one's surviving
+	 * Strength, or, if those taking part have none at all, an equal share for
+	 * each with survivors. Those not taking part get none.
+	 *
+	 * @param taking which of the attacking Warparties, by index, take part
+	 */
+	private static List<Double> weights(Battle battle, List<Double> strengths, IntPredicate taking) {
+		double strength = IntStream.range(0, strengths.size()).filter(taking).mapToDouble(strengths::get).sum();
+		return IntStream.range(0, strengths.size())
+			.mapToObj(arrival -> !taking.test(arrival) ? 0.0
+					: strength > 0 ? strengths.get(arrival) : battle.warpartySurvivors(arrival).isEmpty() ? 0.0 : 1.0)
+			.toList();
+	}
+
+	/**
+	 * A Battle fought at a Barbarian Camp.
+	 *
+	 * @param arrivals the attacking Warparties, as they were before the Battle,
+	 *        in the order they fought in the Battle
+	 * @param bounties each attacking Warparty's share of the Bounty, none if
+	 *        the Camp was not destroyed
+	 * @param destroyed whether the Battle destroyed the Camp
+	 * @param turnedBack the other Warparties heading to the Camp that turned
+	 *        back home as it was destroyed, as they were before, by Nation
+	 * @param tasksEnded the Tasks Locating the Camp that ended as it was
+	 *        destroyed, by Nation
+	 */
+	private record CampBattle(Camp camp, List<Arrival> arrivals, Battle battle, Nation.DefenseWorn defenseWorn,
+			List<Plunder> bounties, boolean destroyed, Map<String, List<Warparty>> turnedBack,
+			Map<String, List<Task>> tasksEnded) {
+
+		boolean survived(int arrival) {
+			return !battle.warpartySurvivors(arrival).isEmpty();
+		}
+
+	}
+
+	/**
+	 * Fights the Battle at a Barbarian Camp: every Nation's Warparty awaiting a
+	 * Battle there, from the Nations in order and each one's in the order
+	 * sent, fights its Army as one, and the Warparties' surviving Strength,
+	 * rounded down, wears its Defense down. Every attacking Nation becomes one
+	 * of its Targets. A Battle that leaves it with no Army, some of the
+	 * Warparties surviving, destroys it: one draw from the seeded random
+	 * source sets the Bounty, from {@value #LEAST_BOUNTY} to
+	 * {@value #MOST_BOUNTY} Gold, split between the survivors as plunder is;
+	 * every other Warparty heading to it turns back home, and every Task
+	 * Locating it ends. The survivors take nothing else, and head home.
+	 */
+	private CampBattle fightAt(Camp camp) {
+		List<Arrival> arrivals = arrivalsAt(camp.name());
+		Battle battle = Battle.fight(arrivals.stream().map(arrival -> arrival.warparty().units()).toList(),
+				camp.army(), ruleset, random);
+		camp.lose(battle.armyLost());
+		arrivals.forEach(arrival -> camp.target(arrival.name()));
+		List<Double> strengths = IntStream.range(0, arrivals.size())
+			.mapToObj(arrival -> battle.warpartySurvivingStrength(arrival, ruleset))
+			.toList();
+		int wholeStrength = (int) Math.floor(strengths.stream().mapToDouble(Double::doubleValue).sum());
+		Nation.DefenseWorn defenseWorn = camp.wearDefense(wholeStrength, ruleset.barbarians());
+		boolean destroyed = battle.anyWarpartySurvived() && camp.army().isEmpty();
+		Plunder bounty = destroyed
+				? new Plunder(LEAST_BOUNTY + (int) (random.nextDouble() * (MOST_BOUNTY - LEAST_BOUNTY + 1)), 0)
+				: Plunder.NONE;
+		List<Plunder> bounties = shared(bounty, weights(battle, strengths, arrival -> true));
+		for (int i = 0; i < arrivals.size(); i++) {
+			arrivals.get(i)
+				.attacker()
+				.foughtBattle(arrivals.get(i).warparty(), battle.warpartySurvivors(i), bounties.get(i), bounties.get(i),
+						ruleset);
+		}
+		Map<String, List<Warparty>> turnedBack = new LinkedHashMap<>();
+		Map<String, List<Task>> tasksEnded = new LinkedHashMap<>();
+		if (destroyed) {
+			camp.destroy();
+			for (Nation nation : remaining()) {
+				List<Warparty> turned = nation.turnBackFrom(camp.name());
+				if (!turned.isEmpty()) {
+					turnedBack.put(nation.name(), turned);
+				}
+				List<Task> ended = nation.endTasksFor(camp.name());
+				if (!ended.isEmpty()) {
+					tasksEnded.put(nation.name(), ended);
+				}
+			}
+		}
+		return new CampBattle(camp, arrivals, battle, defenseWorn, bounties, destroyed, turnedBack, tasksEnded);
+	}
+
+	/**
+	 * Tells each attacking Nation how its Battle at a Barbarian Camp went, and
+	 * every other Nation that has heard of the Camp that it was destroyed.
+	 */
+	private void reportBattle(CampBattle fought, Map<String, TurnReport.Draft> reports) {
+		Battle battle = fought.battle();
+		List<Arrival> arrivals = fought.arrivals();
+		String camp = fought.camp().name();
+		String army = battle.army().isEmpty() ? null : listed(battle.army());
+		for (int i = 0; i < arrivals.size(); i++) {
+			String attacker = arrivals.get(i).name();
+			String warparty = listed(battle.warparties().get(i));
+			List<String> alongside = new ArrayList<>();
+			for (int j = 0; j < arrivals.size(); j++) {
+				if (j != i) {
+					String other = arrivals.get(j).name();
+					alongside.add((other.equals(attacker) ? "your" : other + "'s") + " Warparty of "
+							+ listed(battle.warparties().get(j)));
+				}
+			}
+			String allies = alongside.isEmpty() ? "" : " alongside " + joined(alongside);
+			TurnReport.Draft report = reports.get(attacker);
+			report.add(WARFARE, army == null
+					? "Your Warparty of " + warparty + " met no Army at " + camp + (allies.isEmpty() ? "" : "," + allies)
+							+ "."
+					: "Your Warparty of " + warparty + " fought " + camp + "'s Army of " + army + allies + ". You lost "
+							+ lost(battle.warpartiesLost().get(i)) + " and " + camp + " lost " + lost(battle.armyLost())
+							+ ".");
+			if (!fought.survived(i)) {
+				report.add(WARFARE, "Your Warparty sent to " + camp + " was destroyed.");
+			}
+		}
+		List<Integer> surviving = IntStream.range(0, arrivals.size()).filter(fought::survived).boxed().toList();
+		List<String> attackers = surviving.stream().map(arrival -> arrivals.get(arrival).name()).distinct().toList();
+		Nation.DefenseWorn defenseWorn = fought.defenseWorn();
+		if (defenseWorn.worn() > 0) {
+			attackers.forEach(attacker -> reports.get(attacker)
+				.add(WARFARE, warpartiesFrom(attacker, surviving.stream().map(arrivals::get).toList()) + " wore " + camp
+						+ "'s Defense down by " + defenseWorn.worn() + ", " + buildingsHarmed(defenseWorn) + "."));
+		}
+		String share = surviving.size() > 1 ? " as its share" : "";
+		for (int i : surviving) {
+			TurnReport.Draft report = reports.get(arrivals.get(i).name());
+			if (fought.destroyed()) {
+				report.add(WARFARE, Line.of("Your Warparty destroyed " + camp + ", taking ",
+						gain(GOLD, fought.bounties().get(i).gold()), " as a Bounty" + share + ", and is heading home."));
+			}
+			else {
+				report.add(WARFARE, "Your Warparty is heading home from " + camp + ".");
+			}
+		}
+		if (!fought.destroyed()) {
+			return;
+		}
+		for (Nation nation : remaining()) {
+			if (nation.hasHeardOf(camp) && !attackers.contains(nation.name())) {
+				reports.get(nation.name())
+					.add(WARFARE, joined(attackers.stream().map(this::ruled).toList()) + " destroyed " + camp + ".");
+			}
+		}
+		fought.turnedBack()
+			.forEach((nation, turned) -> turned.forEach(back -> reports.get(nation)
+				.add(WARFARE, "Your Warparty of " + listed(back.units()) + " heading to " + camp
+						+ " turned back home, as " + camp + " was destroyed.")));
+		fought.tasksEnded()
+			.forEach((nation, ended) -> ended
+				.forEach(task -> reports.get(nation).add(SPIES_AND_SCOUTS, taskEnded(task, camp + " was destroyed"))));
 	}
 
 	/**
@@ -756,6 +1062,7 @@ public class Game {
 	 */
 	private Nation.Conquest turnBackFrom(Nation conquered, Plunder seized) {
 		this.conquered.add(conquered.name());
+		camps.forEach(camp -> camp.forget(conquered.name()));
 		Map<String, List<Warparty>> turnedBack = new LinkedHashMap<>();
 		Map<String, List<Spy>> spiesTurnedBack = new LinkedHashMap<>();
 		Map<String, List<Task>> tasksEnded = new LinkedHashMap<>();
@@ -785,14 +1092,17 @@ public class Game {
 		List<String> sides = new ArrayList<>();
 		List<String> losses = new ArrayList<>(List.of("You lost " + lost(battle.armyLost())));
 		for (int i = 0; i < arrivals.size(); i++) {
-			String attacker = arrivals.get(i).attacker().name();
+			String attacker = arrivals.get(i).name();
 			String warparty = listed(battle.warparties().get(i));
 			sides.add(ruled(attacker) + "'s Warparty of " + warparty);
 			losses.add(attacker + " lost " + lost(battle.warpartiesLost().get(i)));
+			if (arrivals.get(i).camp()) {
+				continue;
+			}
 			List<String> alongside = new ArrayList<>();
 			for (int j = 0; j < arrivals.size(); j++) {
 				if (j != i) {
-					String other = arrivals.get(j).attacker().name();
+					String other = arrivals.get(j).name();
 					alongside.add((other.equals(attacker) ? "your" : other + "'s") + " Warparty of "
 							+ listed(battle.warparties().get(j)));
 				}
@@ -813,8 +1123,10 @@ public class Game {
 					"The Battle revealed where " + attacker + " lies; you have Located it."));
 		for (int i = 0; i < arrivals.size(); i++) {
 			if (!fought.survived(i)) {
-				String attacker = arrivals.get(i).attacker().name();
-				reports.get(attacker).add(WARFARE, "Your Warparty sent to " + defender + " was destroyed.");
+				String attacker = arrivals.get(i).name();
+				if (!arrivals.get(i).camp()) {
+					reports.get(attacker).add(WARFARE, "Your Warparty sent to " + defender + " was destroyed.");
+				}
 				defenderReport.add(WARFARE, ruled(attacker) + "'s Warparty was destroyed.");
 			}
 		}
@@ -822,7 +1134,7 @@ public class Game {
 		if (survivors.isEmpty()) {
 			return;
 		}
-		List<String> attackers = survivors.stream().map(arrival -> arrival.attacker().name()).distinct().toList();
+		List<String> attackers = survivors.stream().filter(arrival -> !arrival.camp()).map(Arrival::name).distinct().toList();
 		Nation.DefenseWorn defenseWorn = fought.defenseWorn();
 		if (defenseWorn.worn() > 0) {
 			attackers.forEach(attacker -> reports.get(attacker)
@@ -857,17 +1169,18 @@ public class Game {
 		}
 		Nation.Conquest conquest = fought.conquest();
 		if (conquest != null) {
+			List<Arrival> conquering = survivors.stream().filter(arrival -> !arrival.camp()).toList();
 			Plunder seized = conquest.seized();
-			if (survivors.size() == 1) {
+			if (conquering.size() == 1) {
 				reports.get(attackers.getFirst())
 					.add(WARFARE, Line.of("Your Warparty conquered " + defender + ", seizing ",
 							seized.described(Effect.GAIN), ", and is heading home."));
 			}
 			else {
 				for (String attacker : attackers) {
-					reports.get(attacker).add(WARFARE, warpartiesFrom(attacker, survivors) + " conquered " + defender + ".");
+					reports.get(attacker).add(WARFARE, warpartiesFrom(attacker, conquering) + " conquered " + defender + ".");
 					for (int i = 0; i < arrivals.size(); i++) {
-						if (fought.survived(i) && arrivals.get(i).attacker().name().equals(attacker)) {
+						if (fought.survived(i) && arrivals.get(i).name().equals(attacker)) {
 							reports.get(attacker)
 								.add(WARFARE, Line.of("Your Warparty of " + listed(battle.warparties().get(i)) + " seized ",
 										fought.shares().get(i).described(Effect.GAIN),
@@ -876,7 +1189,7 @@ public class Game {
 					}
 				}
 			}
-			defenderReport.add(DECISIONS_AND_ALERTS, Line.of(warpartiesOf(survivors) + " conquered your Nation, seizing ",
+			defenderReport.add(DECISIONS_AND_ALERTS, Line.of(warpartiesOf(conquering) + " conquered your Nation, seizing ",
 					seized.described(Effect.LOSS), ". You are knocked out of the Game."));
 			reports.forEach((nation, report) -> {
 				if (!attackers.contains(nation) && !nation(nation).conquered()) {
@@ -900,18 +1213,24 @@ public class Game {
 			if (!fought.survived(i)) {
 				continue;
 			}
-			String attacker = arrivals.get(i).attacker().name();
+			String attacker = arrivals.get(i).name();
+			boolean camp = arrivals.get(i).camp();
 			Plunder plunder = fought.shares().get(i);
 			if (plunder.isNone()) {
-				reports.get(attacker).add(WARFARE, "Your Warparty took nothing from " + defender + " and is heading home.");
+				if (!camp) {
+					reports.get(attacker).add(WARFARE, "Your Warparty took nothing from " + defender + " and is heading home.");
+				}
 				defenderReport.add(WARFARE, ruled(attacker) + "'s Warparty took nothing from you and is heading home.");
 			}
 			else {
-				reports.get(attacker)
-					.add(WARFARE, Line.of("Your Warparty took ", plunder.described(Effect.GAIN),
-							" from " + defender + share + " and is heading home."));
+				if (!camp) {
+					reports.get(attacker)
+						.add(WARFARE, Line.of("Your Warparty took ", plunder.described(Effect.GAIN),
+								" from " + defender + share + " and is heading home."));
+				}
 				defenderReport.add(WARFARE, Line.of(ruled(attacker) + "'s Warparty took ",
-						plunder.described(Effect.LOSS), " from you and is heading home."));
+						camp ? plunder.carriedOff(Effect.LOSS) : plunder.described(Effect.LOSS),
+						" from you and is heading home."));
 			}
 		}
 	}
@@ -1077,17 +1396,35 @@ public class Game {
 					}
 				}
 			}
+			for (Camp camp : camps) {
+				for (Warparty warparty : camp.warparties()) {
+					if (warparty.awaitingBattle() && warparty.target().equals(scouting.name())) {
+						continue;
+					}
+					if (random.nextDouble() < chance) {
+						String whose = scouting.hasHeardOf(camp.name()) ? camp.ruled() + "'s" : "a Barbarian Camp's";
+						reports.get(scouting.name())
+							.add(SPIES_AND_SCOUTS, "Your Scouts discovered " + whose + " Warparty of "
+									+ listed(warparty.units()) + " " + whereabouts(warparty, scouting.name()) + ".");
+					}
+				}
+			}
 		}
 	}
 
 	/**
 	 * Has each Nation still in the Game in order search, with each of its
-	 * Locate Tasks in the order set, for the Nation the Task is about, drawing
-	 * once from the seeded random source for each. Each Scout on the Task
-	 * gives an equal chance, of its own, of Locating the Nation. A Task that
-	 * succeeds ends, its Scouts going Idle (see {@link Nation#locate}), and is
-	 * announced in the Turn Report. The search comes first as a Turn resolves, before anything else
-	 * draws.
+	 * Locate Tasks in the order set, for the Nation or Barbarian Camp the Task
+	 * is about, or, for one searching the wilds, for any Camp still standing
+	 * it has not Located, drawing once from the seeded random source for each.
+	 * Each Scout on the Task gives an equal chance, of its own, of Locating
+	 * it. A Task searching the wilds while there is no such Camp, or about a
+	 * Camp already Located this Turn, draws nothing; one that finds several
+	 * draws once more for which it Locates, each as likely as the others. A
+	 * Task that succeeds ends, its Scouts going Idle (see
+	 * {@link Nation#locate}), and is announced in the Turn Report, along with
+	 * what Locating a Camp showed. The search comes first as a Turn resolves,
+	 * before anything else draws.
 	 */
 	private void searchForNations(Map<String, TurnReport.Draft> reports) {
 		for (Nation searching : remaining()) {
@@ -1095,15 +1432,46 @@ public class Game {
 				if (task.kind() != Task.Kind.LOCATE) {
 					continue;
 				}
+				List<Camp> sought = task.target() == null
+						? camps.stream()
+							.filter(camp -> !camp.destroyed() && searching.campLocated(camp.name()) == null)
+							.toList()
+						: camp(task.target()).filter(camp -> searching.campLocated(camp.name()) == null)
+							.map(List::of)
+							.orElse(List.of());
+				if (sought.isEmpty() && (task.target() == null || camp(task.target()).isPresent())) {
+					continue;
+				}
 				double chance = 1 - Math.pow(1 - LOCATE_CHANCE_PER_SCOUT, task.scouts());
-				if (random.nextDouble() < chance) {
+				if (random.nextDouble() >= chance) {
+					continue;
+				}
+				if (sought.isEmpty()) {
 					searching.locate(task.target());
 					reports.get(searching.name())
 						.add(SPIES_AND_SCOUTS, "Your Scouts Located " + task.target()
 								+ ", so you can now send Spies and Warparties there.");
+					continue;
 				}
+				Camp found = sought.size() == 1 ? sought.getFirst()
+						: sought.get((int) (random.nextDouble() * sought.size()));
+				CampFacts facts = found.facts(ruleset.barbarians(), turn);
+				searching.locateCamp(found.name(), facts, task);
+				reports.get(searching.name())
+					.add(SPIES_AND_SCOUTS, "Your Scouts Located " + found.name()
+							+ ", so you can now send Warparties there: " + campFact(facts) + ".");
 			}
 		}
+	}
+
+	/**
+	 * Such as "its Army is Warrior ×3, its Defense is 4, and it raids Rome and
+	 * Carthage".
+	 */
+	private static String campFact(CampFacts facts) {
+		return (facts.army().isEmpty() ? "it has no Army" : "its Army is " + listed(facts.army())) + ", its Defense is "
+				+ facts.defense() + ", and "
+				+ (facts.targets().isEmpty() ? "it raids no one" : "it raids " + joined(facts.targets()));
 	}
 
 	/**
@@ -1119,10 +1487,13 @@ public class Game {
 	 * outward or homeward, draw once from the seeded random source for whether
 	 * they meet, taking each Nation still in the Game in order and each of its
 	 * Warparties in the order sent, against each later Nation's Warparties in
-	 * the order sent. A Warparty that has met one already this Turn meets no
-	 * other, and a pair with such a Warparty draws nothing. Both Players are
-	 * told in their Turn Report, and choose during the next Turn whether to
-	 * fight.
+	 * the order sent; then each Nation's against each Barbarian Camp's in
+	 * order, Camps' Warparties never meeting each other. A Warparty that has
+	 * met one already this Turn meets no other, and a pair with such a
+	 * Warparty draws nothing. Both Players are told in their Turn Report, and
+	 * choose during the next Turn whether to fight; a Camp chooses at once to
+	 * fight if its Warparty's Strength is at least the other's, and the Nation
+	 * hears of it.
 	 */
 	private void meet(Map<String, TurnReport.Draft> reports) {
 		List<Nation> left = remaining();
@@ -1132,12 +1503,9 @@ public class Game {
 			for (Warparty warparty : nation.warparties()) {
 				for (Nation other : left.subList(i + 1, left.size())) {
 					for (Warparty otherWarparty : other.warparties()) {
-						if (warparty.awaitingBattle() || otherWarparty.awaitingBattle() || met.contains(warparty)
-								|| met.contains(otherWarparty) || random.nextDouble() >= ENCOUNTER_CHANCE) {
+						if (!meets(warparty, otherWarparty, met)) {
 							continue;
 						}
-						met.add(warparty);
-						met.add(otherWarparty);
 						encounters.add(new Encounter(
 								new Encounter.Side(nation.name(), warparty.id(), warparty.units(), Encounter.Choice.NONE),
 								new Encounter.Side(other.name(), otherWarparty.id(), otherWarparty.units(),
@@ -1148,6 +1516,123 @@ public class Game {
 				}
 			}
 		}
+		for (Nation nation : left) {
+			for (Warparty warparty : nation.warparties()) {
+				for (Camp camp : camps) {
+					for (Warparty theirs : camp.warparties()) {
+						if (!meets(warparty, theirs, met)) {
+							continue;
+						}
+						Encounter.Choice choice = theirs.strength() >= warparty.strength() ? Encounter.Choice.FIGHT
+								: Encounter.Choice.PASS;
+						encounters.add(new Encounter(
+								new Encounter.Side(nation.name(), warparty.id(), warparty.units(), Encounter.Choice.NONE),
+								new Encounter.Side(camp.name(), theirs.id(), theirs.units(), choice)));
+						nation.hearOf(camp.name());
+						reports.get(nation.name()).add(WARFARE, metLine(warparty, camp.ruled(), theirs));
+					}
+				}
+			}
+		}
+	}
+
+	/**
+	 * Has each Barbarian Camp in order grow (see {@link Camp#grow}) and then
+	 * raid (see {@link Camp#raid}), drawing from the seeded random source as
+	 * they say; no Nation is told until a Camp's Warparty arrives. Then a new
+	 * Camp may appear (see {@link #appear}).
+	 */
+	private void barbarians() {
+		List<String> inGame = remaining().stream().map(Nation::name).toList();
+		for (Camp camp : camps) {
+			camp.grow(turn, ruleset, random);
+			camp.raid(inGame, ruleset, random);
+		}
+		appear(inGame);
+	}
+
+	/**
+	 * Has a Barbarian Camp appear in the wilds, by chance, if the ruleset has
+	 * any and one may: none before Turn {@value #FIRST_CAMP_TURN}, none for
+	 * {@value #TURNS_BETWEEN_CAMPS} Turns after the last, never more standing
+	 * at once than one fewer than the Nations still in the Game, and each
+	 * named for a place no other Camp has been. If one may, one draw from the
+	 * seeded random source says whether it does, {@value #CAMP_CHANCE} likely;
+	 * then one each picks its place and its Ruler, one how many Targets it
+	 * has, from one to every Nation still in the Game, one each picks them,
+	 * one how many Units it has, from {@value Camp#FEWEST_UNITS} to
+	 * {@value Camp#MOST_UNITS}, one each picks their fighting Unit types, and,
+	 * if the ruleset has barbarian Buildings, one how many it has, up to
+	 * {@value Camp#MOST_BUILDINGS}, and one each picks them; every pick is
+	 * among those left, each as likely as the others. No Nation is told.
+	 *
+	 * @param inGame the Nations still in the Game, in order
+	 */
+	private void appear(List<String> inGame) {
+		Barbarians barbarians = ruleset.barbarians();
+		List<String> places = barbarians.places()
+			.stream()
+			.filter(place -> camps.stream().noneMatch(camp -> camp.name().equals(place + Camp.NAMED)))
+			.toList();
+		long standing = camps.stream().filter(camp -> !camp.destroyed()).count();
+		if (places.isEmpty() || turn < FIRST_CAMP_TURN || lastCampOn > 0 && turn - lastCampOn < TURNS_BETWEEN_CAMPS
+				|| standing >= inGame.size() - 1 || random.nextDouble() >= CAMP_CHANCE) {
+			return;
+		}
+		String place = picked(places);
+		String ruler = picked(barbarians.rulers());
+		List<String> unpicked = new ArrayList<>(inGame);
+		int targetCount = 1 + (int) (random.nextDouble() * unpicked.size());
+		List<String> picked = new ArrayList<>();
+		for (int i = 0; i < targetCount; i++) {
+			picked.add(unpicked.remove((int) (random.nextDouble() * unpicked.size())));
+		}
+		List<String> targets = inGame.stream().filter(picked::contains).toList();
+		List<UnitType> fighting = Camp.fighting(ruleset);
+		int units = Camp.FEWEST_UNITS + (int) (random.nextDouble() * (Camp.MOST_UNITS - Camp.FEWEST_UNITS + 1));
+		Map<String, Integer> drawn = new LinkedHashMap<>();
+		for (int i = 0; i < units; i++) {
+			drawn.merge(picked(fighting).name(), 1, Integer::sum);
+		}
+		Map<String, Integer> army = new LinkedHashMap<>();
+		fighting.stream().filter(unit -> drawn.containsKey(unit.name())).forEach(unit -> army.put(unit.name(), drawn.get(unit.name())));
+		Map<String, Integer> buildings = new LinkedHashMap<>();
+		if (!barbarians.buildings().isEmpty()) {
+			int count = (int) (random.nextDouble() * (Camp.MOST_BUILDINGS + 1));
+			Map<String, Integer> built = new LinkedHashMap<>();
+			for (int i = 0; i < count; i++) {
+				built.merge(picked(barbarians.buildings()).name(), 1, Integer::sum);
+			}
+			barbarians.buildings()
+				.stream()
+				.filter(building -> built.containsKey(building.name()))
+				.forEach(building -> buildings.put(building.name(), built.get(building.name())));
+		}
+		camps.add(new Camp(place, ruler, targets, army, buildings));
+		lastCampOn = turn;
+	}
+
+	/**
+	 * One of the given items, picked by one draw from the seeded random
+	 * source, each as likely as the others.
+	 */
+	private <T> T picked(List<T> items) {
+		return items.get((int) (random.nextDouble() * items.size()));
+	}
+
+	/**
+	 * Whether two Warparties abroad meet: neither waits for a Battle nor has
+	 * met another this Turn, and one draw from the seeded random source says
+	 * they do. One that meets is marked as having met.
+	 */
+	private boolean meets(Warparty warparty, Warparty other, Set<Warparty> met) {
+		if (warparty.awaitingBattle() || other.awaitingBattle() || met.contains(warparty) || met.contains(other)
+				|| random.nextDouble() >= ENCOUNTER_CHANCE) {
+			return false;
+		}
+		met.add(warparty);
+		met.add(other);
+		return true;
 	}
 
 	/**
@@ -1155,7 +1640,7 @@ public class Game {
 	 * Egypt's Warparty of Archer ×3; choose whether to fight before this Turn
 	 * ends."
 	 *
-	 * @param other the other Nation, named by its Ruler
+	 * @param other the other Nation or Barbarian Camp, named by its Ruler
 	 */
 	private static String metLine(Warparty own, String other, Warparty theirs) {
 		return yourWarparty(own) + " met " + other
@@ -1163,26 +1648,39 @@ public class Game {
 	}
 
 	/**
-	 * Settles each of last Turn's Encounters in the order met: if either
-	 * Player chose to fight, the Warparties fight by a Battle's rules, the first
-	 * as the attacking side, and each loses Units with no delay to its travel;
-	 * one wiped out is destroyed. Otherwise they go their separate ways. Both
-	 * Players are told in their Turn Report.
+	 * Settles each of last Turn's Encounters in the order met: if either side
+	 * chose to fight, the Warparties fight by a Battle's rules, the first as
+	 * the attacking side, and each loses Units with no delay to its travel;
+	 * one wiped out is destroyed, and the other, if any of it survived, takes
+	 * the Plunder it carried (see {@link #takePlunder}). Otherwise they go
+	 * their separate ways. Both Players are told in their Turn Report. A
+	 * Nation that chose to fight a Barbarian Camp's Warparty becomes one of
+	 * the Camp's Targets.
+	 *
+	 * @return the Plunder taken, to take once this Turn's Hauls are settled,
+	 *         so that it is decided on and arrives as a Haul seized this Turn
+	 *         would
 	 */
-	private void settleEncounters(Map<String, TurnReport.Draft> reports) {
+	private List<Runnable> settleEncounters(Map<String, TurnReport.Draft> reports) {
+		List<Runnable> plunderTaken = new ArrayList<>();
 		for (Encounter encounter : encounters) {
-			Nation first = nation(encounter.first().nation());
-			Nation second = nation(encounter.second().nation());
+			Sender first = sender(encounter.first().nation());
+			Sender second = sender(encounter.second().nation());
 			Optional<Warparty> firstWarparty = first.warparty(encounter.first().warparty());
 			Optional<Warparty> secondWarparty = second.warparty(encounter.second().warparty());
 			if (firstWarparty.isEmpty() || secondWarparty.isEmpty()) {
 				continue;
 			}
+			if (second instanceof Camp camp && encounter.first().choice() == Encounter.Choice.FIGHT) {
+				camp.target(first.name());
+			}
 			Warparty firstBefore = firstWarparty.get();
 			Warparty secondBefore = secondWarparty.get();
 			if (!encounter.fought()) {
-				reports.get(first.name()).add(WARFARE, separateWays(firstBefore, second.ruled(), secondBefore));
-				reports.get(second.name()).add(WARFARE, separateWays(secondBefore, first.ruled(), firstBefore));
+				reportTo(first, reports).ifPresent(report -> report.add(WARFARE,
+						separateWays(firstBefore, second.ruled(), secondBefore)));
+				reportTo(second, reports).ifPresent(report -> report.add(WARFARE,
+						separateWays(secondBefore, first.ruled(), firstBefore)));
 				continue;
 			}
 			Battle battle = Battle.fight(List.of(firstBefore.units()), secondBefore.units(), ruleset, random);
@@ -1194,24 +1692,94 @@ public class Game {
 					reports);
 			reportEncounter(encounter.second(), encounter.first(), secondBefore, firstBefore, secondLost, firstLost,
 					reports);
-			if (battle.warpartySurvivors(0).isEmpty()) {
-				reportDestroyed(firstBefore, first.name(), second.name(), reports);
+			boolean firstWipedOut = battle.warpartySurvivors(0).isEmpty();
+			boolean secondWipedOut = battle.armySurvivors().isEmpty();
+			if (firstWipedOut) {
+				reportDestroyed(firstBefore, first, second, reports);
 			}
-			if (battle.armySurvivors().isEmpty()) {
-				reportDestroyed(secondBefore, second.name(), first.name(), reports);
+			if (secondWipedOut) {
+				reportDestroyed(secondBefore, second, first, reports);
+			}
+			if (firstWipedOut && !secondWipedOut) {
+				plunderTaken.add(() -> takePlunder(second, firstBefore, first, reports));
+			}
+			if (secondWipedOut && !firstWipedOut) {
+				plunderTaken.add(() -> takePlunder(first, secondBefore, second, reports));
 			}
 		}
 		encounters.clear();
+		return plunderTaken;
+	}
+
+	/**
+	 * The Turn Report a Nation is to be told in, or none for a Barbarian
+	 * Camp.
+	 */
+	private static Optional<TurnReport.Draft> reportTo(Sender sender, Map<String, TurnReport.Draft> reports) {
+		return sender.camp() ? Optional.empty() : Optional.of(reports.get(sender.name()));
+	}
+
+	/**
+	 * Has a Warparty that wiped out another in an Encounter take the Plunder
+	 * that one carried. A Barbarian Camp's carries it off for good. A
+	 * Nation's sends what was plundered from its own Nation back home, and
+	 * keeps what was plundered from a Camp or a Nation no longer in the Game;
+	 * of what was plundered from a third Nation, its Player chooses by the end
+	 * of the next Turn whether to keep it or send it back (see
+	 * {@link #settleHauls}). Each resource goes as a Haul of its own, Captives
+	 * as Population, arriving in {@value #HAUL_DELIVERY_TURNS} Turns.
+	 *
+	 * @param lost the Warparty wiped out, as it was before the Encounter
+	 * @param loser the Nation or Camp that sent it
+	 */
+	private void takePlunder(Sender winner, Warparty lost, Sender loser, Map<String, TurnReport.Draft> reports) {
+		Plunder plunder = lost.plunder();
+		if (plunder.isNone() || !(winner instanceof Nation taking)) {
+			return;
+		}
+		String from = lost.target();
+		TurnReport.Draft report = reports.get(taking.name());
+		List<Haul> hauls = new ArrayList<>();
+		if (plunder.gold() > 0) {
+			hauls.add(new Haul(GOLD, plunder.gold()));
+		}
+		if (plunder.research() > 0) {
+			hauls.add(new Haul(RESEARCH, plunder.research()));
+		}
+		if (plunder.captives() > 0) {
+			hauls.add(new Haul(POPULATION, plunder.captives()));
+		}
+		Line taken = Line.joined(hauls.stream().map(haul -> Line.of(neutral(haul.resource(), haul.amount()))).toList());
+		String took = "Your Warparty took " + loser.name() + "'s Plunder of ";
+		if (from.equals(taking.name())) {
+			hauls.forEach(haul -> deliveries.add(new Delivery(taking.name(), taking.name(), from, haul, HAUL_DELIVERY_TURNS)));
+			report.add(WARFARE, Line.of(took, taken, ", taken from your Nation; it will be back in " + HAUL_DELIVERY_TURNS
+					+ " Turns."));
+			return;
+		}
+		if (camp(from).isPresent() || !nation(from).inGame()) {
+			hauls.forEach(haul -> deliveries.add(new Delivery(taking.name(), taking.name(), from, haul, HAUL_DELIVERY_TURNS)));
+			report.add(WARFARE, Line.of(took, taken, ", taken from " + from + "; it will arrive in " + HAUL_DELIVERY_TURNS
+					+ " Turns."));
+			return;
+		}
+		hauls.forEach(haul -> taking.faceHaul(from, haul, true));
+		report.add(DECISIONS_AND_ALERTS, Line.of(took, taken, ", taken from " + from
+				+ "; choose whether to keep it or send it back before this Turn ends."));
 	}
 
 	/**
 	 * Such as "Your Warparty of Warrior ×2 heading to Carthage fought Cleopatra
 	 * of Egypt's Warparty of Archer ×3, as Egypt chose to fight. You lost
-	 * Warrior ×1 and Egypt lost no Units."
+	 * Warrior ×1 and Egypt lost no Units.", for a Nation; a Barbarian Camp is
+	 * told nothing.
 	 */
 	private void reportEncounter(Encounter.Side own, Encounter.Side other, Warparty ownWarparty,
 			Warparty otherWarparty, Map<String, Integer> ownLost, Map<String, Integer> otherLost,
 			Map<String, TurnReport.Draft> reports) {
+		if (camp(own.nation()).isPresent()) {
+			return;
+		}
 		String why = own.choice() == Encounter.Choice.FIGHT
 				? other.choice() == Encounter.Choice.FIGHT ? "you both chose" : "you chose"
 				: other.nation() + " chose";
@@ -1227,7 +1795,7 @@ public class Game {
 	 * Egypt's Warparty of Archer ×3 went their separate ways, as neither of you
 	 * chose to fight."
 	 *
-	 * @param other the other Nation, named by its Ruler
+	 * @param other the other Nation or Barbarian Camp, named by its Ruler
 	 */
 	private static String separateWays(Warparty own, String other, Warparty theirs) {
 		return yourWarparty(own) + " and " + other
@@ -1236,13 +1804,14 @@ public class Game {
 	}
 
 	/**
-	 * Tells both Nations that a Warparty was wiped out fighting in an
-	 * Encounter.
+	 * Tells the Nations on both sides that a Warparty was wiped out fighting
+	 * in an Encounter.
 	 */
-	private void reportDestroyed(Warparty destroyed, String nation, String other,
+	private void reportDestroyed(Warparty destroyed, Sender sender, Sender other,
 			Map<String, TurnReport.Draft> reports) {
-		reports.get(nation).add(WARFARE, "Your Warparty " + whereabouts(destroyed, null) + " was destroyed.");
-		reports.get(other).add(WARFARE, ruled(nation) + "'s Warparty was destroyed.");
+		reportTo(sender, reports)
+			.ifPresent(report -> report.add(WARFARE, "Your Warparty " + whereabouts(destroyed, null) + " was destroyed."));
+		reportTo(other, reports).ifPresent(report -> report.add(WARFARE, sender.ruled() + "'s Warparty was destroyed."));
 	}
 
 	/**
@@ -1576,7 +2145,7 @@ public class Game {
 						+ HAUL_DELIVERY_TURNS + " Turns."));
 			return;
 		}
-		catching.faceHaul(spy.target(), haul);
+		catching.faceHaul(spy.target(), haul, false);
 		reports.get(catching.name())
 			.add(DECISIONS_AND_ALERTS, Line.of(carried, " stolen from " + spy.target()
 					+ "; choose whether to keep it or send it back before this Turn ends."));
@@ -1776,8 +2345,8 @@ public class Game {
 	 * none is.
 	 */
 	private int largestApproaching(Nation target) {
-		return remaining().stream()
-			.flatMap(nation -> nation.warparties().stream())
+		return senders().stream()
+			.flatMap(sender -> sender.warparties().stream())
 			.filter(warparty -> warparty.approaching(target.name()))
 			.mapToInt(Warparty::unitCount)
 			.max()
@@ -2109,7 +2678,9 @@ public class Game {
 				}
 				yield actor.sendWarparty(send.target(), send.units(), ruleset);
 			}
-			case Action.SendSpy send -> unreachable(nation, send.target(), "A Spy")
+			case Action.SendSpy send -> camp(send.target()).filter(camp -> actor.hasHeardOf(camp.name()))
+				.map(camp -> ActionResult.rejected("Spies cannot be sent to a Barbarian Camp."))
+				.or(() -> unreachable(nation, send.target(), "A Spy"))
 				.orElseGet(() -> actor.sendSpy(send.target(), ruleset));
 			case Action.SetMission set -> ruleset.mission(set.mission())
 				.map(mission -> actor.setMission(set.spy(), mission))
@@ -2131,12 +2702,23 @@ public class Game {
 
 	/**
 	 * Why a Warparty or Spy cannot be sent from a Nation to a target, if it
-	 * cannot: the target must be another Nation still in the Game, which the
-	 * Nation has Located.
+	 * cannot: the target must be another Nation still in the Game, or a
+	 * Barbarian Camp still standing, which the Nation has Located.
 	 *
 	 * @param sent what is being sent, such as "A Spy"
 	 */
 	private Optional<ActionResult> unreachable(String nation, String target, String sent) {
+		Optional<Camp> camp = camp(target).filter(heard -> nation(nation).hasHeardOf(heard.name()));
+		if (camp.isPresent()) {
+			if (camp.get().destroyed()) {
+				return Optional.of(ActionResult.rejected(target + " has been destroyed."));
+			}
+			if (nation(nation).campLocated(target) == null) {
+				return Optional
+					.of(ActionResult.rejected("You have not Located " + target + " yet; set your Scouts to Locate it."));
+			}
+			return Optional.empty();
+		}
 		if (target.equals(nation)) {
 			return Optional.of(ActionResult.rejected(sent + " must be sent to another Nation."));
 		}
@@ -2152,9 +2734,11 @@ public class Game {
 
 	/**
 	 * Sets some of a Nation's Idle Scouts to a Task. A Locate Task must be
-	 * about another Nation still in the Game that the Nation has neither
-	 * Located nor set another Task to Locate. A Watch Task takes exactly one
-	 * Scout. Watch and Hunt Tasks are about no one Nation.
+	 * about another Nation still in the Game, or a Barbarian Camp still
+	 * standing that the Nation has heard of, that the Nation has neither
+	 * Located nor set another Task to Locate; or, about no target, search the
+	 * wilds for any Camp, which only one Task at a time may. A Watch Task
+	 * takes exactly one Scout. Watch and Hunt Tasks are about no one Nation.
 	 */
 	private ActionResult setTask(Nation nation, Action.SetTask set) {
 		Optional<Task.Kind> kind = Arrays.stream(Task.Kind.values())
@@ -2170,6 +2754,25 @@ public class Game {
 			return nation.setTask(kind.get(), null, set.scouts());
 		}
 		String target = set.target();
+		if (target == null) {
+			if (nation.isLocating(null)) {
+				return ActionResult.rejected("Your Scouts are already searching the wilds.");
+			}
+			return nation.setTask(kind.get(), null, set.scouts());
+		}
+		Optional<Camp> camp = camp(target).filter(heard -> nation.hasHeardOf(heard.name()));
+		if (camp.isPresent()) {
+			if (camp.get().destroyed()) {
+				return ActionResult.rejected(target + " has been destroyed.");
+			}
+			if (nation.campLocated(target) != null) {
+				return ActionResult.rejected("You have already Located " + target + ".");
+			}
+			if (nation.isLocating(target)) {
+				return ActionResult.rejected("Your Scouts are already Locating " + target + ".");
+			}
+			return nation.setTask(kind.get(), target, set.scouts());
+		}
 		if (target.equals(nation.name())) {
 			return ActionResult.rejected("Your Scouts cannot Locate your own Nation.");
 		}
@@ -2238,6 +2841,9 @@ public class Game {
 				? nation(offer.nation()).warparty(offer.warparty())
 					.filter(arrived -> arrived.awaitingBattle() && arrived.target().equals(defender.name()))
 				: Optional.empty();
+		if (warparty.isEmpty() && camp(offer.nation()).isPresent()) {
+			return ActionResult.rejected("Barbarian Camps accept no Tribute.");
+		}
 		if (warparty.isEmpty()) {
 			return ActionResult.rejected("No such Warparty from " + offer.nation() + " has arrived at your Nation.");
 		}
@@ -2321,7 +2927,9 @@ public class Game {
 		encounters.set(encounters.indexOf(encounter),
 				encounter.chosen(side, answer.fight() ? Encounter.Choice.FIGHT : Encounter.Choice.PASS));
 		nation.changed();
-		nation(other.nation()).changed();
+		if (camp(other.nation()).isEmpty()) {
+			nation(other.nation()).changed();
+		}
 		return ActionResult.ACCEPTED;
 	}
 
@@ -2454,14 +3062,19 @@ public class Game {
 		}
 		List<Tribute> involved = tributes.stream().filter(tribute -> tribute.involves(nation)).toList();
 		List<Encounter> met = encounters.stream().filter(encounter -> encounter.involves(nation)).toList();
-		return own.view(turn, map, arrivals, involved, met, ruleset, goldForecast(own), winner);
+		List<MapCamp> heardOf = own.campsHeardOf()
+			.stream()
+			.map(name -> camp(name).orElseThrow())
+			.map(camp -> new MapCamp(camp.identity(), camp.destroyed(), own.campLocated(camp.name())))
+			.toList();
+		return own.view(turn, map, heardOf, arrivals, involved, met, ruleset, goldForecast(own), winner);
 	}
 
 	/**
-	 * See {@link Nation#ruled}.
+	 * See {@link Sender#ruled}.
 	 */
-	private String ruled(String nation) {
-		return nation(nation).ruled();
+	private String ruled(String sender) {
+		return sender(sender).ruled();
 	}
 
 	private Nation nation(String name) {

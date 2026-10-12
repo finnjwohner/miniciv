@@ -176,7 +176,8 @@ export type Training = { unit: string; count: number; readyOnTurn: number }
  * 0 once it has arrived at its target and waits for the Battle at the end of this Turn.
  * `turnsTravelled` is how many Turns it travelled toward its target, which a Recall takes to get home,
  * less in proportion if it has lost Strength since it was sent.
- * `plunder` is the Gold and Research it took from its target and is carrying home.
+ * `plunder` is the Gold and Research it took from its target and is carrying home; `captives`, the Population a
+ * Barbarian Camp's Warparty carries off, is only ever on a Camp's.
  * `strength` is its Units' Strength added up, without counters, which set how long it travels;
  * `strengthSent` is its Strength when it was sent, before any losses on the way.
  */
@@ -188,7 +189,7 @@ export type Warparty = {
   homeward: boolean
   turnsLeft: number
   turnsTravelled: number
-  plunder: { gold: number; research: number }
+  plunder: { gold: number; research: number; captives: number }
   strengthSent: number
 }
 /** A Warparty whose Strength is at least `strength`, but below the next bracket's, travels `turns` Turns. */
@@ -213,8 +214,11 @@ export function recallTurns(brackets: TravelBracket[], warparty: Warparty): numb
   return Math.max(1, Math.min(warparty.turnsTravelled, turns))
 }
 
-/** The Gold or Research a Spy stole, reaching its Nation only once the Spy has carried it home. */
-export type Haul = { resource: 'GOLD' | 'RESEARCH'; amount: number }
+/**
+ * The Gold or Research a Spy stole, reaching its Nation only once the Spy has carried it home; or Plunder a
+ * Warparty took from another it wiped out in an Encounter, which may be Population carried off as Captives.
+ */
+export type Haul = { resource: Resource; amount: number }
 /**
  * A Spy sent abroad, told apart by `id`; `turnsLeft` is how many more Turns must resolve before it gets
  * where it is heading, 0 once it is in place at its target, where it stays. `homeward` once its target is
@@ -253,18 +257,19 @@ export type Mission = {
   reports: FactKind | null
   chance: number
   harm: Harm | null
-  steals: Haul['resource'] | null
+  steals: 'GOLD' | 'RESEARCH' | null
   text: string | null
 }
 /**
- * A kind of Task Scouts can be set to: `LOCATE` searches for a Nation not yet Located until it is Located;
+ * A kind of Task Scouts can be set to: `LOCATE` searches for a Nation or Barbarian Camp not yet Located until
+ * it is Located, or, with no target, the wilds for any Camp until one is;
  * `WATCH` watches for Warparties abroad with exactly one Scout, and `HUNT` hunts other Nations' travelling Spies,
  * both until cancelled.
  */
 export type TaskKind = 'LOCATE' | 'WATCH' | 'HUNT'
 /**
- * What some of the Nation's Scouts are set to do, told apart by `id`; `target` is the Nation a Locate Task is
- * about, and null for the others.
+ * What some of the Nation's Scouts are set to do, told apart by `id`; `target` is the Nation or Barbarian Camp
+ * a Locate Task is about, null for one searching the wilds, and null for the others.
  */
 export type Task = { id: number; kind: TaskKind; target: string | null; scouts: number }
 /**
@@ -273,11 +278,18 @@ export type Task = { id: number; kind: TaskKind; target: string | null; scouts: 
  */
 export type Choice = { name: string; worst: boolean }
 /**
- * A Haul seized from another Nation's Spy this Nation caught carrying it home, told apart by `id`; the Player
- * chooses until the Turn ends to keep it or send it back to `stolenFrom`, and unanswered (`NONE`) it is kept.
- * Either way it arrives 3 Turns after the Turn ends, and nothing can intercept it.
+ * A Haul seized from another Nation's Spy this Nation caught carrying it home, or, if `plunder`, Plunder its
+ * Warparty took from another it wiped out in an Encounter, told apart by `id`; the Player chooses until the Turn
+ * ends to keep it or send it back to `stolenFrom`, and unanswered (`NONE`) it is kept. Either way it arrives 3
+ * Turns after the Turn ends, and nothing can intercept it.
  */
-export type HaulDecision = { id: number; stolenFrom: string; haul: Haul; choice: 'NONE' | 'KEEP' | 'RETURN' }
+export type HaulDecision = {
+  id: number
+  stolenFrom: string
+  haul: Haul
+  choice: 'NONE' | 'KEEP' | 'RETURN'
+  plunder: boolean
+}
 /**
  * A Dilemma this Player may answer, by its `name`, until the Turn ends; `chosen` is the name of the
  * choice they made, or null. The choice made, or else the worst, applies as the Turn ends.
@@ -326,8 +338,9 @@ export type EncounterSide = {
   choice: 'NONE' | 'FIGHT' | 'PASS'
 }
 /**
- * Two Warparties from different Nations that met by chance abroad as the last Turn resolved; if either
- * Player chooses to fight before this Turn ends, they fight as it ends.
+ * Two Warparties from different Nations, or a Nation's and a Barbarian Camp's, that met by chance abroad as the
+ * last Turn resolved; if either side chooses to fight before this Turn ends, they fight as it ends. A Camp has
+ * chosen already: to fight if its Warparty is at least as strong.
  */
 export type Encounter = { first: EncounterSide; second: EncounterSide }
 /** Something learned of another Nation's hidden state, on the Turn whose resolution it was learned in. */
@@ -359,6 +372,29 @@ export type MapNation = {
   standing: 'IN_GAME' | 'CONQUERED' | 'REMOVED'
   facts: Facts
 }
+/** What Locating a Barbarian Camp showed of it, as it was on `turn`. */
+export type CampFacts = {
+  army: Record<string, number>
+  buildings: Record<string, number>
+  defense: number
+  /** The Nations it could send Warparties at. */
+  targets: string[]
+  turn: number
+}
+/**
+ * A Barbarian Camp this Nation has heard of: its name, Ruler, colour and emblem, whether it was destroyed, and
+ * what Locating it showed, or null while it is not Located.
+ */
+export type MapCamp = {
+  name: string
+  ruler: string
+  colour: string
+  emblem: string
+  destroyed: boolean
+  located: CampFacts | null
+}
+/** A Nation or Barbarian Camp as the Map names it: in its colour, with its emblem. */
+export type Named = Pick<MapNation, 'name' | 'colour' | 'emblem'>
 /**
  * What only this Player sees: their own Nation, and the Map with the names of the others and what their
  * Spies reported of them.
@@ -373,6 +409,8 @@ export type NationView = {
   research: number
   /** Every Nation that took part in the Game, this one included, in the order they joined. */
   map: MapNation[]
+  /** The Barbarian Camps the Nation has heard of, in the order heard of. */
+  camps: MapCamp[]
   /** The Building types the Nation may start: those needing no Technology, or one it has unlocked. */
   availableBuildings: BuildingType[]
   /** How many of each Building the Nation has completed. */
@@ -448,6 +486,29 @@ export function locatedNations(nation: NationView): string[] {
 export function locatableNations(nation: NationView): string[] {
   const locating = nation.tasks.filter((t) => t.kind === 'LOCATE').map((t) => t.target)
   return otherNations(nation).filter((n) => !nation.located.includes(n) && !locating.includes(n))
+}
+
+/** The Barbarian Camps still standing that the Nation has Located, and so may send Warparties to. */
+export function locatedCamps(nation: NationView): string[] {
+  return nation.camps.filter((c) => !c.destroyed && c.located !== null).map((c) => c.name)
+}
+
+/** The Barbarian Camps still standing that the Nation has heard of but neither Located nor set Scouts to Locate. */
+export function locatableCamps(nation: NationView): string[] {
+  const locating = nation.tasks.filter((t) => t.kind === 'LOCATE').map((t) => t.target)
+  return nation.camps
+    .filter((c) => !c.destroyed && c.located === null && !locating.includes(c.name))
+    .map((c) => c.name)
+}
+
+/** Whether the Nation's Scouts are searching the wilds for Barbarian Camps. */
+export function searchingTheWilds(nation: NationView): boolean {
+  return nation.tasks.some((t) => t.kind === 'LOCATE' && t.target === null)
+}
+
+/** Every Nation on the Map and every Barbarian Camp the Nation has heard of, as the Map names them. */
+export function named(nation: NationView): Named[] {
+  return [...nation.map, ...nation.camps]
 }
 
 /** What this browser keeps after joining a Room; the token is secret. */

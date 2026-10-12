@@ -101,7 +101,7 @@ class CaughtHaulsTest {
 		thiefCaughtBy("Egypt");
 
 		assertThat(game.viewOf("Egypt").hauls())
-			.containsExactly(new HaulDecision(1, "Carthage", haul, HaulDecision.Choice.NONE));
+			.containsExactly(new HaulDecision(1, "Carthage", haul, HaulDecision.Choice.NONE, false));
 		assertThat(report("Egypt"))
 			.contains("Your Scouts caught a Spy heading home from Carthage, and it would not say who sent it.");
 		assertThat(section("Egypt", TurnReport.Kind.DECISIONS_AND_ALERTS)).contains("The Spy your Scouts caught carried "

@@ -1,0 +1,16 @@
+{
+  "places": [
+    "Mountain Passage", "Black Marsh", "Ashen Hills", "Wolf Hollow", "Broken Ford",
+    "Raven Crag", "Thornwood", "Red Dunes", "Frozen Fen", "Bleak Moor"
+  ],
+  "rulers": [
+    "Grak the Red", "Ulfa Bonebreaker", "Morg One-Eye", "Skarra the Grim", "Thane Vorn",
+    "Hask Ironjaw", "Brenna Ashborn", "Old Kettle"
+  ],
+  "buildings": [
+    { "name": "Spike Pit", "defense": 4 },
+    { "name": "Stockade", "defense": 8 },
+    { "name": "Watchtower", "defense": 6 },
+    { "name": "Earthwork", "defense": 10 }
+  ]
+}

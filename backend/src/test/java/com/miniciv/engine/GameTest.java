@@ -211,7 +211,7 @@ class GameTest {
 		assertThat(game.viewOf("Carthage")).isEqualTo(new NationView(2, 2, "Carthage", 60, 12, 3,
 				List.of(new MapNation(Identities.of("Rome"), MapNation.Standing.IN_GAME), new MapNation(Identities.of("Carthage"), MapNation.Standing.IN_GAME),
 						new MapNation(Identities.of("Egypt"), MapNation.Standing.IN_GAME)),
-				List.of(FARM, GRANARY, BANK, WALLS, MOAT), Map.of(), List.of(), List.of(), 0, List.of(), Map.of(),
+				List.of(), List.of(FARM, GRANARY, BANK, WALLS, MOAT), Map.of(), List.of(), List.of(), 0, List.of(), Map.of(),
 				List.of(WARRIOR, ARCHER, HORSEMAN, SCOUT), Map.of(), 0, 0, List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), TravelBracket.ALL, 3, 0, new GoldForecast(12, 0), null, List.of(), List.of(), List.of(), List.of(),
 				new TurnReport(1, new TurnReport.NetChange(10, 2, 3),
 						List.of(new TurnReport.Section(TurnReport.Kind.RESOURCES, List.of(BASE_INCOME_LINE)))),
