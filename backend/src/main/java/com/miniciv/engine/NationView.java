@@ -15,6 +15,8 @@ import java.util.Map;
  * @param map every Nation that took part in the Game, in the order they
  *        joined, by name and whether it is still in the Game, was conquered
  *        or was removed, with the facts this Nation's Spies reported of it
+ * @param camps the Barbarian Camps this Nation has heard of, in the order
+ *        heard of, with what Locating each showed
  * @param availableBuildings the Buildings the Nation may start
  * @param buildings how many of each Building the Nation has completed
  * @param construction the Buildings under construction, in the order started
@@ -34,7 +36,8 @@ import java.util.Map;
  * @param idleScouts how many of its Scouts are on no Task
  * @param tasks the Tasks its Scouts are set to, in the order set
  * @param located the Nations it has Located, and so may send Spies and
- *        Warparties to, in the order Located
+ *        Warparties to, in the order Located; the Barbarian Camps it has
+ *        Located are among its camps
  * @param training the Units in training, in the order started
  * @param warparties the Nation's Warparties abroad, in the order sent
  * @param spies the Nation's Spies abroad, in the order sent, each with the
@@ -71,7 +74,7 @@ import java.util.Map;
  * @param winner the Nation that won the Game, or null while it goes on
  */
 public record NationView(int version, int turn, String nation, int gold, int population, int research,
-		List<MapNation> map, List<BuildingType> availableBuildings, Map<String, Integer> buildings,
+		List<MapNation> map, List<MapCamp> camps, List<BuildingType> availableBuildings, Map<String, Integer> buildings,
 		List<Construction> construction, List<Repair> repairs, int defense, List<BuildingDamage> damage,
 		Map<String, Integer> sellValues, List<UnitType> availableUnits,
 		Map<String, Integer> army, int scouts, int idleScouts, List<Task> tasks, List<String> located,
@@ -85,6 +88,7 @@ public record NationView(int version, int turn, String nation, int gold, int pop
 
 	public NationView {
 		map = List.copyOf(map);
+		camps = List.copyOf(camps);
 		availableBuildings = List.copyOf(availableBuildings);
 		construction = List.copyOf(construction);
 		repairs = List.copyOf(repairs);

@@ -299,7 +299,8 @@ class RoomController {
 	}
 
 	/**
-	 * Sets some of the Nation's Idle Scouts to a Task; the Player's changed
+	 * Sets some of the Nation's Idle Scouts to a Task, a Locate Task with no
+	 * target searching the wilds for Barbarian Camps; the Player's changed
 	 * view arrives on {@code /user/queue/game}, or the reason it was rejected
 	 * on {@code /user/queue/rejections}.
 	 */
@@ -307,7 +308,7 @@ class RoomController {
 	@SendToUser(destinations = "/queue/rejections", broadcast = false)
 	Rejection setTask(@DestinationVariable String code, SetTaskRequest request) {
 		ActionResult result = rooms.act(code, request.token(), new Action.SetTask(String.valueOf(request.kind()),
-				String.valueOf(request.target()), request.scouts()));
+				request.target(), request.scouts()));
 		return result.accepted() ? null : new Rejection(result.reason());
 	}
 

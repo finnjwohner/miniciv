@@ -33,6 +33,16 @@ class RulesetFilesTest {
 	}
 
 	@Test
+	void theShippedRulesetHasBarbarianCampsAndARulesetWithoutTheirFileHasNone() {
+		Ruleset ruleset = RulesetFiles.load("ruleset");
+
+		assertThat(ruleset.barbarians().places()).contains("Mountain Passage").hasSizeGreaterThanOrEqualTo(4);
+		assertThat(ruleset.barbarians().rulers()).isNotEmpty();
+		assertThat(ruleset.barbarians().buildings()).extracting(Barbarians.Building::name).contains("Spike Pit");
+		assertThat(RulesetFiles.load("rulesets/building-damage").barbarians()).isEqualTo(Barbarians.NONE);
+	}
+
+	@Test
 	void theShippedRulesetHasScoutEventsThatLoseScoutsAndAScoutDilemma() {
 		Ruleset ruleset = RulesetFiles.load("ruleset");
 

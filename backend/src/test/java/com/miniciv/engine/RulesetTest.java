@@ -15,6 +15,20 @@ class RulesetTest {
 	}
 
 	@Test
+	void barbarianCampsNeedRulersSoundBuildingsAndAFightingUnitType() {
+		assertThatExceptionOfType(InvalidRuleset.class)
+			.isThrownBy(() -> new Ruleset(List.of(new UnitType("Scout", 5, 1, 1, 1, 0, List.of(), true)), List.of(),
+					List.of(), List.of(), List.of(),
+					new Barbarians(List.of("Black Marsh", "Black Marsh"), List.of(),
+							List.of(new Barbarians.Building("Spike Pit", 0), new Barbarians.Building("Spike Pit", 4)))))
+			.withMessageContaining("A Barbarian Camp place is listed more than once.")
+			.withMessageContaining("Barbarian Camps need Rulers, each with a name.")
+			.withMessageContaining("Barbarian Building Spike Pit must raise Defense by at least 1.")
+			.withMessageContaining("There is more than one barbarian Building called Spike Pit.")
+			.withMessageContaining("Barbarian Camps need a fighting Unit type");
+	}
+
+	@Test
 	void aUnitTypeCannotCounterAnUnknownUnitType() {
 		assertThatExceptionOfType(InvalidRuleset.class)
 			.isThrownBy(() -> new Ruleset(List.of(unit("Warrior", "Lancer")), List.of(), List.of()))

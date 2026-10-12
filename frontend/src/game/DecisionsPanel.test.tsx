@@ -1,7 +1,7 @@
 import { fireEvent, screen, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import type { Encounter } from '../api'
-import { nationView, renderGame } from '../test/fixtures'
+import { camp, nationView, renderGame } from '../test/fixtures'
 
 /** The choice buttons of the fixture's Flooded river Dilemma. */
 function choiceButtons() {
@@ -101,12 +101,42 @@ describe('DecisionsPanel', () => {
     expect(onAnswerEncounter).toHaveBeenCalledWith(1, false)
   })
 
+  it('shows an Encounter with a Barbarian Camp, which has chosen already', () => {
+    const encounter: Encounter = {
+      first: { nation: 'Rome', warparty: 1, units: { Warrior: 1 }, choice: 'NONE' },
+      second: { nation: 'Black Marsh Barbarian Camp', warparty: 1, units: { Horseman: 3 }, choice: 'FIGHT' },
+    }
+    renderGame({
+      nation: nationView({ dilemmas: [], encounters: [encounter], camps: [camp('Black Marsh Barbarian Camp')] }),
+    })
+
+    expect(screen.getByText(/Your Warparty of Warrior ×1 met/)).toHaveTextContent(
+      "met Black Marsh Barbarian Camp's Warparty of Horseman ×3",
+    )
+    expect(screen.getByText(/chose to fight, so they will fight as this Turn ends/)).toBeInTheDocument()
+  })
+
+  it('shows Plunder taken in an Encounter, plundered from another Nation, to keep or send back', () => {
+    renderGame({
+      nation: nationView({
+        dilemmas: [],
+        hauls: [
+          { id: 1, stolenFrom: 'Egypt', haul: { resource: 'POPULATION', amount: 6 }, choice: 'NONE', plunder: true },
+        ],
+      }),
+    })
+
+    expect(
+      screen.getByText(/Your Warparty took 6 Population from the Warparty it wiped out, plundered from/),
+    ).toHaveTextContent('Egypt')
+  })
+
   it('shows a Haul seized from a caught Spy, keeping it unless the Player sends it back', () => {
     const onAnswerHaul = vi.fn()
     renderGame({
       nation: nationView({
         dilemmas: [],
-        hauls: [{ id: 2, stolenFrom: 'Egypt', haul: { resource: 'GOLD', amount: 12 }, choice: 'NONE' }],
+        hauls: [{ id: 2, stolenFrom: 'Egypt', haul: { resource: 'GOLD', amount: 12 }, choice: 'NONE', plunder: false }],
       }),
       onAnswerHaul,
     })
@@ -127,7 +157,7 @@ describe('DecisionsPanel', () => {
     renderGame({
       nation: nationView({
         dilemmas: [],
-        hauls: [{ id: 2, stolenFrom: 'Egypt', haul: { resource: 'RESEARCH', amount: 5 }, choice: 'RETURN' }],
+        hauls: [{ id: 2, stolenFrom: 'Egypt', haul: { resource: 'RESEARCH', amount: 5 }, choice: 'RETURN', plunder: false }],
       }),
     })
 
@@ -141,7 +171,7 @@ describe('DecisionsPanel', () => {
   it('shows a Haul decision alongside a Dilemma', () => {
     renderGame({
       nation: nationView({
-        hauls: [{ id: 1, stolenFrom: 'Egypt', haul: { resource: 'GOLD', amount: 12 }, choice: 'NONE' }],
+        hauls: [{ id: 1, stolenFrom: 'Egypt', haul: { resource: 'GOLD', amount: 12 }, choice: 'NONE', plunder: false }],
       }),
     })
 

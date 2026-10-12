@@ -10,12 +10,12 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
- * The game content: Unit types, Building types, Technologies, Events and Spy
- * Missions. It is checked when made, so a Game never meets content that refers
- * to something missing.
+ * The game content: Unit types, Building types, Technologies, Events, Spy
+ * Missions and what Barbarian Camps are made from. It is checked when made, so
+ * a Game never meets content that refers to something missing.
  */
 public record Ruleset(List<UnitType> units, List<BuildingType> buildings, List<Technology> technologies,
-		List<Event> events, List<Mission> missions) {
+		List<Event> events, List<Mission> missions, Barbarians barbarians) {
 
 	public Ruleset {
 		units = List.copyOf(units);
@@ -23,10 +23,20 @@ public record Ruleset(List<UnitType> units, List<BuildingType> buildings, List<T
 		technologies = List.copyOf(technologies);
 		events = List.copyOf(events);
 		missions = List.copyOf(missions);
+		barbarians = barbarians == null ? Barbarians.NONE : barbarians;
 		List<String> problems = problems(units, buildings, technologies, events, missions);
+		problems.addAll(barbarians.problems(units));
 		if (!problems.isEmpty()) {
 			throw new InvalidRuleset("The ruleset is invalid:\n" + String.join("\n", problems));
 		}
+	}
+
+	/**
+	 * Game content with no Barbarian Camps.
+	 */
+	public Ruleset(List<UnitType> units, List<BuildingType> buildings, List<Technology> technologies,
+			List<Event> events, List<Mission> missions) {
+		this(units, buildings, technologies, events, missions, Barbarians.NONE);
 	}
 
 	/**

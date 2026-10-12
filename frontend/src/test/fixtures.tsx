@@ -5,6 +5,7 @@ import type {
   BuildingType,
   Facts,
   GameView,
+  MapCamp,
   MapNation,
   Message,
   NationView,
@@ -99,6 +100,7 @@ export function nationView(overrides: Partial<NationView> = {}): NationView {
       { ...ROME, standing: 'IN_GAME', facts: noFacts() },
       { ...EGYPT, standing: 'IN_GAME', facts: noFacts() },
     ],
+    camps: [],
     availableBuildings: [
       building({ name: 'Farm', gold: 30, turns: 2, populationPerTurn: 1 }),
       building({ name: 'Market', gold: 40, turns: 2, goldPerTurn: 3 }),
@@ -288,6 +290,11 @@ export function onMap(name: string, standing: MapNation['standing'] = 'IN_GAME')
   return { name, ruler: 'Ruler', colour: '#7bc96f', emblem: 'star', standing, facts: noFacts() }
 }
 
+/** A Barbarian Camp the Player has heard of, standing and not yet Located unless told otherwise. */
+export function camp(name: string, overrides: Partial<MapCamp> = {}): MapCamp {
+  return { name, ruler: 'Grak', colour: '#8b1e1e', emblem: 'skull', destroyed: false, located: null, ...overrides }
+}
+
 /** Rome's Warparty of two Warriors travelling to Egypt, a Turn from arriving. */
 export function warparty(overrides: Partial<Warparty> = {}): Warparty {
   return {
@@ -298,7 +305,7 @@ export function warparty(overrides: Partial<Warparty> = {}): Warparty {
     homeward: false,
     turnsLeft: 1,
     turnsTravelled: 1,
-    plunder: { gold: 0, research: 0 },
+    plunder: { gold: 0, research: 0, captives: 0 },
     strengthSent: 6,
     ...overrides,
   }

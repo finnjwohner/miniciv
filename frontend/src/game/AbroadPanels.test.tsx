@@ -1,6 +1,6 @@
 import { fireEvent, screen, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
-import { nationView, onMap, renderGame, spy, tab, unit, warparty } from '../test/fixtures'
+import { camp, nationView, onMap, renderGame, spy, tab, unit, warparty } from '../test/fixtures'
 import { precedes, rowNamed } from '../test/order'
 
 /** Rome's view with Carthage and Persia on the Map too, having Located only the given Nations. */
@@ -25,6 +25,27 @@ describe('ArmyPanel', () => {
 
     const army = screen.getByRole('region', { name: 'Army & Warparties' })
     expect(options(within(army).getByRole('combobox', { name: 'To' }))).toEqual(['Egypt', 'Persia'])
+  })
+
+  it('offers Located Barbarian Camps still standing as Warparty targets too', () => {
+    const facts = { army: {}, buildings: {}, defense: 0, targets: ['Rome'], turn: 2 }
+    renderGame({
+      nation: {
+        ...locating(['Egypt']),
+        camps: [
+          camp('Black Marsh Barbarian Camp', { located: facts }),
+          camp('Ashen Hills Barbarian Camp'),
+          camp('Wolf Hollow Barbarian Camp', { located: facts, destroyed: true }),
+        ],
+      },
+    })
+    fireEvent.click(tab('Army'))
+
+    const army = screen.getByRole('region', { name: 'Army & Warparties' })
+    expect(options(within(army).getByRole('combobox', { name: 'To' }))).toEqual([
+      'Egypt',
+      'Black Marsh Barbarian Camp',
+    ])
   })
 
   it('says to Locate a Nation first when none is Located', () => {
@@ -141,7 +162,7 @@ describe('SpiesPanel', () => {
 
     const spies = screen.getByRole('region', { name: 'Spies & Scouts' })
     const target = within(spies).getByRole('combobox', { name: 'Locate' })
-    expect(options(target)).toEqual(['Carthage', 'Sparta'])
+    expect(options(target)).toEqual(['Carthage', 'Sparta', 'The wilds'])
     fireEvent.change(target, { target: { value: 'Sparta' } })
     const count = within(spies).getByRole('slider', { name: 'How many Scouts to set to the Task' })
     expect(count).toHaveAttribute('min', '1')
@@ -150,6 +171,46 @@ describe('SpiesPanel', () => {
     fireEvent.click(within(spies).getByRole('button', { name: 'Set Task' }))
 
     expect(onSetTask).toHaveBeenCalledWith('LOCATE', 'Sparta', 2)
+  })
+
+  it('sets Idle Scouts to Locate a Barbarian Camp heard of, or to search the wilds for any', () => {
+    const onSetTask = vi.fn()
+    renderGame({
+      nation: {
+        ...locating(['Carthage', 'Persia', 'Egypt'], { scouts: 2, idleScouts: 2 }),
+        camps: [camp('Black Marsh Barbarian Camp'), camp('Ashen Hills Barbarian Camp', { destroyed: true })],
+      },
+      onSetTask,
+    })
+    fireEvent.click(tab('Spies & Scouts'))
+
+    const spies = screen.getByRole('region', { name: 'Spies & Scouts' })
+    const target = within(spies).getByRole('combobox', { name: 'Locate' })
+    expect(options(target)).toEqual(['Black Marsh Barbarian Camp', 'The wilds'])
+    fireEvent.click(within(spies).getByRole('button', { name: 'Set Task' }))
+    expect(onSetTask).toHaveBeenLastCalledWith('LOCATE', 'Black Marsh Barbarian Camp', 1)
+
+    fireEvent.change(target, { target: { value: '' } })
+    fireEvent.click(within(spies).getByRole('button', { name: 'Set Task' }))
+    expect(onSetTask).toHaveBeenLastCalledWith('LOCATE', null, 1)
+  })
+
+  it('shows Scouts searching the wilds and offers the wilds no more', () => {
+    renderGame({
+      nation: locating(['Carthage', 'Persia', 'Egypt'], {
+        scouts: 3,
+        idleScouts: 1,
+        tasks: [{ id: 1, kind: 'LOCATE', target: null, scouts: 2 }],
+      }),
+    })
+    fireEvent.click(tab('Spies & Scouts'))
+
+    const spies = screen.getByRole('region', { name: 'Spies & Scouts' })
+    expect(rowNamed(spies, 'Searching the wilds').closest('li')).toHaveTextContent('2 Scouts')
+    expect(options(within(spies).getByRole('combobox', { name: 'Task' }))).toEqual([
+      'Watch for Warparties',
+      'Hunt Travelling Spies',
+    ])
   })
 
   it('shows Watch and Hunt Tasks with their Scouts', () => {
@@ -191,7 +252,7 @@ describe('SpiesPanel', () => {
 
     const spies = screen.getByRole('region', { name: 'Spies & Scouts' })
     const task = within(spies).getByRole('combobox', { name: 'Task' })
-    expect(options(task)).toEqual(['Watch for Warparties', 'Hunt Travelling Spies'])
+    expect(options(task)).toEqual(['Locate', 'Watch for Warparties', 'Hunt Travelling Spies'])
     fireEvent.change(task, { target: { value: 'HUNT' } })
     const count = within(spies).getByRole('slider', { name: 'How many Scouts to set to the Task' })
     expect(count).toHaveAttribute('max', '3')
@@ -448,6 +509,40 @@ describe('MapPanel', () => {
 
     expect(factsOf('Egypt').get('Buildings')).toBe('Farm ×2, Market ×1 · Turn 3')
     expect(factsOf('Egypt').get('Damaged')).toBe('Farm ×1 · Turn 3')
+  })
+
+  it('lists the Barbarian Camps heard of, with what Locating each showed', () => {
+    renderGame({
+      nation: nationView({
+        camps: [
+          camp('Black Marsh Barbarian Camp', {
+            located: { army: { Horseman: 5 }, buildings: { 'Spike Pit': 2 }, defense: 8, targets: ['Rome', 'Egypt'], turn: 6 },
+          }),
+          camp('Ashen Hills Barbarian Camp', { destroyed: true }),
+        ],
+      }),
+    })
+
+    const camps = within(screen.getByRole('region', { name: 'Map' })).getByRole('list', { name: 'Barbarian Camps' })
+    const marsh = within(camps).getByRole('heading', { name: /Black Marsh/ })
+    expect(marsh).toHaveTextContent('Ruled by Grak')
+    expect(marsh).toHaveTextContent('located')
+    expect(factsOf('Black Marsh')).toEqual(
+      new Map([
+        ['Defense', '8 · Turn 6'],
+        ['Army', 'Horseman ×5 · Turn 6'],
+        ['Buildings', 'Spike Pit ×2 · Turn 6'],
+        ['Targets', 'Rome, Egypt · Turn 6'],
+      ]),
+    )
+    expect(within(camps).getByRole('heading', { name: /Ashen Hills/ })).toHaveTextContent('destroyed')
+    expect(within(camps).getByText('Not Located yet.')).toBeInTheDocument()
+  })
+
+  it('shows no Barbarian Camps before any is heard of', () => {
+    renderGame({ nation: nationView() })
+
+    expect(within(screen.getByRole('region', { name: 'Map' })).queryByText('Barbarian Camps')).not.toBeInTheDocument()
   })
 
   it('shows its own Damaged Buildings, counting those being Repaired', () => {
