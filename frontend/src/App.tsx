@@ -38,7 +38,7 @@ function App() {
       </header>
       <main>
         {roomCode ? (
-          <Room key={roomCode} code={decodeURIComponent(roomCode).toUpperCase()} />
+          <Room key={roomCode} code={decodeURIComponent(roomCode).trim().toLowerCase().replace(/\s+/g, '-')} />
         ) : (
           <Home onJoined={(code) => navigate(`/rooms/${code}`)} />
         )}

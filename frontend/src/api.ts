@@ -448,6 +448,9 @@ export function locatableNations(nation: NationView): string[] {
 /** What this browser keeps after joining a Room; the token is secret. */
 export type Membership = { playerId: string; token: string }
 
+/** The Room joined, under its code as the server writes it, however the Player typed it. */
+export type Joined = { roomCode: string; membership: Membership }
+
 export async function createRoom(): Promise<string> {
   const res = await fetch('/api/rooms', { method: 'POST' })
   if (!res.ok) throw new Error('Could not create a Room.')
@@ -456,8 +459,8 @@ export async function createRoom(): Promise<string> {
 }
 
 /** Joins a Room and stores the issued Player token; throws with the server's reason if refused. */
-export async function joinRoom(code: string, nationName: string): Promise<Membership> {
-  const res = await fetch(`/api/rooms/${encodeURIComponent(code)}/players`, {
+export async function joinRoom(code: string, nationName: string): Promise<Joined> {
+  const res = await fetch(`/api/rooms/${encodeURIComponent(code.trim())}/players`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ nationName }),
@@ -465,13 +468,14 @@ export async function joinRoom(code: string, nationName: string): Promise<Member
   const body = await res.json().catch(() => null)
   if (!res.ok) throw new Error(body?.detail ?? 'Could not join the Room.')
   const membership: Membership = { playerId: body.playerId, token: body.token }
-  memberships.set(code, membership)
+  const roomCode: string = body.roomCode
+  memberships.set(roomCode, membership)
   try {
-    localStorage.setItem(storageKey(code), JSON.stringify(membership))
+    localStorage.setItem(storageKey(roomCode), JSON.stringify(membership))
   } catch {
     // Without storage the Player can still play in this tab; only rejoining after a reload is lost.
   }
-  return membership
+  return { roomCode, membership }
 }
 
 /** Memberships joined in this tab, in case localStorage is unavailable. */

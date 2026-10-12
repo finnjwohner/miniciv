@@ -98,7 +98,7 @@ public class Room {
 	/**
 	 * What a joining Player's browser keeps: its public id and secret token.
 	 */
-	public record Joined(String playerId, String token) {
+	public record Joined(String playerId, String token, String roomCode) {
 	}
 
 	/**
@@ -206,7 +206,7 @@ public class Room {
 			emptySince = clock.instant();
 		}
 		version++;
-		return new Joined(player.id(), player.token());
+		return new Joined(player.id(), player.token(), code);
 	}
 
 	/**
