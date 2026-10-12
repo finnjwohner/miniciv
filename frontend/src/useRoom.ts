@@ -253,6 +253,13 @@ export function useRoom(code: string, token: string) {
     })
   }
 
+  /** Leaves the Game: the Player's Nation is removed at once, if it is still in it. */
+  const leaveGame = () =>
+    client.current?.publish({
+      destination: `/app/rooms/${code}/leave`,
+      body: JSON.stringify({ token }),
+    })
+
   /** Marks the Player done with the given Turn; ignored if that Turn has already ended. */
   const markDone = (turn: number) =>
     client.current?.publish({
@@ -286,5 +293,6 @@ export function useRoom(code: string, token: string) {
     answerEncounter,
     sendMessage,
     markDone,
+    leaveGame,
   }
 }

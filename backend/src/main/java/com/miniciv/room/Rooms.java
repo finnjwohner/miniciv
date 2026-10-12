@@ -106,6 +106,13 @@ public class Rooms {
 		});
 	}
 
+	public void leave(String code, String token) {
+		change(find(code).orElseThrow(), room -> {
+			room.leave(token);
+			return null;
+		});
+	}
+
 	/**
 	 * Applies a Player's Action, sending every Player whose Nation's view it
 	 * changed their new view: the acting Player's, and another's when the

@@ -1690,6 +1690,17 @@ class GameTest {
 	}
 
 	@Test
+	void aNationWhosePlayerLeftIsRemovedAtOnceAndTheOthersAreToldItLeft() {
+		game.leave("Carthage");
+
+		assertThat(game.removed()).containsExactly("Carthage");
+		assertThat(game.inGame("Carthage")).isFalse();
+		game.endTurn();
+		assertThat(game.viewOf("Rome").turnReport().lines()).containsExactly(
+				"Carthage left the Game, so it was removed.", BASE_INCOME_REPORT);
+	}
+
+	@Test
 	void nothingIsSeizedFromARemovedNationAndWarpartiesHeadingToItTurnBackHome() {
 		locateEachOther();
 		armyOf("Rome", "Warrior", 2);

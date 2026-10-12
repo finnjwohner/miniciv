@@ -39,6 +39,9 @@ class RoomController {
 	record IdentityRequest(String token, String ruler, String colour, String emblem) {
 	}
 
+	record LeaveRequest(String token) {
+	}
+
 	record DoneRequest(String token, int turn) {
 	}
 
@@ -418,6 +421,15 @@ class RoomController {
 	Rejection message(@DestinationVariable String code, MessageRequest request) {
 		ActionResult result = rooms.message(code, request.token(), request.to(), request.text());
 		return result.accepted() ? null : new Rejection(result.reason());
+	}
+
+	/**
+	 * Leaves the Game, the Player's Nation being removed at once; the changed
+	 * Room arrives on {@code /topic/rooms/{code}}.
+	 */
+	@MessageMapping("/rooms/{code}/leave")
+	void leave(@DestinationVariable String code, LeaveRequest request) {
+		rooms.leave(code, request.token());
 	}
 
 	@MessageMapping("/rooms/{code}/done")

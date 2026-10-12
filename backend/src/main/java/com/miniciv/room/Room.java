@@ -420,6 +420,21 @@ public class Room {
 	}
 
 	/**
+	 * Removes a Player's Nation from the Game at once, as they leave it; the
+	 * Game does not pause for them. Has no effect before the Game starts, or on
+	 * a Nation no longer in it.
+	 */
+	synchronized void leave(String token) {
+		Player player = player(token);
+		if (game == null || !inGame(player)) {
+			return;
+		}
+		game.leave(player.nationName());
+		version++;
+		settle();
+	}
+
+	/**
 	 * Applies a Player's Action to their Nation at once, unless the Game is
 	 * paused.
 	 */

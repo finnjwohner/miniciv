@@ -13,7 +13,7 @@ The place Players gather before a Game starts, joined by a room code of three wo
 _Avoid_: Lobby, server
 
 **Player**:
-A person taking part in a Game. A Player who stays disconnected for more than five minutes in total over a Game has their Nation Removed.
+A person taking part in a Game. A Player who stays disconnected for more than five minutes in total over a Game has their Nation Removed. A Player may also leave the Game from its header, after confirming, which Removes their Nation at once without Pausing the Game and returns them to the menu.
 _Avoid_: User, account
 
 **Paused**:
