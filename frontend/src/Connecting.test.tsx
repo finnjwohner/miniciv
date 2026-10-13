@@ -13,6 +13,7 @@ const clients = vi.hoisted(
 )
 
 vi.mock('@stomp/stompjs', () => ({
+  TickerStrategy: { Worker: 'worker' },
   Client: class {
     onWebSocketClose = () => {}
     onConnect = () => {}

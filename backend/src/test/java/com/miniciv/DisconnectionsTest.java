@@ -4,6 +4,8 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
 
 import org.junit.jupiter.api.AfterEach;
@@ -15,6 +17,10 @@ import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.socket.TextMessage;
+import org.springframework.web.socket.WebSocketSession;
+import org.springframework.web.socket.client.standard.StandardWebSocketClient;
+import org.springframework.web.socket.handler.TextWebSocketHandler;
 
 import com.miniciv.room.Rooms;
 
@@ -24,9 +30,11 @@ import static org.assertj.core.api.Assertions.assertThatException;
 /**
  * Players dropping their connection mid-Game and rejoining with their token.
  * Time only moves when a test advances the clock, and the test then asks the
- * server to do what its scheduler would.
+ * server to do what its scheduler would. Heartbeats are set short, so a
+ * connection that goes silent is dropped quickly.
  */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
+		properties = { "miniciv.heartbeat.server-ms=100", "miniciv.heartbeat.client-ms=100" })
 class DisconnectionsTest {
 
 	@TestConfiguration
@@ -190,6 +198,40 @@ class DisconnectionsTest {
 		clock.advance(Duration.ofSeconds(100));
 		rooms.endDueTurns();
 		assertThat(rome.privately().next().get("turn")).isEqualTo(2);
+	}
+
+	/**
+	 * Connects as the Player holding the token, promising a heartbeat every
+	 * 100 ms, then sends nothing more, as a browser whose network dropped does.
+	 */
+	WebSocketSession connectThenFallSilent(String token) throws Exception {
+		CompletableFuture<String> connected = new CompletableFuture<>();
+		WebSocketSession session = new StandardWebSocketClient().execute(new TextWebSocketHandler() {
+
+			@Override
+			protected void handleTextMessage(WebSocketSession session, TextMessage message) {
+				connected.complete(message.getPayload());
+			}
+
+		}, "ws://localhost:" + port + "/ws").get(5, TimeUnit.SECONDS);
+		session.sendMessage(new TextMessage("CONNECT\naccept-version:1.2\nheart-beat:100,0\ntoken:" + token + "\n\n\0"));
+		assertThat(connected.get(5, TimeUnit.SECONDS)).startsWith("CONNECTED");
+		return session;
+	}
+
+	@Test
+	void aConnectionThatStopsSendingHeartbeatsIsDroppedAndPausesTheGame() throws Exception {
+		startGame("Rome", "Carthage");
+		WebSocketSession silent = connectThenFallSilent(rome.token());
+
+		rome.stomp().close();
+
+		try {
+			awaitGame(game -> waitingFor(game).contains("Rome"));
+		}
+		finally {
+			silent.close();
+		}
 	}
 
 	@Test

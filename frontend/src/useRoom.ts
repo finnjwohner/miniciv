@@ -1,4 +1,4 @@
-import { Client } from '@stomp/stompjs'
+import { Client, TickerStrategy } from '@stomp/stompjs'
 import { useEffect, useRef, useState } from 'react'
 import type { Message, NationView, RoomView, TaskKind } from './api'
 
@@ -32,6 +32,11 @@ export function useRoom(code: string, token: string, playerId: string) {
       brokerURL: `${protocol}://${window.location.host}/ws`,
       connectHeaders: { token },
       reconnectDelay: 1000,
+      // Must match miniciv.heartbeat.* on the server. The Worker ticker keeps a hidden tab's heartbeats
+      // going, so switching tabs never Pauses the Game.
+      heartbeatIncoming: 10000,
+      heartbeatOutgoing: 10000,
+      heartbeatStrategy: TickerStrategy.Worker,
     })
     // A socket closing before STOMP connected means the server refused it, such as when it has as many
     // connections as it allows; browsers don't say why. Retrying carries on meanwhile.
