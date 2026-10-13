@@ -57,15 +57,16 @@ write_files:
       APT::Periodic::Update-Package-Lists "1";
       APT::Periodic::Unattended-Upgrade "1";
 
-  # Also patch Caddy from its own repo, and reboot when a patch needs it, just
-  # after the 04:07 UTC deploy. The Droplet's clock is UTC.
+  # Also patch Caddy from its own repo, and reboot when a patch needs it, well
+  # after the 04:07 UTC deploy, so a deploy GitHub starts late isn't cut off.
+  # The Droplet's clock is UTC.
   - path: /etc/apt/apt.conf.d/52miniciv-unattended-upgrades
     content: |
       Unattended-Upgrade::Origins-Pattern {
         "site=dl.cloudsmith.io";
       };
       Unattended-Upgrade::Automatic-Reboot "true";
-      Unattended-Upgrade::Automatic-Reboot-Time "04:20";
+      Unattended-Upgrade::Automatic-Reboot-Time "05:30";
 
   - path: /etc/systemd/journald.conf.d/miniciv.conf
     content: |

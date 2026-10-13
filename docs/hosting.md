@@ -34,7 +34,7 @@ GitHub Actions ──SSH as deploy───────────────�
 - **The app** is the one Spring Boot jar (Java 21). It serves the React frontend, `/api` and `/ws` (STOMP over WebSocket). It listens only on localhost, so Caddy is the only way in.
 - **Caddy** terminates HTTPS, gets and renews certificates itself, redirects HTTP to HTTPS and `www` to the apex, and proxies everything, WebSockets included.
 - **A deploy** happens at 04:07 UTC each day if master has changed since the last deploy, or at once when started by hand. GitHub Actions builds master's tip and runs every test; if any fails, nothing is deployed. Otherwise it copies the jar to the Droplet, points `current` at it, restarts the service and waits for `/api/health`. If the new jar doesn't come up within 90 seconds, it rolls back to the previous jar and the workflow fails, which GitHub emails you about.
-- **What a deploy does to Players:** all state is in memory, so every restart ends every Room and Game, without warning. That is a deliberate trade-off, recorded in [ADR 0003: Deploys wipe running Games](adr/0003-deploys-wipe-running-games.md). A security-update reboot at 04:20 UTC does the same.
+- **What a deploy does to Players:** all state is in memory, so every restart ends every Room and Game, without warning. That is a deliberate trade-off, recorded in [ADR 0003: Deploys wipe running Games](adr/0003-deploys-wipe-running-games.md). A security-update reboot at 05:30 UTC does the same.
 - **Cost:** $6 a month for the Droplet, plus the domain. No paid backups.
 
 **Out of scope:** saving Games or Rooms across restarts; staging and preview deploys; monitoring and alerting beyond systemd restarting a crashed process; IPv6; defending against distributed floods (DDoS).
@@ -509,15 +509,16 @@ write_files:
       APT::Periodic::Update-Package-Lists "1";
       APT::Periodic::Unattended-Upgrade "1";
 
-  # Also patch Caddy from its own repo, and reboot when a patch needs it, just
-  # after the 04:07 UTC deploy. The Droplet's clock is UTC.
+  # Also patch Caddy from its own repo, and reboot when a patch needs it, well
+  # after the 04:07 UTC deploy, so a deploy GitHub starts late isn't cut off.
+  # The Droplet's clock is UTC.
   - path: /etc/apt/apt.conf.d/52miniciv-unattended-upgrades
     content: |
       Unattended-Upgrade::Origins-Pattern {
         "site=dl.cloudsmith.io";
       };
       Unattended-Upgrade::Automatic-Reboot "true";
-      Unattended-Upgrade::Automatic-Reboot-Time "04:20";
+      Unattended-Upgrade::Automatic-Reboot-Time "05:30";
 
   - path: /etc/systemd/journald.conf.d/miniciv.conf
     content: |
@@ -591,7 +592,7 @@ What it sets up:
 - **SSH** is key-only: no root login, no passwords. Port 22 stays, with no fail2ban.
 - **Three accounts.** You, with sudo and a passphrase-protected `ed25519` key whose private half never leaves your Mac. `deploy`, used only by GitHub Actions, with its own key pair whose private half is only ever an Actions secret. `miniciv`, the service user, which can't log in.
 - **What `deploy` can do.** It owns `/opt/miniciv/releases`, `current` and `REVISION`, which the `miniciv` group can read. Its one sudo rule is `systemctl restart miniciv`. Its key carries `restrict` in `authorized_keys`, which turns off forwarding and terminals but still allows the `scp` and commands the deploy runs.
-- **Automatic security updates** with `unattended-upgrades`, including Caddy's repo, rebooting at 04:20 UTC when a patch needs it, just after the deploy. A patched JRE takes effect at the next restart; on a night the deploy is skipped, that waits for the next deploy or reboot, which is fine.
+- **Automatic security updates** with `unattended-upgrades`, including Caddy's repo, rebooting at 05:30 UTC when a patch needs it, well after the deploy: GitHub often starts scheduled runs late, and a reboot must not land mid-deploy. A patched JRE takes effect at the next restart; on a night the deploy is skipped, that waits for the next deploy or reboot, which is fine.
 
 **Why:** [How is the Droplet accessed and secured?][101], [Which domain, DNS and HTTPS setup?][103], [How does the app run and stay up on the Droplet?][100]
 
