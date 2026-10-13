@@ -45,7 +45,7 @@ GitHub Actions ──SSH as deploy───────────────�
 
 ### 2.1 The `prod` profile
 
-Add `backend/src/main/resources/application-prod.properties`. The Droplet's systemd unit turns it on with `SPRING_PROFILES_ACTIVE=prod`; tests and local runs never use it.
+Add `backend/src/main/resources/application-prod.properties`. The Droplet's systemd unit turns it on with `SPRING_PROFILES_ACTIVE=prod`; local runs never use it, and only `ProdProfileTest` does among the tests.
 
 ```properties
 # Only Caddy, on the same Droplet, can reach the app.
@@ -732,7 +732,7 @@ Run these once after the first deploy.
 
 **A failed deploy rolls back**
 
-- [ ] At a quiet time, push a commit to master that passes the tests but can't answer the health check: set `server.port=8081` in `application-prod.properties` (no test uses the `prod` profile). Run Deploy by hand.
+- [ ] At a quiet time, push a commit to master that passes the tests but can't answer the health check: set `server.port=8081` in `application-prod.properties` (`ProdProfileTest` uses the `prod` profile but picks a random port, so it still passes). Run Deploy by hand.
 - [ ] The workflow fails, its summary says "rolled back to `<previous sha>`", GitHub emails you, the site still works, and `/opt/miniciv/REVISION` is unchanged.
 - [ ] Revert the commit, run Deploy by hand again, and check it succeeds.
 
