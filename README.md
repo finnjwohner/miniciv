@@ -1,6 +1,32 @@
 # miniciv
 
-A turn-based, player-vs-player strategy game in the browser for 2–4 Players. See [`GLOSSARY.md`](GLOSSARY.md) for the game's vocabulary and [`docs/adr/`](docs/adr/) for key decisions.
+**Civilization for your lunch break.** Two to four friends, one browser tab each, and a race to be the last Nation standing. No hexes to push and no units to march across a map. You make the big decisions and read about how they went.
+
+Play it at **[miniciv.com](https://miniciv.com)**.
+
+## How a Game goes
+
+Someone makes a Room and shares its three-word code (or an invite link). Everyone names their Nation and Ruler, picks a colour and an emblem, and readies up. Then the Turns begin.
+
+Everyone acts **at the same time**. A Turn lasts at most two minutes, and usually far less. In that time you might:
+
+- 🌾 **Grow.** Put Gold into Farms, Markets, Libraries and Banks. Raise Palisades, Walls, Moats and a Castle to keep your people safe.
+- 📜 **Research.** Climb a Tech Tree you can see only one step ahead of.
+- ⚔️ **Fight.** Train Warriors, Archers and Horsemen, which beat each other rock-paper-scissors style, and later Crossbowmen, Knights and Catapults. Send them off as a Warparty and hope your rivals haven't seen it coming.
+- 🕵️ **Scheme.** Send Scouts into the wilds to find other Nations. Slip Spies into a rival's capital to gather intel, sabotage, poison, incite unrest or steal, then try to get the Haul home without being Unmasked.
+- ✉️ **Negotiate.** Send private Messages and offer Tribute, and make promises you may or may not keep.
+
+When the Turn ends, everything resolves at once, and you get a **Turn Report**: a short story of what happened. Your Warparty broke through their Walls and came home with Plunder. A comet blazed across the sky and your astronomers learned from it. Fire took the scrolls of your Library. One of your Spies was caught and confessed, and now *they* know where you are.
+
+The world won't leave you alone either. **Events** strike out of nowhere, a **Dilemma** may ask you to make a hard call, and your Warparties can run into other armies on the road. From about Turn 8, **Barbarian Camps** start appearing in the wilds and raiding anyone with too small an Army. Find a Camp and burn it down for a Bounty, or keep your Walls high and hope they pick on someone else.
+
+A Nation is conquered when it runs out of both Population and Army. The last one standing wins. Then everyone hits **Play again**.
+
+The game's vocabulary is defined in [`GLOSSARY.md`](GLOSSARY.md), and key design decisions are recorded in [`docs/adr/`](docs/adr/).
+
+# Development
+
+miniciv is built with Spring Boot and React. All game rules live on the server, and the ruleset (Units, Buildings, Technologies, Events, Missions and Barbarians) is plain JSON in `backend/src/main/resources/ruleset/`. Hosting is described in [`docs/hosting.md`](docs/hosting.md).
 
 ## Layout
 
