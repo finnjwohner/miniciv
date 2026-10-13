@@ -193,7 +193,7 @@ description: Builds the jar with the frontend inside it, running the backend tes
 runs:
   using: composite
   steps:
-    - uses: actions/setup-java@v5
+    - uses: actions/setup-java@v6
       with:
         distribution: temurin
         java-version: '21'
@@ -205,7 +205,7 @@ runs:
       run: echo "version=$(sed -n 's:.*<node.version>\(.*\)</node.version>.*:\1:p' backend/pom.xml)" >> "$GITHUB_OUTPUT"
 
     # frontend-maven-plugin installs Node into backend/target; keep it, and npm's download cache, between runs.
-    - uses: actions/cache@v4
+    - uses: actions/cache@v6
       with:
         path: |
           ~/.npm
@@ -239,7 +239,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/build
 ```
 
@@ -292,7 +292,7 @@ jobs:
             echo "\`$GITHUB_SHA\` is already live; nothing to deploy." >> "$GITHUB_STEP_SUMMARY"
           fi
 
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         if: steps.live.outputs.skip != 'true'
 
       - uses: ./.github/actions/build
