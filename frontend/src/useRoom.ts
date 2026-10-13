@@ -22,6 +22,7 @@ export function useRoom(code: string, token: string, playerId: string) {
   const [nation, setNation] = useState<NationView | null>(null)
   const [messages, setMessages] = useState<Message[]>([])
   const [rejection, setRejection] = useState<string | null>(null)
+  const [unreachable, setUnreachable] = useState(false)
   const client = useRef<Client | null>(null)
 
   useEffect(() => {
@@ -32,7 +33,16 @@ export function useRoom(code: string, token: string, playerId: string) {
       connectHeaders: { token },
       reconnectDelay: 1000,
     })
+    // A socket closing before STOMP connected means the server refused it, such as when it has as many
+    // connections as it allows; browsers don't say why. Retrying carries on meanwhile.
+    let connected = false
+    stomp.onWebSocketClose = () => {
+      if (!connected) setUnreachable(true)
+      connected = false
+    }
     stomp.onConnect = () => {
+      connected = true
+      setUnreachable(false)
       // Current-state replies and later updates can arrive in either order; keep the newest.
       const updateRoom = (message: { body: string }) => {
         const next: RoomView = JSON.parse(message.body)
@@ -287,6 +297,8 @@ export function useRoom(code: string, token: string, playerId: string) {
     nation,
     messages,
     rejection,
+    /** Whether the last attempt to connect to the server failed; it keeps retrying. */
+    unreachable,
     setReady,
     setIdentity,
     startBuilding,

@@ -514,10 +514,11 @@ export type Membership = { playerId: string; token: string }
 /** The Room joined, under its code as the server writes it, however the Player typed it. */
 export type Joined = { roomCode: string; membership: Membership }
 
+/** Creates a Room, returning its code; throws with the server's reason if refused, such as when it is full. */
 export async function createRoom(): Promise<string> {
   const res = await fetch('/api/rooms', { method: 'POST' })
-  if (!res.ok) throw new Error('Could not create a Room.')
-  const body: { code: string } = await res.json()
+  const body = await res.json().catch(() => null)
+  if (!res.ok) throw new Error(body?.detail ?? 'Could not create a Room.')
   return body.code
 }
 

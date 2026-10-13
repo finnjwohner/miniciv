@@ -20,6 +20,7 @@ import com.miniciv.engine.ActionResult;
 import com.miniciv.engine.Game;
 import com.miniciv.engine.NationView;
 import com.miniciv.engine.Ruleset;
+import com.miniciv.limits.Limits;
 
 /**
  * The place Players gather before a Game starts.
@@ -166,6 +167,8 @@ public class Room {
 
 	private final Ruleset ruleset;
 
+	private final Limits limits;
+
 	/**
 	 * Supplies the luck the Game draws on once it starts.
 	 */
@@ -199,10 +202,11 @@ public class Room {
 	 */
 	private Instant emptySince;
 
-	Room(String code, Clock clock, Ruleset ruleset, Supplier<RandomGenerator> luck) {
+	Room(String code, Clock clock, Ruleset ruleset, Limits limits, Supplier<RandomGenerator> luck) {
 		this.code = code;
 		this.clock = clock;
 		this.ruleset = ruleset;
+		this.limits = limits;
 		this.luck = luck;
 		this.emptySince = clock.instant();
 	}
@@ -221,6 +225,10 @@ public class Room {
 		}
 		if (name.isEmpty()) {
 			throw new JoinRefused(JoinRefused.Reason.NO_NATION_NAME, "Choose a name for your Nation.");
+		}
+		if (name.length() > limits.nationNameLength()) {
+			throw new JoinRefused(JoinRefused.Reason.NATION_NAME_TOO_LONG,
+					"A Nation's name can be at most " + limits.nationNameLength() + " characters.");
 		}
 		if (everyPlayer().anyMatch(p -> p.nationName().equalsIgnoreCase(name))) {
 			throw new JoinRefused(JoinRefused.Reason.NATION_NAME_TAKEN,
@@ -601,6 +609,10 @@ public class Room {
 		}
 		if (stripped.length() > MAX_MESSAGE_LENGTH) {
 			return Sending.rejected("A Message can be at most " + MAX_MESSAGE_LENGTH + " characters.");
+		}
+		if (messages.stream().filter(m -> m.from().equals(sender.nationName())).count() >= limits.messagesPerGame()) {
+			return Sending.rejected("You've sent " + limits.messagesPerGame()
+					+ " Messages this Game, the most a Player may send in one.");
 		}
 		Message message = new Message(messages.size() + 1, sender.nationName(), to, stripped);
 		messages.add(message);

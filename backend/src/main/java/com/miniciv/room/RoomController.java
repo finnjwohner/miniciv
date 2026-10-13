@@ -3,6 +3,8 @@ package com.miniciv.room;
 import java.security.Principal;
 import java.util.Map;
 
+import jakarta.servlet.http.HttpServletRequest;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.messaging.handler.annotation.DestinationVariable;
@@ -20,6 +22,8 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import com.miniciv.engine.Action;
 import com.miniciv.engine.ActionResult;
 import com.miniciv.engine.NationView;
+import com.miniciv.limits.RequestRates;
+import com.miniciv.limits.TooManyRequests;
 
 /**
  * Rooms are created and joined over REST; Players then follow the Room over STOMP.
@@ -110,13 +114,17 @@ class RoomController {
 
 	private final Rooms rooms;
 
-	RoomController(Rooms rooms) {
+	private final RequestRates rates;
+
+	RoomController(Rooms rooms, RequestRates rates) {
 		this.rooms = rooms;
+		this.rates = rates;
 	}
 
 	@PostMapping("/api/rooms")
 	@ResponseStatus(HttpStatus.CREATED)
-	CreatedRoom create() {
+	CreatedRoom create(HttpServletRequest http) {
+		rates.createRoom(http.getRemoteAddr());
 		Room room = rooms.create();
 		String inviteLink = ServletUriComponentsBuilder.fromCurrentContextPath()
 			.path("/rooms/{code}")
@@ -127,7 +135,8 @@ class RoomController {
 
 	@PostMapping("/api/rooms/{code}/players")
 	@ResponseStatus(HttpStatus.CREATED)
-	Room.Joined join(@PathVariable String code, @RequestBody JoinRequest request) {
+	Room.Joined join(@PathVariable String code, @RequestBody JoinRequest request, HttpServletRequest http) {
+		rates.join(http.getRemoteAddr());
 		return rooms.join(code, request.nationName());
 	}
 
@@ -135,10 +144,20 @@ class RoomController {
 	ProblemDetail refused(JoinRefused refused) {
 		HttpStatus status = switch (refused.reason()) {
 			case NO_SUCH_ROOM -> HttpStatus.NOT_FOUND;
-			case NO_NATION_NAME -> HttpStatus.BAD_REQUEST;
+			case NO_NATION_NAME, NATION_NAME_TOO_LONG -> HttpStatus.BAD_REQUEST;
 			case ROOM_FULL, GAME_STARTED, NATION_NAME_TAKEN -> HttpStatus.CONFLICT;
 		};
 		return ProblemDetail.forStatusAndDetail(status, refused.getMessage());
+	}
+
+	@ExceptionHandler
+	ProblemDetail tooMany(TooManyRequests tooMany) {
+		return ProblemDetail.forStatusAndDetail(HttpStatus.TOO_MANY_REQUESTS, tooMany.getMessage());
+	}
+
+	@ExceptionHandler
+	ProblemDetail full(RoomsFull full) {
+		return ProblemDetail.forStatusAndDetail(HttpStatus.SERVICE_UNAVAILABLE, full.getMessage());
 	}
 
 	/**

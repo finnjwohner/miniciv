@@ -33,7 +33,7 @@ The short text description each Player receives at the start of a Turn of what h
 _Avoid_: Log, summary, news
 
 **Message**:
-Private text one Player sends to one other Player during a Game, seen only by the two of them and kept until the Game's Room is gone; Players knocked out can still send and receive them, Players Removed cannot.
+Private text one Player sends to one other Player during a Game, seen only by the two of them and kept until the Game's Room is gone; Players knocked out can still send and receive them, Players Removed cannot. A Player may send at most 500 Messages in a Game.
 _Avoid_: Chat, DM, whisper
 
 **Map**:
@@ -43,7 +43,7 @@ _Avoid_: Board
 ## Nations
 
 **Nation**:
-The country a Player leads in a Game; what owns Gold, Population, Research, Buildings and Units. Every Nation starts the same; other Players initially know only its name, Ruler, colour and emblem, each unique among the Nations in the Game.
+The country a Player leads in a Game; what owns Gold, Population, Research, Buildings and Units. Every Nation starts the same; other Players initially know only its name, Ruler, colour and emblem, each unique among the Nations in the Game. A Nation's name is at most 20 characters.
 _Avoid_: Country, civ, empire, faction
 
 **Ruler**:

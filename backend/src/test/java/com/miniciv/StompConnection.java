@@ -30,14 +30,29 @@ class StompConnection implements AutoCloseable {
 	 * Connects as the Player holding the token, as a browser in a Room does.
 	 */
 	StompConnection(int port, String token) throws Exception {
-		this(port, playerHeaders(token));
+		this(port, new WebSocketHttpHeaders(), playerHeaders(token));
+	}
+
+	/**
+	 * Connects from the client IP given, as named in X-Forwarded-For by Caddy,
+	 * failing if the server refuses the upgrade.
+	 */
+	static StompConnection fromIp(int port, String ip) throws Exception {
+		WebSocketHttpHeaders handshakeHeaders = new WebSocketHttpHeaders();
+		handshakeHeaders.add("X-Forwarded-For", ip);
+		return new StompConnection(port, handshakeHeaders, new StompHeaders());
 	}
 
 	private StompConnection(int port, StompHeaders connectHeaders) throws Exception {
+		this(port, new WebSocketHttpHeaders(), connectHeaders);
+	}
+
+	private StompConnection(int port, WebSocketHttpHeaders handshakeHeaders, StompHeaders connectHeaders)
+			throws Exception {
 		WebSocketStompClient client = new WebSocketStompClient(new StandardWebSocketClient());
 		client.setMessageConverter(new JacksonJsonMessageConverter());
 		this.session = client
-			.connectAsync("ws://localhost:" + port + "/ws", new WebSocketHttpHeaders(), connectHeaders,
+			.connectAsync("ws://localhost:" + port + "/ws", handshakeHeaders, connectHeaders,
 					new StompSessionHandlerAdapter() {
 					})
 			.get(5, TimeUnit.SECONDS);

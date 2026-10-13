@@ -40,3 +40,27 @@ describe('Joining by room code', () => {
     expect(screen.getByText(/invited to Room calm-fox-kite/)).toBeInTheDocument()
   })
 })
+
+describe('Creating a Room', () => {
+  afterEach(() => {
+    window.history.pushState(null, '', '/')
+    localStorage.clear()
+  })
+
+  it.each([
+    [429, "You've created several Rooms just now. Wait a minute and try again."],
+    [503, 'miniciv is full right now, try again shortly'],
+  ])('shows the reason the server refused it with %i', async (status, detail) => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response(JSON.stringify({ status, detail }), { status })),
+    )
+    render(<App />)
+
+    fireEvent.change(screen.getByLabelText('Nation name'), { target: { value: 'Rome' } })
+    fireEvent.click(screen.getByRole('button', { name: /create a room/i }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(detail)
+    expect(window.location.pathname).toBe('/')
+  })
+})

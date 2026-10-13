@@ -25,7 +25,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  * when a test advances the clock, and the test then asks the server to do
  * what its scheduler would.
  */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
+		properties = "miniciv.limits.messages-per-game=3")
 class MessagesTest {
 
 	@TestConfiguration
@@ -183,6 +184,24 @@ class MessagesTest {
 		assertThat(rome.rejections().next())
 			.isEqualTo(Map.of("reason", "A Message can be at most 280 characters."));
 		carthage.messages().expectNone();
+	}
+
+	@Test
+	void aPlayerMaySendOnlySoManyMessagesInAGame() throws Exception {
+		startGame();
+		send(rome, "Carthage", "One");
+		send(rome, "Egypt", "Two");
+		send(rome, "Carthage", "Three");
+
+		send(rome, "Egypt", "Four");
+
+		assertThat(rome.rejections().next())
+			.isEqualTo(Map.of("reason", "You've sent 3 Messages this Game, the most a Player may send in one."));
+		send(carthage, "Rome", "I still may.");
+		assertThat(rome.messages().next()).isEqualTo(message(1, "Rome", "Carthage", "One"));
+		assertThat(rome.messages().next()).isEqualTo(message(2, "Rome", "Egypt", "Two"));
+		assertThat(rome.messages().next()).isEqualTo(message(3, "Rome", "Carthage", "Three"));
+		assertThat(rome.messages().next()).isEqualTo(message(4, "Carthage", "Rome", "I still may."));
 	}
 
 	@Test

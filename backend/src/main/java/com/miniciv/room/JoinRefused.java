@@ -7,7 +7,7 @@ public class JoinRefused extends RuntimeException {
 
 	public enum Reason {
 
-		NO_SUCH_ROOM, ROOM_FULL, GAME_STARTED, NO_NATION_NAME, NATION_NAME_TAKEN
+		NO_SUCH_ROOM, ROOM_FULL, GAME_STARTED, NO_NATION_NAME, NATION_NAME_TOO_LONG, NATION_NAME_TAKEN
 
 	}
 

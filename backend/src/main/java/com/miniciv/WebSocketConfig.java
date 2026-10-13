@@ -7,6 +7,8 @@ import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBr
 import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
 import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
 
+import com.miniciv.limits.FrameLimits;
+import com.miniciv.limits.SessionLimits;
 import com.miniciv.room.PlayerIdentification;
 
 /**
@@ -20,20 +22,27 @@ class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
 	private final PlayerIdentification playerIdentification;
 
-	WebSocketConfig(PlayerIdentification playerIdentification) {
+	private final SessionLimits sessionLimits;
+
+	private final FrameLimits frameLimits;
+
+	WebSocketConfig(PlayerIdentification playerIdentification, SessionLimits sessionLimits, FrameLimits frameLimits) {
 		this.playerIdentification = playerIdentification;
+		this.sessionLimits = sessionLimits;
+		this.frameLimits = frameLimits;
 	}
 
 	@Override
 	public void registerStompEndpoints(StompEndpointRegistry registry) {
-		registry.addEndpoint("/ws");
+		registry.addEndpoint("/ws").addInterceptors(sessionLimits);
 		// Handle each browser's frames in the order sent, e.g. a subscribe before a ready.
 		registry.setPreserveReceiveOrder(true);
 	}
 
 	@Override
 	public void configureClientInboundChannel(ChannelRegistration registration) {
-		registration.interceptors(playerIdentification);
+		// Drop frames over the limit before any work is done on them.
+		registration.interceptors(frameLimits, playerIdentification);
 	}
 
 	@Override

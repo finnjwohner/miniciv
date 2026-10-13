@@ -59,6 +59,7 @@ function JoinedRoom({ code, membership, onLeft }: { code: string; membership: Me
     nation,
     messages,
     rejection,
+    unreachable,
     setReady,
     setIdentity,
     startBuilding,
@@ -83,10 +84,16 @@ function JoinedRoom({ code, membership, onLeft }: { code: string; membership: Me
     leaveGame,
     playAgain,
   } = useRoom(code, membership.token, membership.playerId)
+  // Browsers don't say why a connection was refused, such as the server having as many as it allows.
+  const unreachableAlert = unreachable && (
+    <p className="alert" role="alert">
+      Can't connect to miniciv right now. Retrying…
+    </p>
+  )
   if (!room)
     return (
       <div className="screen screen--narrow">
-        <p className="muted">Connecting to Room {code}…</p>
+        {unreachableAlert || <p className="muted">Connecting to Room {code}…</p>}
       </div>
     )
   // A Player who has not pressed Play again still sees the Game that ended, while others are back in the Room.
@@ -114,6 +121,7 @@ function JoinedRoom({ code, membership, onLeft }: { code: string; membership: Me
   if (gameRoom.game)
     return (
       <div className="screen screen--wide">
+        {unreachableAlert}
         <GameScreen
           room={gameRoom}
           nation={nation}
@@ -149,13 +157,16 @@ function JoinedRoom({ code, membership, onLeft }: { code: string; membership: Me
       </div>
     )
   return (
-    <RoomScreen
-      room={room}
-      playerId={membership.playerId}
-      rejection={rejection}
-      onReady={setReady}
-      onIdentity={setIdentity}
-    />
+    <>
+      {unreachableAlert}
+      <RoomScreen
+        room={room}
+        playerId={membership.playerId}
+        rejection={rejection}
+        onReady={setReady}
+        onIdentity={setIdentity}
+      />
+    </>
   )
 }
 

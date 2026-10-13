@@ -22,6 +22,7 @@ import com.miniciv.engine.Action;
 import com.miniciv.engine.ActionResult;
 import com.miniciv.engine.NationView;
 import com.miniciv.engine.Ruleset;
+import com.miniciv.limits.Limits;
 
 /**
  * Every open Room on this server, held in memory. Every change to a Room is
@@ -44,18 +45,29 @@ public class Rooms {
 
 	private final Ruleset ruleset;
 
+	private final Limits limits;
+
 	private final Supplier<RandomGenerator> luck;
 
-	Rooms(SimpMessagingTemplate messaging, Clock clock, Ruleset ruleset, Supplier<RandomGenerator> luck) {
+	Rooms(SimpMessagingTemplate messaging, Clock clock, Ruleset ruleset, Limits limits,
+			Supplier<RandomGenerator> luck) {
 		this.messaging = messaging;
 		this.clock = clock;
 		this.ruleset = ruleset;
+		this.limits = limits;
 		this.luck = luck;
 	}
 
-	public Room create() {
+	/**
+	 * Creates a Room, refused while as many Rooms are live as the limit allows.
+	 * Synchronized so that Rooms created at once cannot pass the limit together.
+	 */
+	public synchronized Room create() {
+		if (rooms.size() >= limits.rooms()) {
+			throw new RoomsFull();
+		}
 		while (true) {
-			Room room = new Room(newCode(), clock, ruleset, luck);
+			Room room = new Room(newCode(), clock, ruleset, limits, luck);
 			if (rooms.putIfAbsent(RoomCodes.key(room.code()), room) == null) {
 				return room;
 			}
