@@ -1,7 +1,7 @@
 #cloud-config
 # Sets up the miniciv Droplet; see docs/hosting.md. This is the only copy of the
-# Caddyfile and the systemd unit. Replace DOMAIN, EMAIL, ADMIN_USER,
-# ADMIN_SSH_KEY and DEPLOY_SSH_KEY before creating a Droplet.
+# Caddyfile and the systemd unit. Filled in for miniciv.com; docs/hosting.md
+# section 4.3 lists what to change for another domain or key.
 
 groups:
   - miniciv
@@ -9,19 +9,19 @@ groups:
 users:
   # You. The account has no password, so sudo can't ask for one; the
   # passphrase on your key is what guards it.
-  - name: ADMIN_USER
+  - name: finnjwohner
     groups: [sudo]
     shell: /bin/bash
     lock_passwd: true
     sudo: ALL=(ALL) NOPASSWD:ALL
     ssh_authorized_keys:
-      - ADMIN_SSH_KEY
+      - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHdVDpbnUi5khmaTM3L6ulQQjMEXeP2mqP3wGaTS9nvg miniciv admin
   # GitHub Actions. May only copy jars in and restart the service.
   - name: deploy
     shell: /bin/bash
     lock_passwd: true
     ssh_authorized_keys:
-      - restrict DEPLOY_SSH_KEY
+      - restrict ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBFowxkmUyGkGU8+DP/krffCWhzVyt0MTY/Ht76tChm0 miniciv deploy
   # Runs the app; can't log in.
   - name: miniciv
     system: true
@@ -100,10 +100,10 @@ write_files:
   - path: /etc/caddy/Caddyfile
     content: |
       {
-        email EMAIL
+        email finnjwohner@gmail.com
       }
 
-      DOMAIN {
+      miniciv.com {
         encode zstd gzip
         header Strict-Transport-Security "max-age=31536000"
         request_body /api/* {
@@ -114,8 +114,8 @@ write_files:
         }
       }
 
-      www.DOMAIN {
-        redir https://DOMAIN{uri} permanent
+      www.miniciv.com {
+        redir https://miniciv.com{uri} permanent
       }
 
 runcmd:
