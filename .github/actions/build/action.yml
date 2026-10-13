@@ -1,0 +1,30 @@
+name: Build
+description: Builds the jar with the frontend inside it, running the backend tests, vitest and the type-check.
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-java@v6
+      with:
+        distribution: temurin
+        java-version: '21'
+        cache: maven
+
+    - name: Read the Node version from the pom
+      id: node
+      shell: bash
+      run: echo "version=$(sed -n 's:.*<node.version>\(.*\)</node.version>.*:\1:p' backend/pom.xml)" >> "$GITHUB_OUTPUT"
+
+    # frontend-maven-plugin installs Node into backend/target; keep it, and npm's download cache, between runs.
+    - uses: actions/cache@v6
+      with:
+        path: |
+          ~/.npm
+          backend/target/node
+        key: frontend-${{ runner.os }}-${{ steps.node.outputs.version }}-${{ hashFiles('frontend/package-lock.json') }}
+
+    # No clean: the runner starts from a fresh checkout, and clean would delete the cached Node.
+    - name: Build and test
+      shell: bash
+      working-directory: backend
+      run: ./mvnw -B package

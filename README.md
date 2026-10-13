@@ -38,9 +38,9 @@ Open http://localhost:5173. The dev server forwards `/api` and `/ws` to the back
 ## Test
 
 ```sh
-cd backend && ./mvnw test                                   # all backend tests (builds the frontend first)
-cd backend && ./mvnw test -Dskip.npm -Dskip.installnodenpm  # skip the frontend build
-cd backend && ./mvnw test -Dtest=HealthEndpointTest         # a single test class
+cd backend && ./mvnw test                                   # all backend and frontend tests (builds the frontend first)
+cd backend && ./mvnw test -Dskip.npm -Dskip.installnodenpm  # skip the frontend build and its tests
+cd backend && ./mvnw test -Dtest=HealthEndpointTest         # a single backend test class, plus all frontend tests
 ```
 
 When skipping the frontend build, `FrontendServingTest` only passes if `frontend/dist` has already been built.
