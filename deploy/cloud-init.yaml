@@ -1,0 +1,134 @@
+#cloud-config
+# Sets up the miniciv Droplet; see docs/hosting.md. This is the only copy of the
+# Caddyfile and the systemd unit. Replace DOMAIN, EMAIL, ADMIN_USER,
+# ADMIN_SSH_KEY and DEPLOY_SSH_KEY before creating a Droplet.
+
+groups:
+  - miniciv
+
+users:
+  # You. The account has no password, so sudo can't ask for one; the
+  # passphrase on your key is what guards it.
+  - name: ADMIN_USER
+    groups: [sudo]
+    shell: /bin/bash
+    lock_passwd: true
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    ssh_authorized_keys:
+      - ADMIN_SSH_KEY
+  # GitHub Actions. May only copy jars in and restart the service.
+  - name: deploy
+    shell: /bin/bash
+    lock_passwd: true
+    ssh_authorized_keys:
+      - restrict DEPLOY_SSH_KEY
+  # Runs the app; can't log in.
+  - name: miniciv
+    system: true
+    primary_group: miniciv
+    no_create_home: true
+    shell: /usr/sbin/nologin
+
+ssh_pwauth: false
+disable_root: true
+
+package_update: true
+package_upgrade: true
+packages:
+  - openjdk-21-jre-headless
+  - curl
+  - gpg
+  - unattended-upgrades
+
+write_files:
+  - path: /etc/ssh/sshd_config.d/10-miniciv.conf
+    content: |
+      PermitRootLogin no
+      PasswordAuthentication no
+      KbdInteractiveAuthentication no
+
+  - path: /etc/sudoers.d/miniciv-deploy
+    permissions: '0440'
+    content: |
+      deploy ALL=(root) NOPASSWD: /usr/bin/systemctl restart miniciv
+
+  - path: /etc/apt/apt.conf.d/20auto-upgrades
+    content: |
+      APT::Periodic::Update-Package-Lists "1";
+      APT::Periodic::Unattended-Upgrade "1";
+
+  # Also patch Caddy from its own repo, and reboot when a patch needs it, just
+  # after the 04:07 UTC deploy. The Droplet's clock is UTC.
+  - path: /etc/apt/apt.conf.d/52miniciv-unattended-upgrades
+    content: |
+      Unattended-Upgrade::Origins-Pattern {
+        "site=dl.cloudsmith.io";
+      };
+      Unattended-Upgrade::Automatic-Reboot "true";
+      Unattended-Upgrade::Automatic-Reboot-Time "04:20";
+
+  - path: /etc/systemd/journald.conf.d/miniciv.conf
+    content: |
+      [Journal]
+      SystemMaxUse=200M
+
+  - path: /etc/systemd/system/miniciv.service
+    content: |
+      [Unit]
+      Description=miniciv
+      After=network.target
+      # Until the first deploy there is no jar to run.
+      ConditionPathExists=/opt/miniciv/current
+
+      [Service]
+      User=miniciv
+      Group=miniciv
+      Environment=SPRING_PROFILES_ACTIVE=prod
+      ExecStart=/usr/bin/java -XX:+UseSerialGC -XX:MaxRAMPercentage=50 -XX:+ExitOnOutOfMemoryError -jar /opt/miniciv/current
+      # The JVM exits with 143 when systemd stops it.
+      SuccessExitStatus=143
+      Restart=always
+      RestartSec=5
+      ProtectSystem=strict
+      NoNewPrivileges=true
+      PrivateTmp=true
+
+      [Install]
+      WantedBy=multi-user.target
+
+  - path: /etc/caddy/Caddyfile
+    content: |
+      {
+        email EMAIL
+      }
+
+      DOMAIN {
+        encode zstd gzip
+        header Strict-Transport-Security "max-age=31536000"
+        request_body /api/* {
+          max_size 64KB
+        }
+        reverse_proxy 127.0.0.1:8080 {
+          stream_close_delay 4h
+        }
+      }
+
+      www.DOMAIN {
+        redir https://DOMAIN{uri} permanent
+      }
+
+runcmd:
+  # deploy owns the releases, current and REVISION; the setgid bit gives every
+  # new file the miniciv group, which can read but not write.
+  - install -d -o deploy -g miniciv -m 2750 /opt/miniciv /opt/miniciv/releases
+  # Caddy from its official apt repo, as its install docs give it. Keep the
+  # Caddyfile written above rather than the package's example.
+  - curl -1sLf https://dl.cloudsmith.io/public/caddy/stable/gpg.key | gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
+  - curl -1sLf https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt -o /etc/apt/sources.list.d/caddy-stable.list
+  - chmod o+r /usr/share/keyrings/caddy-stable-archive-keyring.gpg /etc/apt/sources.list.d/caddy-stable.list
+  - apt-get update
+  - DEBIAN_FRONTEND=noninteractive apt-get install -y -o Dpkg::Options::=--force-confold caddy
+  - systemctl restart systemd-journald ssh
+  - systemctl daemon-reload
+  - systemctl enable miniciv
+  - systemctl restart caddy

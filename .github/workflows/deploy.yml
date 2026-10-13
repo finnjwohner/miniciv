@@ -1,0 +1,113 @@
+name: Deploy
+
+on:
+  schedule:
+    - cron: '7 4 * * *' # 04:07 UTC; GitHub delays schedules most at the top of the hour
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# A manual run started during the nightly one waits for it rather than racing it.
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    # The branch picker on a manual run can't put another branch live.
+    if: github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Set up SSH to the Droplet
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+        run: |
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy
+          chmod 600 ~/.ssh/deploy
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          printf 'Host droplet\n  HostName %s\n  User deploy\n  IdentityFile ~/.ssh/deploy\n  IdentitiesOnly yes\n  BatchMode yes\n' \
+            "$DEPLOY_HOST" > ~/.ssh/config
+
+      # Every restart wipes every Game, so a night with nothing new does nothing. A manual run always deploys.
+      - name: Skip if this commit is already live
+        id: live
+        if: github.event_name == 'schedule'
+        run: |
+          live=$(ssh droplet 'cat /opt/miniciv/REVISION 2>/dev/null || true')
+          if [ "$live" = "$GITHUB_SHA" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "\`$GITHUB_SHA\` is already live; nothing to deploy." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - uses: actions/checkout@v7
+        if: steps.live.outputs.skip != 'true'
+
+      - uses: ./.github/actions/build
+        if: steps.live.outputs.skip != 'true'
+
+      - name: Copy the jar
+        if: steps.live.outputs.skip != 'true'
+        run: scp backend/target/miniciv-*.jar "droplet:/opt/miniciv/releases/$GITHUB_SHA.jar.tmp"
+
+      - name: Switch to it, restart and check health
+        if: steps.live.outputs.skip != 'true'
+        run: |
+          set +e
+          ssh droplet bash -s -- "$GITHUB_SHA" > outcome.txt <<'EOF'
+          set -euo pipefail
+          sha=$1
+          cd /opt/miniciv
+
+          # Points current at a release, swapping the link atomically.
+          point_at() { ln -sfn "releases/$1.jar" current.tmp && mv -T current.tmp current; }
+
+          # Waits up to 90 s for the jar to answer on localhost.
+          healthy() {
+            local deadline=$((SECONDS + 90))
+            while [ "$SECONDS" -lt "$deadline" ]; do
+              curl -fs -o /dev/null --max-time 2 http://127.0.0.1:8080/api/health && return 0
+              sleep 2
+            done
+            return 1
+          }
+
+          mv "releases/$sha.jar.tmp" "releases/$sha.jar"
+          previous=$(cat REVISION 2>/dev/null || true)
+          point_at "$sha"
+          sudo systemctl restart miniciv
+
+          if healthy; then
+            # Written last, so after any failure REVISION still names the jar that is live.
+            echo "$sha" > REVISION.tmp && mv REVISION.tmp REVISION
+            live=$(readlink current)
+            # Release names are always <sha>.jar, so ls is safe to read here.
+            # shellcheck disable=SC2012
+            ls -1t releases/*.jar | tail -n +6 | while read -r jar; do
+              [ "$jar" = "$live" ] || rm -- "$jar"
+            done
+            echo "Deployed \`$sha\`."
+            exit 0
+          fi
+
+          if [ -z "$previous" ]; then
+            echo "Health check failed for \`$sha\`; no previous revision to roll back to."
+            exit 1
+          fi
+          point_at "$previous"
+          sudo systemctl restart miniciv
+          if healthy; then
+            echo "Health check failed for \`$sha\`; rolled back to \`$previous\`."
+          else
+            echo "Health check failed for \`$sha\`; rollback to \`$previous\` also unhealthy."
+          fi
+          exit 1
+          EOF
+          status=$?
+          cat outcome.txt
+          tail -n 1 outcome.txt >> "$GITHUB_STEP_SUMMARY"
+          exit $status

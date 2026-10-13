@@ -333,6 +333,8 @@ jobs:
             # Written last, so after any failure REVISION still names the jar that is live.
             echo "$sha" > REVISION.tmp && mv REVISION.tmp REVISION
             live=$(readlink current)
+            # Release names are always <sha>.jar, so ls is safe to read here.
+            # shellcheck disable=SC2012
             ls -1t releases/*.jar | tail -n +6 | while read -r jar; do
               [ "$jar" = "$live" ] || rm -- "$jar"
             done
